@@ -508,3 +508,73 @@ describe('WatchlistView pending badge', () => {
     await expectNoA11yViolations(wrapper.element)
   })
 })
+
+describe('WatchlistView table semantics (the rows become cards on small screens)', () => {
+  it('states the table, row, header and cell roles, so the structure survives the card layout', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.get('table').attributes('role')).toBe('table')
+    expect(wrapper.findAll('[role="rowgroup"]').map((e) => e.element.tagName)).toEqual([
+      'THEAD',
+      'TBODY',
+    ])
+    expect(wrapper.findAll('[role="row"]')).toHaveLength(films.length + 1)
+    expect(wrapper.findAll('[role="columnheader"]').map((e) => e.text())).toEqual([
+      'Title',
+      'Year',
+      'Added',
+      'Status',
+      'Actions',
+    ])
+    expect(wrapper.findAll('tbody [role="rowheader"]')).toHaveLength(films.length)
+    expect(wrapper.findAll('tbody [role="cell"]')).toHaveLength(films.length * 4)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('keeps the title as the row header and the year, date, status and actions as cells, in this order', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    const row = wrapper.get('tbody tr')
+    expect(row.element.children[0]!.getAttribute('role')).toBe('rowheader')
+    const cells = Array.from(row.element.children).slice(1)
+    expect(cells).toHaveLength(4)
+    const kinds = ['watchlist__year', 'watchlist__added', 'watchlist__status-cell', 'watchlist__actions']
+    cells.forEach((cell, i) => expect(cell.classList.contains(kinds[i]!), `${kinds[i]} is cell ${i + 1}`).toBe(true))
+  })
+
+  it('shows a dash for a missing year, and the date cell holds only the date, because its label is drawn by CSS', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.findAll('tbody tr')[2]!.get('.watchlist__year').text()).toBe('—')
+    // the "Added" label of the card is drawn by CSS only, so the cell text is just the date
+    expect(wrapper.get('.watchlist__added').text()).toBe('12 Mar 2025')
+  })
+})
+
+describe('WatchlistView table states', () => {
+  it('shows a watched film with a TMDB problem with both badges and a long title unbroken in one row header', async () => {
+    const title = 'Supercalifragilisticexpialidocious'.repeat(3)
+    mocked.listFilms.mockResolvedValue(
+      listing([
+        makeFilm({
+          id: 9,
+          title,
+          watchedAt: '2025-03-04T10:00:00.000Z',
+          tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
+        }),
+      ]),
+    )
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    const row = wrapper.get('tbody tr')
+    expect(row.get('[role="rowheader"]').text()).toBe(title)
+    expect(row.get('.watchlist__status-cell').text()).toContain('Watched 4 Mar 2025')
+    expect(row.get('.watchlist__status-cell').text()).toContain(
+      'Needs review: several TMDB matches',
+    )
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('renders no table for an empty watchlist', async () => {
+    mocked.listFilms.mockResolvedValue(listing([], 0))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.find('table').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Your watchlist is empty')
+  })
+})

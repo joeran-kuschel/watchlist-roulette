@@ -165,6 +165,146 @@ test('icon buttons show a tooltip on keyboard focus that Esc dismisses', async (
   await expect(tip).toBeHidden()
 })
 
+// The layout is CSS only, so it is checked in a real browser. 320 px is the width WCAG 1.4.10 (reflow) names,
+// 799 px is the widest card layout; from 801 px the table is back.
+for (const width of [320, 375, 799]) {
+  test(`the watchlist is one card per film without horizontal scrolling at ${width} px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await page.goto('/watchlist')
+    await expect(page.getByRole('link', { name: 'Perfect Days', exact: true })).toBeVisible()
+
+    const widths = await page.evaluate(() => ({
+      page: document.documentElement.scrollWidth,
+      screen: document.documentElement.clientWidth,
+    }))
+    expect(widths.page).toBeLessThanOrEqual(widths.screen)
+
+    // every action button is on screen, and the status badges stay inside their card
+    for (const button of await page.locator('tbody .icon-button').all()) {
+      const box = (await button.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(width)
+    }
+    for (const card of await page.locator('tbody tr').all()) {
+      const outer = (await card.boundingBox())!
+      for (const badge of await card.locator('.badge').all()) {
+        const box = (await badge.boundingBox())!
+        expect(box.x + box.width).toBeLessThanOrEqual(outer.x + outer.width + 0.5)
+      }
+    }
+
+    // the column headers are hidden but still there for screen readers, and the table is still a table
+    await expect(page.getByRole('table', { name: 'Films on your watchlist' })).toHaveCount(1)
+    await expect(page.getByRole('columnheader')).toHaveCount(5)
+    expect((await page.locator('thead').boundingBox())!.width).toBeLessThanOrEqual(1)
+    await expectAccessible(page)
+  })
+}
+
+test('from 801 px the watchlist is a table with visible column headers again', async ({ page }) => {
+  await page.setViewportSize({ width: 801, height: 800 })
+  await page.goto('/watchlist')
+  await expect(page.getByRole('columnheader', { name: 'Year' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Added' })).toBeVisible()
+  const widths = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth,
+    screen: document.documentElement.clientWidth,
+  }))
+  expect(widths.page).toBeLessThanOrEqual(widths.screen)
+})
+
+test('a card with a very long title, no year and two badges stays inside the screen at 320 px, keyboard order is title, then actions', async ({
+  page,
+}) => {
+  const longTitle = 'Supercalifragilisticexpialidocious'.repeat(3)
+  const odd = film(7, longTitle, {
+    releaseYear: null,
+    watchedAt: '2025-03-04T10:00:00.000Z',
+    tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
+  })
+  // registered after the shared stub, so it answers first
+  await page.route('**/api/films?*', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [odd], total: 1, page: 1, pageSize: 50 }),
+    }),
+  )
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/watchlist')
+  const title = page.getByRole('link', { name: longTitle, exact: true })
+  await expect(title).toBeVisible()
+
+  const widths = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth,
+    screen: document.documentElement.clientWidth,
+  }))
+  expect(widths.page).toBeLessThanOrEqual(widths.screen)
+  const card = (await page.locator('tbody tr').boundingBox())!
+  const link = (await title.boundingBox())!
+  expect(link.x + link.width).toBeLessThanOrEqual(card.x + card.width + 0.5)
+  await expect(page.getByText('Watched 4 Mar 2025')).toBeVisible()
+  await expect(page.getByText('Needs review: several TMDB matches')).toBeVisible()
+  await expect(page.locator('tbody .watchlist__year')).toHaveText('—')
+  await expectAccessible(page)
+
+  await title.focus()
+  for (const name of [
+    `Mark as unwatched: ${longTitle}`,
+    `Choose TMDB match: ${longTitle}`,
+    `Edit film: ${longTitle}`,
+  ]) {
+    await page.keyboard.press('Tab')
+    await expect(
+      page.getByRole(name.startsWith('Mark') ? 'button' : 'link', { name }),
+    ).toBeFocused()
+  }
+})
+
+test('the pagination and the empty watchlist fit a 320 px screen', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/watchlist')
+  await expect(page.getByRole('navigation', { name: 'Pagination' })).toBeVisible()
+  const fitsNow = () =>
+    page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
+  expect(await fitsNow()).toBe(true)
+  for (const button of await page.locator('nav[aria-label="Pagination"] .icon-button').all()) {
+    const box = (await button.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(320)
+  }
+  await page.route('**/api/films?*', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [], total: 0, page: 1, pageSize: 50 }),
+    }),
+  )
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Your watchlist is empty' })).toBeVisible()
+  expect(await fitsNow()).toBe(true)
+})
+
+test('the card layout does not touch the table of rejected rows on the import page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/import')
+  await page.getByLabel('CSV file').setInputFiles({
+    name: 'watchlist.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Date,Name,Year,Letterboxd URI\n'),
+  })
+  await page.getByRole('button', { name: 'Check file' }).click()
+  const table = page.getByRole('table', { name: 'Rejected rows' })
+  await expect(table).toBeVisible()
+  expect(await table.evaluate((t) => getComputedStyle(t).display)).toBe('table')
+  expect(
+    await page.locator('.table-wrap').evaluate((w) => getComputedStyle(w).borderTopWidth),
+  ).toBe('1px')
+  await expect(table.getByRole('columnheader', { name: 'Reason' })).toBeVisible()
+})
+
 // The CSS behind these (hoverable tooltip, bridge over the gap, no tooltip on disabled buttons) only runs in a real browser
 test('a tooltip stays while the pointer moves onto it, Esc closes it without focus, a click on it does nothing', async ({
   page,
