@@ -89,12 +89,12 @@ describe('WatchlistView', () => {
         .findAll('tbody tr')
         [row]!.findAll('.watchlist__actions [aria-label]')
         .map((el) => el.attributes('aria-label'))
-    expect(names(0)).toEqual(['Mark Perfect Days as watched', 'Edit Perfect Days'])
-    expect(names(1)).toEqual(['Mark Aftersun as unwatched', 'Edit Aftersun'])
+    expect(names(0)).toEqual(['Mark as watched: Perfect Days', 'Edit film: Perfect Days'])
+    expect(names(1)).toEqual(['Mark as unwatched: Aftersun', 'Edit film: Aftersun'])
     expect(names(2)).toEqual([
-      'Mark Cléo from 5 to 7 as watched',
-      'Choose TMDB match for Cléo from 5 to 7',
-      'Edit Cléo from 5 to 7',
+      'Mark as watched: Cléo from 5 to 7',
+      'Choose TMDB match: Cléo from 5 to 7',
+      'Edit film: Cléo from 5 to 7',
     ])
     expect(wrapper.find('a[href="/watchlist/3/match"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/watchlist/1/edit"]').exists()).toBe(true)
@@ -104,17 +104,17 @@ describe('WatchlistView', () => {
   it('marks a film as watched and announces it', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     mocked.updateFilm.mockResolvedValue(makeFilm({ id: 1, watchedAt: '2026-10-11T10:00:00.000Z' }))
-    await wrapper.get('button[aria-label="Mark Perfect Days as watched"]').trigger('click')
+    await wrapper.get('button[aria-label="Mark as watched: Perfect Days"]').trigger('click')
     await flushPromises()
     expect(mocked.updateFilm).toHaveBeenCalledWith(1, { watched: true })
     expect(wrapper.get('.watchlist__notice').text()).toBe('Perfect Days is marked as watched.')
-    expect(wrapper.find('button[aria-label="Mark Perfect Days as unwatched"]').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="Mark as unwatched: Perfect Days"]').exists()).toBe(true)
   })
 
   it('shows an error when the update fails', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     mocked.updateFilm.mockRejectedValue(new api.ApiError(404, 'Film not found'))
-    await wrapper.get('button[aria-label="Mark Perfect Days as watched"]').trigger('click')
+    await wrapper.get('button[aria-label="Mark as watched: Perfect Days"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Film not found')
   })
@@ -306,7 +306,7 @@ describe('WatchlistView: edge cases', () => {
   it('keeps showing the table when only the update fails, with the error above it', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     mocked.updateFilm.mockRejectedValue(new api.ApiError(0, 'x'))
-    await wrapper.get('button[aria-label="Mark Perfect Days as watched"]').trigger('click')
+    await wrapper.get('button[aria-label="Mark as watched: Perfect Days"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toMatch(/Can't reach the server/)
     expect(wrapper.findAll('tbody tr')).toHaveLength(5)
@@ -315,11 +315,11 @@ describe('WatchlistView: edge cases', () => {
   it('un-marks a watched film', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     mocked.updateFilm.mockResolvedValue(makeFilm({ id: 2, title: 'Aftersun', watchedAt: null }))
-    await wrapper.get('button[aria-label="Mark Aftersun as unwatched"]').trigger('click')
+    await wrapper.get('button[aria-label="Mark as unwatched: Aftersun"]').trigger('click')
     await flushPromises()
     expect(mocked.updateFilm).toHaveBeenCalledWith(2, { watched: false })
     expect(wrapper.get('.watchlist__notice').text()).toBe('Aftersun is marked as unwatched.')
-    expect(wrapper.find('button[aria-label="Mark Aftersun as watched"]').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="Mark as watched: Aftersun"]').exists()).toBe(true)
   })
 
   it('shows a long title and a film without year and link', async () => {

@@ -158,27 +158,27 @@ onBeforeUnmount(() => (store.notice = ''))
               <td class="watchlist__actions">
                 <IconButton
                   v-if="film.watchedAt"
-                  :label="`Mark ${film.title} as unwatched`"
+                  :label="`Mark as unwatched: ${film.title}`"
                   tooltip="Mark as unwatched"
                   icon="eye-off"
                   @click="store.setWatched(film, false)"
                 />
                 <IconButton
                   v-else
-                  :label="`Mark ${film.title} as watched`"
+                  :label="`Mark as watched: ${film.title}`"
                   tooltip="Mark as watched"
                   icon="eye"
                   @click="store.setWatched(film, true)"
                 />
                 <IconButton
                   v-if="needsMatch(film)"
-                  :label="`Choose TMDB match for ${film.title}`"
+                  :label="`Choose TMDB match: ${film.title}`"
                   tooltip="Choose TMDB match"
                   icon="match"
                   :to="`/watchlist/${film.id}/match`"
                 />
                 <IconButton
-                  :label="`Edit ${film.title}`"
+                  :label="`Edit film: ${film.title}`"
                   tooltip="Edit film"
                   icon="pencil"
                   :to="`/watchlist/${film.id}/edit`"
