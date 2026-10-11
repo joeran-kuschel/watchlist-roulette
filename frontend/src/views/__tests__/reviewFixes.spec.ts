@@ -76,7 +76,7 @@ describe('Letterboxd links only for web addresses', () => {
     expect(wrapper.find('a').exists()).toBe(false)
   })
 
-  it('does not render it as a link in the watchlist either', async () => {
+  it('never links a javascript: address from the watchlist; the title goes to the details page', async () => {
     mocked.listFilms.mockResolvedValue({
       items: [makeFilm({ letterboxdUrl: 'javascript:alert(1)' })],
       total: 1,
@@ -84,8 +84,8 @@ describe('Letterboxd links only for web addresses', () => {
       pageSize: 50,
     })
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
-    expect(wrapper.find('tbody th a').exists()).toBe(false)
-    expect(wrapper.get('tbody th').text()).toContain('Perfect Days')
+    expect(wrapper.get('tbody th a').attributes('href')).toBe('/watchlist/1')
+    expect(wrapper.html()).not.toContain('javascript:')
   })
 })
 

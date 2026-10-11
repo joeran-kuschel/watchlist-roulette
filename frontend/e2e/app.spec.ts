@@ -130,6 +130,29 @@ test('the watchlist lists films, can be searched and updates a film', async ({ p
   await expect(page).toHaveURL(/q=after/)
 })
 
+test('a film title opens its details page with links and an Edit button', async ({ page }) => {
+  await page.goto('/watchlist')
+  await page.getByRole('link', { name: 'Perfect Days' }).click()
+  await expect(page).toHaveURL(/\/watchlist\/1$/)
+  await expect(page).toHaveTitle('Film details · Watchlist Roulette')
+  await expect(page.getByRole('heading', { level: 1, name: 'Perfect Days' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Letterboxd/ })).toHaveAttribute('href', 'https://boxd.it/1')
+  await expect(page.getByRole('link', { name: /The Movie Database/ })).toHaveAttribute(
+    'href',
+    'https://www.themoviedb.org/movie/10',
+  )
+  await expectAccessible(page)
+
+  await page.getByRole('link', { name: 'Edit Perfect Days' }).click()
+  await expect(page).toHaveURL(/\/watchlist\/1\/edit$/)
+})
+
+test('the details page of an unknown film says so', async ({ page }) => {
+  await page.goto('/watchlist/99')
+  await expect(page.getByRole('heading', { level: 1, name: 'Film not found' })).toBeVisible()
+  await expect(page.getByRole('alert')).toBeVisible()
+})
+
 test('icon buttons show a tooltip on keyboard focus that Esc dismisses', async ({ page }) => {
   await page.goto('/watchlist')
   const button = page.getByRole('button', { name: 'Mark Perfect Days as watched' })

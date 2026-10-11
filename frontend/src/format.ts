@@ -1,3 +1,5 @@
+import type { Film } from './types'
+
 const dateFormat = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -23,3 +25,23 @@ export function isHttpUrl(text: string) {
 }
 
 export const joinNames = (people: { name: string }[]) => people.map((p) => p.name).join(', ')
+
+export interface Fact {
+  label: string
+  value: string | number
+}
+
+/** Year, runtime, rating and country of a film, without the ones it does not have. `detailed` adds the vote count. */
+export function filmFacts(film: Film, detailed = false): Fact[] {
+  const votes = detailed && film.voteCount ? ` (${film.voteCount.toLocaleString('en-GB')} votes)` : ''
+  const facts: { label: string; value: string | number | null }[] = [
+    { label: 'Year', value: film.releaseYear },
+    { label: 'Runtime', value: formatRuntime(film.runtimeMinutes) },
+    {
+      label: detailed ? 'TMDB rating' : 'Rating',
+      value: film.voteAverage === null ? null : `${film.voteAverage.toFixed(1)} / 10${votes}`,
+    },
+    { label: 'Country', value: film.countries.join(', ') || null },
+  ]
+  return facts.filter((fact): fact is Fact => fact.value !== null && fact.value !== '')
+}

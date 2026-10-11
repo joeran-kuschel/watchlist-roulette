@@ -29,10 +29,14 @@ describe('router', () => {
     expect(path('/')).toBe('/')
     expect(path('/watchlist')).toBe('/watchlist')
     expect(path('/watchlist/new')).toBe('/watchlist/new')
+    expect(path('/watchlist/12')).toBe('/watchlist/:id(\\d+)')
     expect(path('/watchlist/12/edit')).toBe('/watchlist/:id(\\d+)/edit')
     expect(path('/watchlist/12/match')).toBe('/watchlist/:id(\\d+)/match')
     expect(path('/import')).toBe('/import')
     expect(path('/watchlist/abc/edit')).toBe('/:pathMatch(.*)*')
+    expect(path('/watchlist/abc')).toBe('/:pathMatch(.*)*')
+    expect(path('/watchlist/-1')).toBe('/:pathMatch(.*)*')
+    expect(path('/watchlist/1.5')).toBe('/:pathMatch(.*)*')
     expect(path('/nope')).toBe('/:pathMatch(.*)*')
   })
 
@@ -78,11 +82,13 @@ describe('router: edge cases', () => {
     ['/', 'Roulette'],
     ['/watchlist', 'Watchlist'],
     ['/watchlist/new', 'Add film'],
+    ['/watchlist/3', 'Film details'],
     ['/watchlist/3/edit', 'Edit film'],
     ['/watchlist/3/match', 'Choose TMDB match'],
     ['/import', 'Import'],
     ['/does/not/exist', 'Page not found'],
     ['/watchlist/abc/edit', 'Page not found'],
+    ['/watchlist/abc', 'Page not found'],
   ])('titles %s "%s"', async (path, title) => {
     const { wrapper } = await start(path)
     expect(document.title).toBe(`${title} · Watchlist Roulette`)

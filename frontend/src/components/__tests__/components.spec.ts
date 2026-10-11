@@ -5,6 +5,7 @@ import AppIcon from '../AppIcon.vue'
 import AppLayout from '../AppLayout.vue'
 import ErrorAlert from '../ErrorAlert.vue'
 import FilmCard from '../FilmCard.vue'
+import FilmFacts from '../FilmFacts.vue'
 import FormField from '../FormField.vue'
 import IconButton from '../IconButton.vue'
 import ImportSummary from '../ImportSummary.vue'
@@ -462,10 +463,11 @@ describe('AppLayout: edge cases', () => {
     expect(wrapper.findAll('nav a.is-section')).toHaveLength(0)
   })
 
-  it('highlights the Watchlist section on the edit and match pages', async () => {
-    for (const path of ['/watchlist/3/edit', '/watchlist/3/match']) {
+  it('highlights the Watchlist section on the edit and match pages (and the details page, without aria-current)', async () => {
+    for (const path of ['/watchlist/3', '/watchlist/3/edit', '/watchlist/3/match']) {
       const { wrapper } = await mountWithApp(AppLayout, path)
       expect(wrapper.findAll('nav a')[1]!.classes()).toContain('is-section')
+      expect(wrapper.findAll('nav a[aria-current="page"]')).toHaveLength(0)
       wrapper.unmount()
     }
   })
@@ -474,5 +476,28 @@ describe('AppLayout: edge cases', () => {
     const { wrapper } = await mountWithApp(AppLayout, '/')
     const first = wrapper.element.querySelector('a[href], button')
     expect(first?.classList.contains('skip')).toBe(true)
+  })
+})
+
+describe('FilmFacts', () => {
+  const facts = [
+    { label: 'Year', value: 2023 },
+    { label: 'Runtime', value: '124 min' },
+  ]
+
+  it('renders each fact as a term and its value in a description list', async () => {
+    const wrapper = mount(FilmFacts, { props: { facts }, attachTo: document.body })
+    expect(wrapper.findAll('dt').map((e) => e.text())).toEqual(['Year', 'Runtime'])
+    expect(wrapper.findAll('dd').map((e) => e.text())).toEqual(['2023', '124 min'])
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('is inline by default and a grid on request', () => {
+    expect(mount(FilmFacts, { props: { facts } }).get('dl').classes()).toContain('facts--inline')
+    expect(mount(FilmFacts, { props: { facts, layout: 'grid' } }).get('dl').classes()).toContain('facts--grid')
+  })
+
+  it('renders nothing for an empty list, so no empty <dl> reaches assistive technology', () => {
+    expect(mount(FilmFacts, { props: { facts: [] } }).find('dl').exists()).toBe(false)
   })
 })

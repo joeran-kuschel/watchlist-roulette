@@ -22,6 +22,11 @@ export const routes: RouteRecordRaw[] = [
     meta: { title: 'Add film' },
   },
   {
+    path: '/watchlist/:id(\\d+)',
+    component: () => import('../views/FilmDetailsView.vue'),
+    meta: { title: 'Film details' },
+  },
+  {
     path: '/watchlist/:id(\\d+)/edit',
     component: () => import('../views/FilmFormView.vue'),
     meta: { title: 'Edit film' },
