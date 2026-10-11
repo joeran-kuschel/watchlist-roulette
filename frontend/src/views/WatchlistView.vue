@@ -4,9 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
 import IconButton from '../components/IconButton.vue'
-import { formatDate } from '../format'
+import { formatDate, needsMatch, tmdbBadge } from '../format'
 import { useWatchlistStore } from '../stores/watchlist'
-import type { Film } from '../types'
 import { fromQuery, SORTS, TMDB_FILTERS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
 
 const store = useWatchlistStore()
@@ -39,14 +38,6 @@ const rangeText = computed(() => {
   return `Showing ${start}–${end} of ${store.total}`
 })
 const isFiltered = computed(() => view.value.q !== '' || view.value.watched !== 'all' || view.value.tmdb !== 'all')
-
-const tmdbBadge = (film: Film) =>
-  ({
-    ambiguous: 'Needs review: several TMDB matches',
-    not_found: 'Not found on TMDB',
-    error: 'TMDB lookup failed',
-  })[film.tmdb.status as string]
-const needsMatch = (film: Film) => Boolean(tmdbBadge(film))
 
 // A live region that already holds text when it appears is often not read out, so its text is set a tick later
 const announced = ref('')

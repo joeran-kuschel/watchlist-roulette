@@ -48,3 +48,16 @@ export function filmFacts(film: Film, detailed = false): Fact[] {
 
 /** TMDB lists the creators of a show where it lists the director of a movie. */
 export const directorLabel = (film: Film) => (film.tmdb.mediaType === 'tv' ? 'Created by' : 'Directed by')
+
+/** The badge text of a film whose TMDB status needs a fix (no match, several matches, failed lookup); `undefined` otherwise. */
+export const tmdbBadge = (film: Film): string | undefined =>
+  (
+    ({
+      ambiguous: 'Needs review: several TMDB matches',
+      not_found: 'Not found on TMDB',
+      error: 'TMDB lookup failed',
+    }) as Record<string, string>
+  )[film.tmdb.status]
+
+/** Whether the user should choose the TMDB match for this film. */
+export const needsMatch = (film: Film) => Boolean(tmdbBadge(film))

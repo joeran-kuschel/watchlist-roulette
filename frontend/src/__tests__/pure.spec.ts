@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, describeError } from '../api'
-import { directorLabel, filmFacts, formatDate, formatRuntime, joinNames, text } from '../format'
+import { directorLabel, filmFacts, formatDate, formatRuntime, joinNames, needsMatch, text, tmdbBadge } from '../format'
 import { makeFilm } from './helpers'
 import { countActiveFilters, emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
@@ -458,5 +458,24 @@ describe('countActiveFilters', () => {
   it('counts the fields that have a value, ignoring blanks', () => {
     expect(countActiveFilters(emptyFilters())).toBe(0)
     expect(countActiveFilters({ ...emptyFilters(), yearFrom: '1990', country: '  ', genre: '18' })).toBe(2)
+  })
+})
+
+describe('tmdbBadge and needsMatch', () => {
+  const withStatus = (status: string) =>
+    makeFilm({ tmdb: { id: null, mediaType: 'movie', status: status as never, syncedAt: null } })
+
+  it('name the problem and ask for a match for ambiguous, not found and failed films', () => {
+    expect(tmdbBadge(withStatus('ambiguous'))).toBe('Needs review: several TMDB matches')
+    expect(tmdbBadge(withStatus('not_found'))).toBe('Not found on TMDB')
+    expect(tmdbBadge(withStatus('error'))).toBe('TMDB lookup failed')
+    for (const status of ['ambiguous', 'not_found', 'error']) expect(needsMatch(withStatus(status))).toBe(true)
+  })
+
+  it('say nothing for matched and pending films', () => {
+    for (const status of ['matched', 'pending']) {
+      expect(tmdbBadge(withStatus(status))).toBeUndefined()
+      expect(needsMatch(withStatus(status))).toBe(false)
+    }
   })
 })
