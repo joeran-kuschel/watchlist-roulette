@@ -1,76 +1,47 @@
-# watchlist-roulette
+# Watchlist Roulette
 
-This template should help get you started developing with Vue 3 in Vite.
+Keep a movie watchlist in a PostgreSQL database and let the app pick a random film to watch next. Films come from a Letterboxd watchlist export (CSV) and are enriched with data from [TMDB](https://www.themoviedb.org).
 
-## Recommended IDE Setup
+This product uses the TMDB API but is not endorsed or certified by TMDB.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Run it
 
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-The Vue app lives in `frontend/`; run the commands below from there.
+Needs Docker Desktop.
 
 ```sh
-cd frontend
-npm install
+cp .env.example .env        # optional; add your TMDB token here
+docker compose up --build
 ```
 
-### Compile and Hot-Reload for Development
+- App: http://localhost:8080
+- API: http://localhost:3000
+
+Import your watchlist with the API for now (the UI is still to be built):
 
 ```sh
-npm run dev
+curl -F file=@watchlist.csv 'http://localhost:8080/api/films/import?dryRun=true'   # preview
+curl -F file=@watchlist.csv http://localhost:8080/api/films/import                 # apply
+curl http://localhost:8080/api/films/random
 ```
 
-### Type-Check, Compile and Minify for Production
+See [documentation/](documentation/README.md) for the API, the CSV format, the TMDB setup and the configuration.
+
+## Develop
 
 ```sh
-npm run build
+cd backend  && npm install && npm run dev      # API on :3000, needs a database (DATABASE_URL)
+cd frontend && npm install && npm run dev      # Vite on :5173, forwards /api to :3000
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+Tests and checks:
 
 ```sh
-npm run test:unit
+cd backend  && npm test && npm run type-check
+cd frontend && npm run test:unit -- --run && npm run type-check && npm run lint
 ```
 
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
+## Layout
 
-```sh
-# Install browsers for the first run
-npx playwright install
-
-# When testing on CI, must build the project first
-npm run build
-
-# Runs the end-to-end tests
-npm run test:e2e
-# Runs the tests only on Chromium
-npm run test:e2e -- --project=chromium
-# Runs the tests of a specific file
-npm run test:e2e -- tests/example.spec.ts
-# Runs the tests in debug mode
-npm run test:e2e -- --debug
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+- `frontend/`: Vue 3, Vite, Pinia
+- `backend/`: Express, `pg`, TypeScript; SQL migrations in `backend/migrations/`
+- `documentation/`: feature documentation

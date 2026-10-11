@@ -38,9 +38,9 @@ Watchlist Roulette: keep a movie watchlist in a database and let the app pick a 
 ## Stack
 
 - **Frontend** (`frontend/`): Vue 3 (`<script setup>`, TypeScript), Vite, Pinia, Vue Router. Tests: Vitest + Vue Test Utils, Playwright for e2e. Lint: oxlint + ESLint, format: Prettier
-- **Backend** (`backend/`, not created yet): Node.js 24, Express, `pg`, TypeScript. Structure: `src/routes`, `src/controllers`, `src/models`, `src/config`. Tests: Vitest, with pg-mem for SQL
+- **Backend** (`backend/`): Node.js 24, Express 5, `pg`, `zod`, `csv-parse`, `multer`, TypeScript (ESM). Structure: `src/routes`, `src/controllers`, `src/models`, `src/config`, `src/import` (CSV parsing and import plan), `src/tmdb` (client, matching, enricher). Tests: Vitest, with pg-mem for SQL
 - **Database**: PostgreSQL. Schema in `backend/migrations/*.sql`
-- **Deployment**: `docker-compose.yml` (frontend served by nginx, backend, postgres). Kubernetes later
+- **Deployment**: `docker-compose.yml` (frontend served by nginx, which forwards `/api` to the backend; backend; postgres). Kubernetes later
 
 Feature details, endpoints and known gaps are documented per feature in `documentation/` (index: `documentation/README.md`).
 
@@ -49,7 +49,9 @@ Feature details, endpoints and known gaps are documented per feature in `documen
 - **Backend:** `routes → controllers → models`. Models query the shared `pg` pool from `config/database.js` directly (parameterized queries only). Business rules live in the controllers.
 - **Frontend:** API calls go through one module (`src/api.ts`) that throws a typed error with the HTTP status (`0` = server unreachable); stores (Pinia) and components use it, with no raw `fetch` elsewhere. Errors are shown in an element with `role="alert"`.
 - **Random pick:** done by the backend (`GET /api/films/random`) so the choice is testable and does not depend on what the client has loaded. Watched films are excluded.
-- **CSV import:** parsing and validation are a separate backend module from the controller, so they can be tested without HTTP or a database.
+- **CSV import:** `import/csv.ts` parses and validates, `import/plan.ts` compares the file with the database, `import/service.ts` runs preview and apply. A preview (`?dryRun=true`) and the apply step share the same plan code. Removals need the preview's token; see `documentation/backend/csv-import.md`.
+- **TMDB enrichment:** `tmdb/enricher.ts` runs in the background, one run at a time, after an import and on start. Matching rules are in `tmdb/match.ts`. Without `TMDB_ACCESS_TOKEN` films stay `pending`.
+- **Models:** functions take an optional `db` (pool or transaction client) and default to the shared pool from `config/database.ts`; tests install a pg-mem pool with `createTestPool()`.
 
 ## Commands
 
@@ -68,6 +70,11 @@ npm run test:e2e
 # Single test file / test name
 cd frontend && npx vitest run src/components/__tests__/Foo.spec.ts -t "name of the test"
 cd backend && npx vitest run tests/film.model.test.ts -t "name of the test"
+cd backend && npm test && npm run type-check
+# Real-PostgreSQL tests (see documentation/backend/testing.md): set TEST_DATABASE_URL, they recreate the public schema
+
+# Backend dev server (needs DATABASE_URL)
+cd backend && npm run dev
 
 # Run everything in Docker Desktop
 docker compose up --build
@@ -77,7 +84,7 @@ docker compose down -v     # deletes the database volume (and all data)
 
 ## Configuration
 
-- Configuration comes from environment variables (`DATABASE_URL`, `DB_SSL`, `CORS_ORIGIN`, …), documented in `.env.example` and passed by `docker-compose.yml`. Add every new setting to both and to the docs.
+- Configuration comes from environment variables (`DATABASE_URL`, `DB_SSL`, `CORS_ORIGIN`, `TMDB_ACCESS_TOKEN`, `TMDB_LANGUAGE`, …), documented in `.env.example` and passed by `docker-compose.yml`. Add every new setting to both and to the docs.
 - `DB_SSL` (`"true"`/`"false"`) turns SSL on for the database connection, independent of `NODE_ENV`.
 - Credentials in the repo are local placeholders only. Real secrets never go into git.
 
@@ -89,7 +96,8 @@ docker compose down -v     # deletes the database volume (and all data)
 
 ## Testing
 
-- Backend model tests run real SQL against the migrations in pg-mem; controller tests mock the model and use a fake `res`.
+- Backend model tests run real SQL against the migrations in pg-mem. API tests (`films.api`, `import.api`) call the Express app with supertest on a pg-mem database and a fake enricher. Pure logic (CSV, plan, matching) is tested without a database. What pg-mem can't do (`LIKE ... ESCAPE`, rollback) is covered by `postgres.integration.test.ts` against a real PostgreSQL via `TEST_DATABASE_URL`.
+- Never put the TMDB token in tests; the TMDB client is tested with a fake `fetch`.
 - Frontend unit tests sit next to the code in `__tests__/` folders (the create-vue layout) and use Vitest + Vue Test Utils. Add an `axe` accessibility check for every new component.
 - axe runs in jsdom, where color contrast can't be checked. Check contrast in a real browser.
 - e2e tests live in `frontend/e2e/` (Playwright) and need the Compose stack or a dev server with a test database, never the user's real data.
