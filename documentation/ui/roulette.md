@@ -9,6 +9,7 @@ Route `/`. Picks a random unwatched film. Code: `views/RouletteView.vue`, `store
 - **Spin again** (round icon button, or Enter in a filter field) picks another film with the current filters.
 - **Mark as watched** marks the shown film; it is excluded from future spins. The button is disabled once the film is watched.
 - Optional filters: release year from/to, genre, country code, max runtime. **Clear filters** empties them.
+- The fields have no placeholders, because example values such as 1970 or 120 look like entered values. Examples are visible hints instead, linked with `aria-describedby`: "Optional. For example 1970 to 2026." on the release-year group (the `fieldset`, so it covers both years) and "Optional. For example 120." on max runtime, like the country code hint.
 
 ## Narrow screens
 

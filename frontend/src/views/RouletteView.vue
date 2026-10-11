@@ -88,8 +88,9 @@ const isWatched = computed(() => store.film?.watchedAt != null)
           >
             Filters (optional)
           </h2>
-          <fieldset class="roulette__years roulette__wide">
+          <fieldset class="roulette__years roulette__wide" aria-describedby="year-hint">
             <legend>Release year</legend>
+            <span id="year-hint" class="field__hint">Optional. For example 1970 to 2026.</span>
             <FormField id="year-from" label="From" :error="errors.yearFrom" v-slot="{ attrs }">
               <input
                 v-bind="attrs"
@@ -97,7 +98,6 @@ const isWatched = computed(() => store.film?.watchedAt != null)
                 class="input"
                 type="number"
                 inputmode="numeric"
-                placeholder="1970"
               />
             </FormField>
             <FormField id="year-to" label="To" :error="errors.yearTo" v-slot="{ attrs }">
@@ -107,7 +107,6 @@ const isWatched = computed(() => store.film?.watchedAt != null)
                 class="input"
                 type="number"
                 inputmode="numeric"
-                placeholder="2026"
               />
             </FormField>
           </fieldset>
@@ -137,6 +136,7 @@ const isWatched = computed(() => store.film?.watchedAt != null)
           <FormField
             id="max-runtime"
             label="Max runtime (minutes)"
+            hint="Optional. For example 120."
             :error="errors.maxRuntime"
             v-slot="{ attrs }"
           >
@@ -146,7 +146,6 @@ const isWatched = computed(() => store.film?.watchedAt != null)
               class="input"
               type="number"
               inputmode="numeric"
-              placeholder="120"
             />
           </FormField>
           <IconButton label="Clear filters" icon="x" @click="clearFilters" />
@@ -247,6 +246,9 @@ form {
 .roulette__years legend {
   flex-basis: 100%;
   float: left;
+}
+.roulette__years .field__hint {
+  flex-basis: 100%;
 }
 .roulette__years .field {
   flex: 1;

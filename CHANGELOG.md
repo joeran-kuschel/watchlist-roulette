@@ -29,3 +29,4 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - The small hint texts on the icon buttons are easier to use: you can move the mouse onto a hint without it vanishing, and Esc closes it even when you only point at the button. Disabled buttons, such as the previous page button on the first page, no longer show a hint.
 - Screen readers now start with the action when they read the buttons in the watchlist, for example "Edit film: Perfect Days" instead of "Edit Perfect Days".
 - The watchlist now works on a phone or other small screen: each film is a card with its title, year, date added, status and buttons, so nothing is cut off or hidden off-screen any more.
+- The roulette filters no longer show example values (1970, 2026, 120) inside the empty fields, where they looked like something you had already typed. The examples now appear as a short note next to the field.
