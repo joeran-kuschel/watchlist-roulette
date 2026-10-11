@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { expectNoA11yViolations, makeFilm, mountWithApp } from '../../__tests__/helpers'
 import AppIcon from '../AppIcon.vue'
 import AppLayout from '../AppLayout.vue'
@@ -14,6 +14,7 @@ import PosterImage from '../PosterImage.vue'
 import TmdbAttribution from '../TmdbAttribution.vue'
 import type { ImportReport } from '../../types'
 
+enableAutoUnmount(afterEach)
 afterEach(() => {
   document.body.innerHTML = ''
 })
@@ -29,11 +30,11 @@ describe('IconButton', () => {
     await expectNoA11yViolations(wrapper.element)
   })
 
-  it('shows a different tooltip text than the full accessible name', () => {
+  it('shows a shorter tooltip text than the full accessible name', () => {
     const wrapper = mount(IconButton, {
-      props: { label: 'Mark Stalker as watched', tooltip: 'Mark as watched', icon: 'eye' },
+      props: { label: 'Mark as watched: Stalker', tooltip: 'Mark as watched', icon: 'eye' },
     })
-    expect(wrapper.get('button').attributes('aria-label')).toBe('Mark Stalker as watched')
+    expect(wrapper.get('button').attributes('aria-label')).toBe('Mark as watched: Stalker')
     expect(wrapper.get('.icon-button__tip').text()).toBe('Mark as watched')
   })
 
@@ -561,5 +562,124 @@ describe('BrandMark', () => {
     const brand = wrapper.get('.layout__brand')
     expect(brand.find('svg').attributes('aria-hidden')).toBe('true')
     expect(brand.text()).toBe('Watchlist Roulette')
+  })
+})
+
+describe('IconButton tooltip (WCAG 1.4.13)', () => {
+  const esc = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+  const tipOf = (wrapper: ReturnType<typeof mount>) => wrapper.get('.icon-button__tip')
+
+  it('is dismissed with Esc while only the pointer is on the button, without focus', async () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('mouseenter')
+    expect(document.activeElement).not.toBe(wrapper.get('button').element)
+    esc()
+    await wrapper.vm.$nextTick()
+    expect(tipOf(wrapper).isVisible()).toBe(false)
+  })
+
+  it('comes back on the next hover after it was dismissed', async () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('mouseenter')
+    esc()
+    await wrapper.get('button').trigger('mouseleave')
+    await wrapper.get('button').trigger('mouseenter')
+    expect(tipOf(wrapper).isVisible()).toBe(true)
+  })
+
+  it('ignores keys other than Esc while hovered', async () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('mouseenter')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    await wrapper.vm.$nextTick()
+    expect(tipOf(wrapper).isVisible()).toBe(true)
+  })
+
+  it('stops listening for Esc when the pointer leaves, and when the button is removed', async () => {
+    const remove = vi.spyOn(window, 'removeEventListener')
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('mouseenter')
+    await wrapper.get('button').trigger('mouseleave')
+    expect(remove).toHaveBeenCalledWith('keydown', expect.any(Function))
+    esc()
+    await wrapper.vm.$nextTick()
+    expect(tipOf(wrapper).isVisible()).toBe(true)
+
+    await wrapper.get('button').trigger('mouseenter')
+    remove.mockClear()
+    wrapper.unmount()
+    expect(remove).toHaveBeenCalledWith('keydown', expect.any(Function))
+    remove.mockRestore()
+  })
+
+  it('keeps the tooltip inside the button, so hovering it keeps the button hovered', () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' } })
+    expect(wrapper.get('button').element.contains(tipOf(wrapper).element)).toBe(true)
+  })
+
+  it('does nothing when the tooltip itself is clicked', async () => {
+    let clicks = 0
+    const wrapper = mount(IconButton, { props: { label: 'Go', icon: 'plus' }, attrs: { onClick: () => clicks++ } })
+    await tipOf(wrapper).trigger('click')
+    expect(clicks).toBe(0)
+    await wrapper.get('button').trigger('click')
+    expect(clicks).toBe(1)
+  })
+
+  it('does not navigate when the tooltip of a link is clicked', async () => {
+    const { wrapper, router } = await mountWithApp(IconButton, '/', {
+      props: { label: 'Edit film: Joy', icon: 'pencil', to: '/watchlist/1/edit' },
+    })
+    await tipOf(wrapper).trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'))
+    await wrapper.get('a').trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/watchlist/1/edit'))
+  })
+
+  it('registers a single Esc listener when the pointer enters twice, and one leave removes it', async () => {
+    const add = vi.spyOn(window, 'addEventListener')
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('mouseenter')
+    await wrapper.get('button').trigger('mouseenter')
+    const calls = add.mock.calls.filter(([type]) => type === 'keydown')
+    expect(new Set(calls.map(([, fn]) => fn)).size).toBe(1)
+    add.mockRestore()
+    await wrapper.get('button').trigger('mouseleave')
+    esc()
+    await wrapper.vm.$nextTick()
+    expect(tipOf(wrapper).isVisible()).toBe(true)
+  })
+
+  it('dismisses only the tooltips of hovered buttons when Esc is pressed', async () => {
+    const a = mount(IconButton, { props: { label: 'A', icon: 'pencil' }, attachTo: document.body })
+    const b = mount(IconButton, { props: { label: 'B', icon: 'pencil' }, attachTo: document.body })
+    await a.get('button').trigger('mouseenter')
+    esc()
+    await a.vm.$nextTick()
+    expect(tipOf(a).isVisible()).toBe(false)
+    expect(tipOf(b).isVisible()).toBe(true)
+  })
+
+  it('does not react to Esc after it was removed while hovered', async () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('mouseenter')
+    wrapper.unmount()
+    expect(() => esc()).not.toThrow()
+  })
+
+  it('shows the tooltip again on focus after Esc dismissed it, and Esc on the focused button dismisses it', async () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('mouseenter')
+    esc()
+    await wrapper.get('button').trigger('mouseleave')
+    await wrapper.get('button').trigger('focus')
+    expect(tipOf(wrapper).isVisible()).toBe(true)
+    await wrapper.get('button').trigger('keydown', { key: 'Escape' })
+    expect(tipOf(wrapper).isVisible()).toBe(false)
+  })
+
+  it('keeps the tooltip out of the accessibility tree, so the name is read once', () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' } })
+    expect(tipOf(wrapper).attributes('aria-hidden')).toBe('true')
   })
 })

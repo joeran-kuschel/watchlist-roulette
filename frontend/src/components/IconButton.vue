@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import AppIcon, { type IconName } from './AppIcon.vue'
 
 const props = defineProps<{
-  /** Accessible name; the visible tooltip shows `tooltip` or, by default, this text. */
+  /** Accessible name; the visible tooltip shows `tooltip` or, by default, this text. A `tooltip` must be part of the name (WCAG 2.5.3). */
   label: string
   icon: IconName
   tooltip?: string
@@ -13,9 +13,19 @@ const props = defineProps<{
   large?: boolean
 }>()
 
-// WCAG 1.4.13: the tooltip can be dismissed with Esc without moving focus or the pointer
+// WCAG 1.4.13: the tooltip can be dismissed with Esc without moving focus or the pointer, also when the pointer
+// alone has opened it (then the button has no focus, so the key is listened for on the window while it is hovered)
 const dismissed = ref(false)
 const show = () => (dismissed.value = false)
+const dismissOnEsc = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') dismissed.value = true
+}
+function enter() {
+  show()
+  window.addEventListener('keydown', dismissOnEsc)
+}
+const leave = () => window.removeEventListener('keydown', dismissOnEsc)
+onBeforeUnmount(leave)
 </script>
 
 <template>
@@ -25,12 +35,14 @@ const show = () => (dismissed.value = false)
     class="icon-button"
     :class="{ 'icon-button--primary': variant === 'primary', 'icon-button--large': large }"
     :aria-label="label"
-    @mouseenter="show"
+    @mouseenter="enter"
+    @mouseleave="leave"
     @focus="show"
     @keydown.esc="dismissed = true"
   >
     <AppIcon :name="icon" />
-    <span v-show="!dismissed" class="icon-button__tip" aria-hidden="true">{{
+    <!-- A click on the tooltip does nothing; it is only there to be read (and hovered, WCAG 1.4.13) -->
+    <span v-show="!dismissed" class="icon-button__tip" aria-hidden="true" @click.prevent.stop>{{
       tooltip ?? label
     }}</span>
   </component>
@@ -87,10 +99,26 @@ const show = () => (dismissed.value = false)
   font-weight: 700;
   white-space: nowrap;
   opacity: 0;
+  /* Only while it is shown, so its invisible box does not catch the pointer */
   pointer-events: none;
+}
+/* Bridges the gap to the button, so the pointer can move onto the tooltip without it disappearing (WCAG 1.4.13) */
+.icon-button__tip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 8px;
 }
 .icon-button:hover .icon-button__tip,
 .icon-button:focus-visible .icon-button__tip {
   opacity: 1;
+  pointer-events: auto;
+}
+/* A disabled button gets no tooltip: browsers differ on whether it fires pointer events, so Esc could not
+   dismiss it reliably (WCAG 1.4.13). Its accessible name is still read. */
+.icon-button:disabled .icon-button__tip {
+  display: none;
 }
 </style>

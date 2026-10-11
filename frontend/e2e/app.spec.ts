@@ -121,9 +121,9 @@ test('the watchlist lists films, can be searched and updates a film', async ({ p
   await expect(page.getByText('Needs review: several TMDB matches')).toBeVisible()
   await expectAccessible(page)
 
-  await page.getByRole('button', { name: 'Mark Perfect Days as watched' }).click()
+  await page.getByRole('button', { name: 'Mark as watched: Perfect Days' }).click()
   await expect(page.getByText('Perfect Days is marked as watched.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Mark Perfect Days as unwatched' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Mark as unwatched: Perfect Days' })).toBeVisible()
 
   await page.getByLabel('Search by title').fill('after')
   await page.getByRole('button', { name: 'Search' }).click()
@@ -143,6 +143,7 @@ test('a film title opens its details page with links and an Edit button', async 
   )
   await expectAccessible(page)
 
+  // The Edit button of the details page shows the text "Edit", so its name is "Edit <title>"
   await page.getByRole('link', { name: 'Edit Perfect Days' }).click()
   await expect(page).toHaveURL(/\/watchlist\/1\/edit$/)
 })
@@ -155,13 +156,56 @@ test('the details page of an unknown film says so', async ({ page }) => {
 
 test('icon buttons show a tooltip on keyboard focus that Esc dismisses', async ({ page }) => {
   await page.goto('/watchlist')
-  const button = page.getByRole('button', { name: 'Mark Perfect Days as watched' })
+  const button = page.getByRole('button', { name: 'Mark as watched: Perfect Days' })
   await button.focus()
   const tip = button.locator('.icon-button__tip')
   await expect(tip).toBeVisible()
   await expect(tip).toHaveText('Mark as watched')
   await page.keyboard.press('Escape')
   await expect(tip).toBeHidden()
+})
+
+// The CSS behind these (hoverable tooltip, bridge over the gap, no tooltip on disabled buttons) only runs in a real browser
+test('a tooltip stays while the pointer moves onto it, Esc closes it without focus, a click on it does nothing', async ({
+  page,
+}) => {
+  await page.goto('/watchlist')
+  const link = page.getByRole('link', { name: 'Edit film: Perfect Days' })
+  const tip = link.locator('.icon-button__tip')
+  const button = (await link.boundingBox())!
+  const overButton = () => page.mouse.move(button.x + button.width / 2, button.y + button.height / 2)
+
+  await overButton()
+  await expect(tip).toBeVisible()
+  // Moves through the gap between the button and its tooltip, like a real pointer
+  const box = (await tip.boundingBox())!
+  const target = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  await page.mouse.move(target.x, target.y, { steps: 12 })
+  await expect(tip).toBeVisible()
+  expect(await tip.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('auto')
+
+  // Only the pointer is on the button, nothing has keyboard focus
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
+  await page.keyboard.press('Escape')
+  await expect(tip).toBeHidden()
+
+  // It comes back on the next hover, and a click on it neither navigates nor hides it
+  await page.mouse.move(0, 0)
+  await overButton()
+  await expect(tip).toBeVisible()
+  await page.mouse.move(target.x, target.y, { steps: 12 })
+  await page.mouse.click(target.x, target.y)
+  await expect(page).toHaveURL(/\/watchlist$/)
+  await expect(tip).toBeVisible()
+})
+
+test('a disabled icon button shows no tooltip but keeps its name', async ({ page }) => {
+  await page.goto('/watchlist')
+  const previous = page.getByRole('button', { name: 'Previous page' })
+  await expect(previous).toBeDisabled()
+  await previous.hover()
+  await expect(previous.locator('.icon-button__tip')).toBeHidden()
+  await expect(previous).toHaveAccessibleName('Previous page')
 })
 
 test('adding a film: errors first, then success', async ({ page }) => {

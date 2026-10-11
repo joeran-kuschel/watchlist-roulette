@@ -103,6 +103,37 @@ describe('Watchlist: tooltip names', () => {
     expect(link.attributes('aria-label')).toContain('Choose TMDB match')
   })
 
+  it('has a name that contains the tooltip text on every icon button of the table (WCAG 2.5.3)', async () => {
+    mocked.listFilms.mockResolvedValue({
+      items: [
+        makeFilm({ id: 1, title: 'Cléo', tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null } }),
+        makeFilm({ id: 2, title: 'Aftersun', watchedAt: '2025-03-04T10:00:00.000Z' }),
+        makeFilm({ id: 3, title: 'Joy' }),
+      ],
+      total: 3,
+      page: 1,
+      pageSize: 50,
+    })
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    const buttons = wrapper.findAll('.icon-button')
+    expect(buttons.length).toBeGreaterThan(8)
+    for (const button of buttons) {
+      const name = button.attributes('aria-label')!
+      const tip = button.get('.icon-button__tip').text()
+      expect(name, `"${name}" should contain its tooltip "${tip}"`).toContain(tip)
+    }
+  })
+
+  it('keeps the film title at the end of the row button names, after the action', async () => {
+    mocked.listFilms.mockResolvedValue({ items: [makeFilm({ title: 'Perfect Days' })], total: 1, page: 1, pageSize: 50 })
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    const row = wrapper.get('tbody tr')
+    expect(row.findAll('.icon-button').map((b) => b.attributes('aria-label'))).toEqual([
+      'Mark as watched: Perfect Days',
+      'Edit film: Perfect Days',
+    ])
+  })
+
   it('shows the notice in the status region after it is set', async () => {
     mocked.listFilms.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 })
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')

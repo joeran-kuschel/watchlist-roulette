@@ -63,7 +63,7 @@ The endpoints are those of the backend API (`documentation/backend/api.md` on th
 - Every field has a visible label; hints are linked with `aria-describedby`.
 - Interactive targets are at least 44 px; focus is clearly visible.
 - Action buttons are icon-only (spin, mark watched/unwatched, edit, choose match, add film, clear filters, previous/next page). Each has an `aria-label` with the full action (including the film name in table rows), an `aria-hidden` icon and a tooltip shown on hover and keyboard focus. Buttons that submit a form (Save film, Import films, Use selected match, Search TMDB) keep their text, because an icon alone is too ambiguous there.
-- Implementation: the tooltip must be dismissible with Esc and stay visible while hovered (WCAG 1.4.13), and the visible tooltip text must match the start of the accessible name (WCAG 2.5.3). Use one shared `IconButton` component for this.
+- Implementation: the tooltip must be dismissible with Esc and stay visible while hovered (WCAG 1.4.13), and the visible tooltip text must match the start of the accessible name (WCAG 2.5.3), for example the tooltip "Edit film" and the name "Edit film: Perfect Days". Use one shared `IconButton` component for this; the details are in [App shell](app-shell.md#tooltips-of-iconbutton).
 - Status is never conveyed by color alone.
 - Colors were chosen for AA contrast but **not yet measured in a browser**; do that during implementation (axe in jsdom cannot check contrast).
 
