@@ -28,6 +28,12 @@ describe('api requests', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/films?q=stalker&watched=false&page=2', undefined)
   })
 
+  it('sends the TMDB status as tmdbStatus', async () => {
+    fetchMock.mockReturnValue(respond({ items: [], total: 0, page: 1, pageSize: 50 }))
+    await listFilms({ tmdbStatus: 'not_found' })
+    expect(fetchMock).toHaveBeenCalledWith('/api/films?tmdbStatus=not_found', undefined)
+  })
+
   it('sends no query string without parameters', async () => {
     fetchMock.mockReturnValue(respond({}))
     await randomFilm()
