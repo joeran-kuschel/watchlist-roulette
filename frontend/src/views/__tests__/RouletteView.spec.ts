@@ -41,6 +41,54 @@ describe('RouletteView', () => {
     await expectNoA11yViolations(wrapper.element)
   })
 
+  it('explains the optional year and runtime filters with hints, not placeholders', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    for (const id of ['year-from', 'year-to', 'max-runtime']) {
+      expect(wrapper.get(`#${id}`).attributes('placeholder')).toBeUndefined()
+    }
+    const years = wrapper.get('fieldset')
+    expect(years.attributes('aria-describedby')).toBe('year-hint')
+    expect(wrapper.get('#year-hint').text()).toBe('Optional. For example 1970 to 2026.')
+    expect(years.find('#year-hint').exists()).toBe(true)
+    expect(wrapper.get('#max-runtime').attributes('aria-describedby')).toBe('max-runtime-hint')
+    expect(wrapper.get('#max-runtime-hint').text()).toBe('Optional. For example 120.')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('points each input with a hint and an error to both, hint first', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    await wrapper.get('#country').setValue('Japan')
+    await wrapper.get('#max-runtime').setValue('0')
+    await wrapper.get('#year-from').setValue('1500')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('#country').attributes('aria-describedby')).toBe('country-hint country-error')
+    expect(wrapper.get('#max-runtime').attributes('aria-describedby')).toBe(
+      'max-runtime-hint max-runtime-error',
+    )
+    expect(wrapper.get('#max-runtime-error').text()).toMatch(/runtime/i)
+    // The year hint stays on the fieldset; the inputs only reference their own error
+    expect(wrapper.get('fieldset').attributes('aria-describedby')).toBe('year-hint')
+    expect(wrapper.get('#year-from').attributes('aria-describedby')).toBe('year-from-error')
+    expect(wrapper.get('#year-to').attributes('aria-describedby')).toBeUndefined()
+    expect(wrapper.get('#country-hint').text()).toBe('Two letters, for example JP or FR')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('drops the error id from aria-describedby but keeps the hint once the input is valid', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    await wrapper.get('#max-runtime').setValue('0')
+    await wrapper.get('form').trigger('submit')
+    await wrapper.get('#max-runtime').setValue('120')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('#max-runtime').attributes('aria-describedby')).toBe('max-runtime-hint')
+    expect(wrapper.get('#max-runtime').attributes('aria-invalid')).toBeUndefined()
+  })
+
   it('shows a loading message while it picks', async () => {
     mocked.randomFilm.mockReturnValue(new Promise(() => {}))
     const { wrapper } = await mountWithApp(RouletteView)
@@ -332,6 +380,21 @@ describe('RouletteView: edge cases', () => {
       await flushPromises()
       expect(panel.element.open).toBe(false)
       await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('keeps the hints wired to the inputs inside the collapsed panel', async () => {
+      stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      expect(wrapper.get('details').element.open).toBe(false)
+      expect(wrapper.get('fieldset').attributes('aria-describedby')).toBe('year-hint')
+      expect(wrapper.get('#year-hint').text()).toBe('Optional. For example 1970 to 2026.')
+      expect(wrapper.get('#max-runtime').attributes('aria-describedby')).toBe('max-runtime-hint')
+      expect(wrapper.get('#max-runtime-hint').text()).toBe('Optional. For example 120.')
+      expect(wrapper.get('#country').attributes('aria-describedby')).toBe('country-hint')
+      for (const id of ['year-from', 'year-to', 'max-runtime', 'country']) {
+        expect(wrapper.get(`#${id}`).attributes('placeholder')).toBeUndefined()
+      }
     })
 
     it('tells how many filters are set while the panel is closed', async () => {
