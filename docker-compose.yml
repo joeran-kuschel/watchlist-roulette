@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-watchlist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-watchlist}
+      POSTGRES_DB: ${POSTGRES_DB:-watchlist}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # runs once, on the first start with an empty volume
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -h forces TCP: during first-start init Postgres only listens on a socket and must not count as ready
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-watchlist}:${POSTGRES_PASSWORD:-watchlist}@postgres:5432/${POSTGRES_DB:-watchlist}}
+      DB_SSL: ${DB_SSL:-false}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      TMDB_ACCESS_TOKEN: ${TMDB_ACCESS_TOKEN:-}
+      TMDB_LANGUAGE: ${TMDB_LANGUAGE:-en-US}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # the API has no login: only this computer may reach it
+    ports:
+      - '127.0.0.1:3000:3000'
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:8080:80'
+
+volumes:
+  pgdata:

@@ -17,4 +17,8 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // the backend runs on port 3000 (docker compose up backend, or npm run dev in backend/)
+    proxy: { '/api': 'http://localhost:3000' },
+  },
 })
