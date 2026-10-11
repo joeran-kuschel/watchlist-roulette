@@ -27,7 +27,7 @@ After every navigation (not on the first load) the router sets `document.title` 
 
 All requests go through `src/api.ts`; there is no other `fetch` call. Every failure throws an `ApiError` with `status` (`0` = server unreachable), `message`, `code` and the backend's validation `issues`. `describeError()` turns an error into a sentence for the user.
 
-The browser calls `/api/...` on its own origin. In Docker Compose nginx forwards `/api` to the backend; the Vite dev server forwards it to `http://localhost:3000`. `API_PROXY_TARGET` overrides that target; it only affects `npm run dev` (add it to `.env.example` when this branch is merged with the Compose setup).
+The browser calls `/api/...` on its own origin. In Docker Compose nginx forwards `/api` to the backend; the Vite dev server forwards it to `http://localhost:3000`. `API_PROXY_TARGET` overrides that target; it only affects `npm run dev` and is listed (commented) in `.env.example`; Compose does not use it.
 
 The backend only accepts writes from origins listed in `CORS_ORIGIN`. With `npm run dev` the origin is `http://localhost:5173`, so that address must be in `CORS_ORIGIN` (it is in `.env.example`) or every save from the dev server answers `403`.
 

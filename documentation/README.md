@@ -1,7 +1,19 @@
 # Documentation
 
+Every feature is documented here, split into UI and backend.
+
+## Backend
+
+- [Database](backend/database.md): tables, constraints, migrations
+- [API](backend/api.md): endpoints, parameters, errors
+- [CSV import](backend/csv-import.md): file format, dry-run preview, removal rules
+- [TMDB enrichment](backend/tmdb-enrichment.md): matching, stored data, fixing matches
+- [Docker Compose](backend/docker.md): running the app locally, configuration
+- [Testing](backend/testing.md): test layers and the real-PostgreSQL tests
+
 ## UI
 
+- [UI](ui/README.md): requirements for all UI
 - [UI design](ui/design.md): mockups and design decisions
 - [App shell](ui/app-shell.md): layout, routes, API module, shared components, styling
 - [Roulette](ui/roulette.md): pick a random film, with filters
@@ -12,7 +24,3 @@
 - [TMDB attribution](ui/tmdb-attribution.md): the required notice and logo
 - [Posters](ui/posters.md): posters through the backend
 - [Testing the UI](ui/testing.md)
-
-## Backend
-
-Feature chapters will be added under `backend/` as they are documented.
