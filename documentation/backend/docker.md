@@ -30,4 +30,4 @@ Run the database with Compose (`docker compose up postgres`, then publish its po
 
 ## Kubernetes
 
-Not set up yet. The images and the environment-based configuration are built so manifests can be added later.
+See [Kubernetes](kubernetes.md). The same images run there; the frontend image reads `BACKEND_URL` for where `/api` is forwarded to (Compose uses the default `http://backend:3000`).

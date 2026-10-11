@@ -26,6 +26,16 @@ curl http://localhost:8080/api/films/random
 
 See [documentation/](documentation/README.md) for the API, the CSV format, the TMDB setup and the configuration.
 
+## Run it on Kubernetes (Docker Desktop)
+
+Together with the other apps on the cluster, at http://watchlist.local:
+
+```sh
+./k8s/deploy.sh
+```
+
+One-time setup (hosts entries, backups, updates): [k8s/README.md](k8s/README.md).
+
 ## Develop
 
 ```sh
