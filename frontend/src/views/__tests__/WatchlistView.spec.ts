@@ -446,3 +446,66 @@ describe('WatchlistView TMDB status filter', () => {
     await expectNoA11yViolations(wrapper.element)
   })
 })
+
+describe('WatchlistView pending badge', () => {
+  const pending = makeFilm({ id: 6, title: 'Fresh Import', tmdb: { id: null, status: 'pending', syncedAt: null } })
+  const matched = makeFilm({ id: 7, title: 'Done Film', tmdb: { id: 9, status: 'matched', syncedAt: '2026-10-11T12:00:00.000Z' } })
+
+  it('shows a neutral badge for a film that is waiting for its TMDB lookup', async () => {
+    mocked.listFilms.mockResolvedValue(listing([pending, matched]))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    const [pendingRow, matchedRow] = wrapper.findAll('tbody tr')
+    const badge = pendingRow!.findAll('.badge').find((b) => b.text() === 'Waiting for TMDB data')!
+    expect(badge.classes()).not.toContain('badge--warn')
+    expect(matchedRow!.text()).not.toContain('Waiting for TMDB data')
+  })
+
+  it('offers no "Choose TMDB match" button for a pending film', async () => {
+    mocked.listFilms.mockResolvedValue(listing([pending]))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.find('a[href="/watchlist/6/match"]').exists()).toBe(false)
+  })
+
+  it('shows the pending badge next to "Watched" and keeps the problem badges separate', async () => {
+    const watchedPending = makeFilm({ ...pending, id: 8, watchedAt: '2025-03-04T10:00:00.000Z' })
+    mocked.listFilms.mockResolvedValue(listing([watchedPending, films[2]!]))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    const [first, second] = wrapper.findAll('tbody tr')
+    expect(first!.text()).toContain('Watched 4 Mar 2025')
+    expect(first!.text()).toContain('Waiting for TMDB data')
+    expect(second!.text()).toContain('Needs review: several TMDB matches')
+    expect(second!.text()).not.toContain('Waiting for TMDB data')
+  })
+
+  it('never shows the pending badge for any other TMDB status', async () => {
+    mocked.listFilms.mockResolvedValue(listing([matched, ...films]))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(6)
+    expect(wrapper.text()).not.toContain('Waiting for TMDB data')
+  })
+
+  it('shows the badge once per pending film, as plain text without a live region or alert', async () => {
+    const second = makeFilm({ id: 9, title: 'Also Fresh', tmdb: { id: null, status: 'pending', syncedAt: null } })
+    mocked.listFilms.mockResolvedValue(listing([pending, second]))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    for (const row of wrapper.findAll('tbody tr')) {
+      expect(row.text().split('Waiting for TMDB data')).toHaveLength(2)
+      expect(row.find('[role="alert"], [role="status"], [aria-live]').exists()).toBe(false)
+    }
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('shows the badge when the list is filtered to pending films', async () => {
+    mocked.listFilms.mockResolvedValue(listing([pending], 1))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=pending')
+    expect(mocked.listFilms).toHaveBeenCalledWith(expect.objectContaining({ tmdbStatus: 'pending' }))
+    expect(wrapper.get('tbody tr').text()).toContain('Waiting for TMDB data')
+  })
+
+  it('has no accessibility violations with pending films in the table', async () => {
+    mocked.listFilms.mockResolvedValue(listing([pending, matched]))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.text()).toContain('Waiting for TMDB data')
+    await expectNoA11yViolations(wrapper.element)
+  })
+})

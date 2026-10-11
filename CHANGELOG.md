@@ -20,3 +20,4 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Posters now show. They are loaded through your own server, so your browser never contacts TMDB. Films without a poster still show a "No poster" box.
 - The whole app works with a keyboard and screen readers: skip link, labelled icon buttons with tooltips, announced results and errors.
 - Added a TMDB status filter to the watchlist, so you can find films that still need a match (Needs review, Not found, Lookup failed) or are still pending. It works together with search and the watched filter, and the choice is kept in the address so you can bookmark it.
+- Films that are still waiting for their TMDB lookup now show a "Waiting for TMDB data" badge in the watchlist, so you can tell missing data from finished films. The badge goes away after the lookup has run and you reload the list.
