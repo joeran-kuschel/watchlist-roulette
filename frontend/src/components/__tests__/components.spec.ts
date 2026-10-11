@@ -193,12 +193,38 @@ describe('TmdbAttribution', () => {
     expect(wrapper.text()).toContain(
       'This product uses the TMDB API but is not endorsed or certified by TMDB.',
     )
-    expect(wrapper.get('[role="img"]').attributes('aria-label')).toBe('TMDB logo')
+    const logo = wrapper.get('img.tmdb__logo')
+    expect(logo.attributes('alt')).toBe('TMDB')
+    // the test runner inlines small assets; the production build keeps the path (see branding.spec.ts)
+    expect(logo.attributes('src')).toMatch(/^(\/tmdb-logo\.svg|data:image\/svg\+xml,)/)
+    expect(wrapper.find('[role="img"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('TMDB LOGO')
     const link = wrapper.get('a')
     expect(link.attributes('href')).toBe('https://www.themoviedb.org/')
     expect(link.attributes('rel')).toContain('noopener')
     await expectNoA11yViolations(wrapper.element)
   })
+})
+
+describe('TmdbAttribution logo size', () => {
+  it('is reserved with a width and a height, so the footer does not jump, and stays below the header logo', () => {
+    const logo = mount(TmdbAttribution).get('img.tmdb__logo')
+    const height = Number(logo.attributes('height'))
+    expect(Number(logo.attributes('width'))).toBe(108)
+    expect(height).toBe(14)
+    // TMDB's terms ask for a logo that is less prominent than the app's own (36 px in the header)
+    expect(height).toBeLessThan(36)
+  })
+
+  it.each(['/import', '/', '/watchlist', '/no-such-page'])(
+    'keeps the logo and the notice in the footer on %s',
+    async (path) => {
+      const { wrapper } = await mountWithApp(AppLayout, path)
+      expect(wrapper.findAll('footer img[alt="TMDB"]')).toHaveLength(1)
+      expect(wrapper.find('footer a[href="https://www.themoviedb.org/"]').exists()).toBe(true)
+      expect(wrapper.get('footer').text()).toContain('not endorsed or certified by TMDB')
+    },
+  )
 })
 
 describe('AppLayout', () => {

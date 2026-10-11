@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { inflateSync } from 'node:zlib'
@@ -283,5 +284,26 @@ describe('removed logo icon', () => {
   it('is no longer referenced by the layout or the icon component', () => {
     expect(read('src/components/AppLayout.vue').toString()).not.toMatch(/name="logo"/)
     expect(read('src/components/AppIcon.vue').toString()).not.toMatch(/logo/)
+  })
+})
+
+describe('official TMDB logo', () => {
+  // TMDB's terms ask for the logo unmodified. This is the SHA-256 of "Primary short (blue)" from
+  // https://www.themoviedb.org/about/logos-attribution (it is also the digest in the file's address there)
+  const OFFICIAL_SHA256 = '8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c'
+
+  it('is the official file, byte for byte', () => {
+    expect(createHash('sha256').update(read('public/tmdb-logo.svg')).digest('hex')).toBe(OFFICIAL_SHA256)
+  })
+
+  it('is referenced from the footer by its path in public/', () => {
+    expect(read('src/components/TmdbAttribution.vue').toString()).toContain('src="/tmdb-logo.svg"')
+  })
+
+  it('is a plain image without scripts or external references', () => {
+    const svg = read('public/tmdb-logo.svg').toString()
+    expect(svg).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)
+    expect(svg).not.toMatch(/<script|onload=|javascript:/i)
+    expect(svg).not.toMatch(/href="https?:/i)
   })
 })

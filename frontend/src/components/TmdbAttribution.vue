@@ -1,7 +1,7 @@
 <template>
   <footer class="tmdb">
-    <!-- Placeholder: replace with the official TMDB logo, see documentation/ui/tmdb-attribution.md -->
-    <span class="tmdb__logo" role="img" aria-label="TMDB logo">TMDB LOGO</span>
+    <!-- The official TMDB logo, unmodified (see documentation/ui/tmdb-attribution.md) -->
+    <img class="tmdb__logo" src="/tmdb-logo.svg" alt="TMDB" width="108" height="14" />
     <p>
       This product uses the TMDB API but is not endorsed or certified by TMDB. Film data and posters
       are provided by
@@ -28,15 +28,9 @@
   max-width: 72ch;
 }
 .tmdb__logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 88px;
-  height: 22px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 4px;
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
+  display: block;
+  height: 14px;
+  width: auto;
 }
 @media (max-width: 640px) {
   .tmdb {
