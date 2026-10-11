@@ -371,6 +371,38 @@ test('choosing a TMDB match from a pasted address', async ({ page }) => {
   await expect(page.getByText('Enter the TMDB number')).toBeVisible()
 })
 
+test('the styled file chooser shows the file name, a focus ring and fits 320 px', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/import')
+  const name = page.locator('#csv-name')
+  await expect(name).toHaveText('No file chosen')
+  await page.getByLabel('CSV file').setInputFiles({
+    name: `${'very-long-file-name-'.repeat(12)}.csv`,
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Date,Name,Year,Letterboxd URI\n'),
+  })
+  await expect(name).toContainText('very-long-file-name-')
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true)
+  // The input is visually hidden but not removed: it is 1 px big, focusable, and the styled button shows the ring
+  const box = (await page.locator('#csv').boundingBox())!
+  expect(box.width).toBeLessThanOrEqual(1)
+  await page.locator('#csv').focus()
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Tab')
+  await expect(page.locator('#csv')).toBeFocused()
+  const ring = await page.locator('.filepick__button').evaluate((b) => {
+    const style = getComputedStyle(b)
+    return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) }
+  })
+  expect(ring.style).not.toBe('none')
+  expect(ring.width).toBeGreaterThanOrEqual(2)
+  await expectAccessible(page)
+})
+
 test('importing a CSV: check, confirm the removal, import', async ({ page }) => {
   await page.goto('/import')
   await expectAccessible(page)
