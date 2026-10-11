@@ -32,7 +32,7 @@ export function fromQuery(query: LocationQuery): WatchlistView {
   return {
     q: first(query.q) ?? '',
     watched: watched === 'false' || watched === 'true' ? watched : 'all',
-    sort: sort in SORTS ? (sort as SortKey) : 'added-desc',
+    sort: Object.prototype.hasOwnProperty.call(SORTS, sort) ? (sort as SortKey) : 'added-desc',
     page: Number.isInteger(page) && page >= 1 ? page : 1,
   }
 }

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, describeError, getFilm, updateFilm } from '../api'
+import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
 import { parseTmdbId, tmdbSearchUrl } from '../tmdbId'
@@ -67,9 +68,7 @@ async function submit() {
 
 <template>
   <div class="page page--narrow">
-    <nav aria-label="Breadcrumb" class="back">
-      <RouterLink to="/watchlist">← Back to watchlist</RouterLink>
-    </nav>
+    <BackLink to="/watchlist">← Back to watchlist</BackLink>
     <h1>Choose the TMDB match</h1>
 
     <ErrorAlert v-if="loadError" :message="loadError">
@@ -116,9 +115,6 @@ async function submit() {
 </template>
 
 <style scoped>
-.back {
-  margin-bottom: 16px;
-}
 .steps {
   margin: 0 0 24px;
   padding-left: 24px;

@@ -4,7 +4,8 @@ Route `/`. Picks a random unwatched film. Code: `views/RouletteView.vue`, `store
 
 ## What the user does
 
-- The screen picks a film when it opens (once; coming back keeps the last pick).
+- The screen picks a film when it opens. Coming back keeps the filters (they live in the roulette store) and the last pick, which is reloaded: if it was watched or deleted in the meantime, a new film is picked with the same filters.
+- While a pick is loading, **Spin again** is disabled, and an answer that arrives after a newer spin is dropped, so the screen always shows the last pick.
 - **Spin again** (round icon button, or Enter in a filter field) picks another film with the current filters.
 - **Mark as watched** marks the shown film; it is excluded from future spins. The button is disabled once the film is watched.
 - Optional filters: release year from/to, genre, country code, max runtime. **Clear filters** empties them.

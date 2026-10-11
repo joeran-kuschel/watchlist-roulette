@@ -1,5 +1,6 @@
 import type { ApiIssue } from './api'
-import { text } from './format'
+import { isHttpUrl, text } from './format'
+import { MAX_YEAR, MIN_YEAR } from './filters'
 import type { FilmInput } from './types'
 
 export interface FilmFormValues {
@@ -27,15 +28,10 @@ export const emptyFilmForm = (): FilmFormValues => ({
   addedAt: '',
 })
 
-const isRealDate = (text: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(text) && new Date(text).toISOString().startsWith(text)
-
-function isHttpUrl(text: string) {
-  try {
-    return ['http:', 'https:'].includes(new URL(text).protocol)
-  } catch {
-    return false
-  }
+function isRealDate(text: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false
+  const date = new Date(text) // Invalid Date for month 00 or 13, which has no ISO string
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(text)
 }
 
 /** Checks the form like the backend does, so most mistakes are caught before a request. */
@@ -48,8 +44,8 @@ export function validateFilmForm(values: FilmFormValues) {
   if (title === '') errors.title = 'Enter a title.'
   else if (title.length > 500) errors.title = 'The title can have at most 500 characters.'
 
-  if (year !== '' && !(Number.isInteger(Number(year)) && Number(year) >= 1888 && Number(year) <= 2100)) {
-    errors.releaseYear = 'Enter a year between 1888 and 2100.'
+  if (year !== '' && !(Number.isInteger(Number(year)) && Number(year) >= MIN_YEAR && Number(year) <= MAX_YEAR)) {
+    errors.releaseYear = `Enter a year between ${MIN_YEAR} and ${MAX_YEAR}.`
   }
   if (url !== '' && !isHttpUrl(url)) errors.letterboxdUrl = 'Enter a link that starts with https://.'
   if (values.addedAt !== '' && !isRealDate(values.addedAt)) errors.addedAt = 'Enter a real date.'

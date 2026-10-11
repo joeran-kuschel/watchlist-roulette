@@ -136,3 +136,57 @@ describe('posterUrl', () => {
     expect(posterUrl(7)).toBe('/api/films/7/poster')
   })
 })
+
+describe('api: edge cases', () => {
+  it('keeps 0 in the query string but drops null, undefined and empty text', async () => {
+    fetchMock.mockReturnValue(respond({ items: [], total: 0, page: 1, pageSize: 50 }))
+    await listFilms({ page: 0, q: '', watched: undefined } as never)
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/films?page=0')
+    fetchMock.mockReturnValue(respond({}))
+    await randomFilm({ genre: null, yearFrom: 1990 } as never)
+    expect(fetchMock.mock.calls[1]![0]).toBe('/api/films/random?yearFrom=1990')
+  })
+
+  it('encodes a search with &, #, spaces and non-ASCII characters', async () => {
+    fetchMock.mockReturnValue(respond({ items: [], total: 0, page: 1, pageSize: 50 }))
+    await listFilms({ q: 'Cléo & Co #1' })
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/films?q=Cl%C3%A9o+%26+Co+%231')
+  })
+
+  it('throws a 404 from the random endpoint, which the roulette treats as empty', async () => {
+    fetchMock.mockReturnValue(respond({ error: 'No unwatched film matches' }, 404))
+    await expect(randomFilm()).rejects.toMatchObject({ status: 404, message: 'No unwatched film matches' })
+  })
+
+  it('throws a 404 with the backend message for a missing film', async () => {
+    fetchMock.mockReturnValue(respond({ error: 'Film not found' }, 404))
+    await expect(getFilm(99)).rejects.toMatchObject({ status: 404, message: 'Film not found', issues: [] })
+  })
+
+  it('throws on a failed delete instead of treating it as success', async () => {
+    fetchMock.mockReturnValue(respond({ error: 'Film not found' }, 404))
+    await expect(deleteFilm(99)).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('reports an import that the backend rejects, with its code', async () => {
+    fetchMock.mockReturnValue(respond({ error: 'Missing column: Name', code: 'bad_csv' }, 400))
+    const error = await previewImport(new File(['x'], 'a.csv')).catch((e) => e)
+    expect(error).toMatchObject({ status: 400, message: 'Missing column: Name', code: 'bad_csv' })
+  })
+
+  it('reports a 409 on import (the list changed since the check)', async () => {
+    fetchMock.mockReturnValue(respond({ error: 'Stale token' }, 409))
+    await expect(applyImport(new File(['x'], 'a.csv'), { removalToken: 't' })).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('reports a failed upload as unreachable', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(applyImport(new File(['x'], 'a.csv'))).rejects.toMatchObject({ status: 0 })
+  })
+
+  it('sends no init for GET requests', async () => {
+    fetchMock.mockReturnValue(respond({}))
+    await getFilm(1)
+    expect(fetchMock.mock.calls[0]![1]).toBeUndefined()
+  })
+})

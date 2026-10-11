@@ -27,7 +27,9 @@ After every navigation (not on the first load) the router sets `document.title` 
 
 All requests go through `src/api.ts`; there is no other `fetch` call. Every failure throws an `ApiError` with `status` (`0` = server unreachable), `message`, `code` and the backend's validation `issues`. `describeError()` turns an error into a sentence for the user.
 
-The browser calls `/api/...` on its own origin. In Docker Compose nginx forwards `/api` to the backend; the Vite dev server forwards it to `http://localhost:3000` (override with `API_PROXY_TARGET`).
+The browser calls `/api/...` on its own origin. In Docker Compose nginx forwards `/api` to the backend; the Vite dev server forwards it to `http://localhost:3000`. `API_PROXY_TARGET` overrides that target; it only affects `npm run dev` (add it to `.env.example` when this branch is merged with the Compose setup).
+
+The backend only accepts writes from origins listed in `CORS_ORIGIN`. With `npm run dev` the origin is `http://localhost:5173`, so that address must be in `CORS_ORIGIN` (it is in `.env.example`) or every save from the dev server answers `403`.
 
 ## Shared components
 
@@ -37,6 +39,7 @@ The browser calls `/api/...` on its own origin. In Docker Compose nginx forwards
 | `FormField` | Label, hint and error message for one control, wired with `for`, `aria-describedby` and `aria-invalid`. The control is placed in the slot and gets the attributes through the slot prop `attrs`. |
 | `ErrorAlert` | An error in a `role="alert"` element, with room for a retry button. |
 | `AppIcon` | The icons, inline SVG, hidden from assistive technology. |
+| `BackLink` | The "← Back to …" link at the top of the form and match pages (a plain link, not a landmark). |
 | `PosterImage` | A film poster from the backend, with a placeholder. See [Posters](posters.md). |
 
 ## Styling

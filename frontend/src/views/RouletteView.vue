@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import FilmCard from '../components/FilmCard.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
@@ -7,18 +7,15 @@ import IconButton from '../components/IconButton.vue'
 import { emptyFilters, hasFilters, parseRouletteFilters, type RouletteFilterErrors } from '../filters'
 import { GENRES } from '../genres'
 import { useRouletteStore } from '../stores/roulette'
-import type { RandomParams } from '../types'
 
 const store = useRouletteStore()
-const filters = reactive(emptyFilters())
+const filters = store.filters
 const errors = ref<RouletteFilterErrors>({})
-const lastParams = ref<RandomParams>({})
 
 async function spin() {
   const parsed = parseRouletteFilters(filters)
   errors.value = parsed.errors
   if (Object.keys(parsed.errors).length > 0) return
-  lastParams.value = parsed.params
   await store.spin(parsed.params)
 }
 
@@ -29,10 +26,10 @@ function clearFilters() {
 
 onMounted(() => {
   if (store.status === 'idle') void spin()
+  else void store.refresh()
 })
 
 const announcement = computed(() => {
-  if (store.error) return store.error
   if (store.notice) return store.notice
   if (store.status === 'loading') return 'Picking a film…'
   if (store.status === 'ready' && store.film) return `Picked ${store.film.title}`
@@ -123,7 +120,7 @@ const isWatched = computed(() => store.film?.watchedAt != null)
       </p>
       <FilmCard v-else-if="store.status === 'ready' && store.film" :film="store.film" />
       <div v-else-if="store.status === 'empty'" class="card">
-        <template v-if="hasFilters(lastParams)">
+        <template v-if="hasFilters(store.lastParams)">
           <h2>No film fits these filters</h2>
           <p class="lead">Loosen a filter and spin again.</p>
         </template>
@@ -148,6 +145,7 @@ const isWatched = computed(() => store.film?.watchedAt != null)
           large
           type="submit"
           form="filter-form"
+          :disabled="store.status === 'loading'"
         />
         <IconButton
           v-if="store.status === 'ready' && store.film"

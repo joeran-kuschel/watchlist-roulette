@@ -15,17 +15,22 @@ export const useWatchlistStore = defineStore('watchlist', () => {
   /** Spoken by a status region after an action; shown on the next screen too. */
   const notice = ref('')
 
+  let latestLoad = 0
+
   async function load(params: ListParams) {
+    const thisLoad = ++latestLoad
     status.value = 'loading'
     error.value = ''
     try {
       const result = await listFilms(params)
+      if (thisLoad !== latestLoad) return // a newer request was made; its answer wins
       items.value = result.items
       total.value = result.total
       page.value = result.page
       pageSize.value = result.pageSize
       status.value = 'ready'
     } catch (e) {
+      if (thisLoad !== latestLoad) return
       status.value = 'error'
       error.value = describeError(e)
     }
@@ -33,6 +38,7 @@ export const useWatchlistStore = defineStore('watchlist', () => {
 
   async function setWatched(film: Film, watched: boolean) {
     error.value = ''
+    notice.value = ''
     try {
       const updated = await updateFilm(film.id, { watched })
       const index = items.value.findIndex((item) => item.id === film.id)

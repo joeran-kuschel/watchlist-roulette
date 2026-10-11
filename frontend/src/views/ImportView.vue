@@ -125,7 +125,10 @@ async function apply() {
       <form v-if="!report.applied" class="import__confirm" @submit.prevent="apply">
         <label v-if="hasRemovals" class="import__check">
           <input v-model="confirmRemoval" type="checkbox" />
-          <span>I understand that {{ report.removed.length }} films will be removed from my list.</span>
+          <span
+            >I understand that {{ report.removed.length }}
+            {{ report.removed.length === 1 ? 'film' : 'films' }} will be removed from my list.</span
+          >
         </label>
         <label v-if="needsLarge" class="import__check">
           <input v-model="confirmLarge" type="checkbox" />

@@ -19,8 +19,8 @@ export const emptyFilters = (): RouletteFilterInput => ({
   maxRuntime: '',
 })
 
-const MIN_YEAR = 1888
-const MAX_YEAR = 2100
+export const MIN_YEAR = 1888
+export const MAX_YEAR = 2100
 
 function wholeNumber(text: string, min: number, max: number, what: string) {
   if (text === '') return { value: undefined }

@@ -44,8 +44,10 @@ export function createAppRouter(history: RouterHistory = createWebHistory(import
 
   router.afterEach(async (to, from) => {
     document.title = `${to.meta.title} · ${APP_NAME}`
-    // A single-page app does not reload, so screen readers need focus moved to the new content
-    if (from !== START_LOCATION) {
+    // A single-page app does not reload, so screen readers need focus moved to the new content.
+    // Not when only the query or hash changes: the user stays on the same screen, and a link to
+    // #field must focus that field, not <main>.
+    if (from !== START_LOCATION && to.path !== from.path) {
       await nextTick()
       document.getElementById('main')?.focus()
     }

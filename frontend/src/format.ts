@@ -13,4 +13,13 @@ export const formatRuntime = (minutes: number | null) => (minutes === null ? nul
 /** A trimmed string from a form value; `v-model` on a number input yields a number, not text. */
 export const text = (value: unknown) => String(value ?? '').trim()
 
+/** Only web links are rendered as links; the backend stores only these, this is the second line of defense. */
+export function isHttpUrl(text: string) {
+  try {
+    return ['http:', 'https:'].includes(new URL(text).protocol)
+  } catch {
+    return false
+  }
+}
+
 export const joinNames = (people: { name: string }[]) => people.map((p) => p.name).join(', ')

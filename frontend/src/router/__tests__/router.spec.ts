@@ -57,6 +57,87 @@ describe('router', () => {
   })
 })
 
+describe('router: edge cases', () => {
+  const start = async (path: string) => {
+    // A fresh answer per request (a Response body can be read once): lists are empty, everything else is not found
+    vi.mocked(fetch).mockImplementation((url) =>
+      Promise.resolve(
+        String(url).startsWith('/api/films?')
+          ? new Response(JSON.stringify({ items: [], total: 0, page: 1, pageSize: 50 }))
+          : new Response(JSON.stringify({ error: 'Film not found' }), { status: 404 }),
+      ),
+    )
+    const router = createAppRouter(createMemoryHistory())
+    await router.push(path)
+    const wrapper = mount(App, { global: { plugins: [createPinia(), router] }, attachTo: document.body })
+    await flushPromises()
+    return { router, wrapper }
+  }
+
+  it.each([
+    ['/', 'Roulette'],
+    ['/watchlist', 'Watchlist'],
+    ['/watchlist/new', 'Add film'],
+    ['/watchlist/3/edit', 'Edit film'],
+    ['/watchlist/3/match', 'Choose TMDB match'],
+    ['/import', 'Import'],
+    ['/does/not/exist', 'Page not found'],
+    ['/watchlist/abc/edit', 'Page not found'],
+  ])('titles %s "%s"', async (path, title) => {
+    const { wrapper } = await start(path)
+    expect(document.title).toBe(`${title} · Watchlist Roulette`)
+    wrapper.unmount()
+  })
+
+  it('shows the not-found page for an unknown address', async () => {
+    const { wrapper } = await start('/nope')
+    expect(wrapper.get('h1').text()).toBe('Page not found')
+    wrapper.unmount()
+  })
+
+  it('keeps the query string when it resolves a route', () => {
+    const router = createAppRouter(createMemoryHistory())
+    expect(router.resolve('/watchlist?q=joy&page=2').fullPath).toBe('/watchlist?q=joy&page=2')
+  })
+
+  it('moves focus to the content again on every later navigation', async () => {
+    const { router, wrapper } = await start('/import')
+    await router.push('/watchlist')
+    await flushPromises()
+    ;(document.getElementById('search') as HTMLElement | null)?.focus()
+    await router.push('/import')
+    await flushPromises()
+    expect(document.activeElement).toBe(document.getElementById('main'))
+    wrapper.unmount()
+  })
+
+  it('keeps focus where it is when only the query string changes', async () => {
+    const { router, wrapper } = await start('/watchlist')
+    const select = document.getElementById('sort') as HTMLElement
+    select.focus()
+    await router.push({ path: '/watchlist', query: { sort: 'title' } })
+    await flushPromises()
+    expect(document.activeElement).toBe(select)
+    wrapper.unmount()
+  })
+})
+
+describe('router: hash links', () => {
+  it('keeps focus on the target of an in-page #link', async () => {
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(new Response('{}', { status: 404 })))
+    const router = createAppRouter(createMemoryHistory())
+    await router.push('/watchlist/new')
+    const wrapper = mount(App, { global: { plugins: [createPinia(), router] }, attachTo: document.body })
+    await flushPromises()
+    const field = document.getElementById('film-title') as HTMLElement
+    field.focus()
+    await router.push({ path: '/watchlist/new', hash: '#film-title' })
+    await flushPromises()
+    expect(document.activeElement).toBe(field)
+    wrapper.unmount()
+  })
+})
+
 describe('NotFoundView', () => {
   it('says the page does not exist and links home', async () => {
     const router = createAppRouter(createMemoryHistory())

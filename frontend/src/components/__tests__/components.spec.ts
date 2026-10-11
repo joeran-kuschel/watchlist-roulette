@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { expectNoA11yViolations, makeFilm, mountWithApp } from '../../__tests__/helpers'
+import AppIcon from '../AppIcon.vue'
 import AppLayout from '../AppLayout.vue'
 import ErrorAlert from '../ErrorAlert.vue'
 import FilmCard from '../FilmCard.vue'
@@ -267,5 +268,211 @@ describe('ImportSummary', () => {
     expect(wrapper.find('#kept-heading').exists()).toBe(false)
     expect(wrapper.text()).toContain('2 rows were rejected')
     expect(mount(ImportSummary, { props: { report: report({ rejected: [] }) } }).find('table').exists()).toBe(false)
+  })
+
+  it('shows a film without a year by title only', () => {
+    const text = mount(ImportSummary, { props: { report: report() } }).text()
+    expect(text).toContain('Stalker')
+    expect(text).not.toContain('Stalker (')
+  })
+
+  it('shows a header-only file (nothing to do) as zero counts without sections', async () => {
+    const wrapper = mount(ImportSummary, {
+      props: {
+        report: report({ inserted: 0, updated: 0, unchanged: 0, removed: [], keptWatched: [], rejected: [] }),
+      },
+      attachTo: document.body,
+    })
+    expect(wrapper.findAll('dd').map((dd) => dd.text())).toEqual(['0', '0', '0', '0', '0'])
+    expect(wrapper.findAll('section')).toHaveLength(0)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('lists every rejected row with its line number and keeps non-ASCII reasons', () => {
+    const wrapper = mount(ImportSummary, {
+      props: { report: report({ rejected: [{ line: 2, reason: 'Jahr ungültig: 日本' }, { line: 40, reason: 'Name is empty' }] }) },
+    })
+    expect(wrapper.findAll('tbody tr').map((tr) => tr.text())).toEqual(['2Jahr ungültig: 日本', '40Name is empty'])
+    expect(wrapper.findAll('thead th').length).toBeGreaterThan(0)
+  })
+
+  it('has no axe violations after the import with every section', async () => {
+    const wrapper = mount(ImportSummary, { props: { report: report({ applied: true }) }, attachTo: document.body })
+    expect(wrapper.findAll('section')).toHaveLength(3)
+    await expectNoA11yViolations(wrapper.element)
+  })
+})
+
+describe('AppIcon', () => {
+  const names = ['spin', 'eye', 'eye-off', 'pencil', 'match', 'plus', 'left', 'right', 'x', 'alert', 'logo'] as const
+
+  it.each(names)('draws the %s icon, hidden from assistive technology', (name) => {
+    const svg = mount(AppIcon, { props: { name } }).get('svg')
+    expect(svg.attributes('aria-hidden')).toBe('true')
+    expect(svg.attributes('focusable')).toBe('false')
+    expect(svg.get('path').attributes('d')).toMatch(/^M/)
+  })
+
+  it('is 24 px by default and takes a custom size', () => {
+    expect(mount(AppIcon, { props: { name: 'plus' } }).get('svg').attributes()).toMatchObject({ width: '24', height: '24' })
+    expect(mount(AppIcon, { props: { name: 'plus', size: 16 } }).get('svg').attributes()).toMatchObject({
+      width: '16',
+      height: '16',
+    })
+  })
+
+  it('uses a 32 px grid only for the logo', () => {
+    expect(mount(AppIcon, { props: { name: 'logo' } }).get('svg').attributes('viewBox')).toBe('0 0 32 32')
+    expect(mount(AppIcon, { props: { name: 'eye' } }).get('svg').attributes('viewBox')).toBe('0 0 24 24')
+  })
+
+  it('draws a different shape for every icon', () => {
+    const shapes = names.map((name) => mount(AppIcon, { props: { name } }).get('path').attributes('d'))
+    expect(new Set(shapes).size).toBe(names.length)
+  })
+})
+
+describe('IconButton: edge cases', () => {
+  it('hides the tooltip on Esc for the link variant too, and keeps focus where it was', async () => {
+    const { wrapper } = await mountWithApp(IconButton, '/', { props: { label: 'Edit Joy', icon: 'pencil', to: '/watchlist/1/edit' } })
+    const link = wrapper.get('a')
+    ;(link.element as HTMLElement).focus()
+    await link.trigger('keydown', { key: 'Escape' })
+    expect(wrapper.get('.icon-button__tip').isVisible()).toBe(false)
+    expect(document.activeElement).toBe(link.element)
+  })
+
+  it('does not hide the tooltip for other keys', async () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    await wrapper.get('button').trigger('keydown', { key: 'Enter' })
+    expect(wrapper.get('.icon-button__tip').isVisible()).toBe(true)
+  })
+
+  it('keeps the tooltip out of the accessibility tree so the name is read once', () => {
+    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' } })
+    expect(wrapper.get('.icon-button__tip').attributes('aria-hidden')).toBe('true')
+  })
+
+  it('does not fire click on a disabled button', async () => {
+    let clicks = 0
+    const wrapper = mount(IconButton, {
+      props: { label: 'Next page', icon: 'right' },
+      attrs: { disabled: true, onClick: () => clicks++ },
+    })
+    await wrapper.get('button').trigger('click')
+    expect(clicks).toBe(0)
+  })
+
+  it('can be a submit button of another form', () => {
+    const wrapper = mount(IconButton, { props: { label: 'Spin', icon: 'spin' }, attrs: { type: 'submit', form: 'f' } })
+    expect(wrapper.get('button').attributes()).toMatchObject({ type: 'submit', form: 'f' })
+  })
+
+  it('has no axe violations for the large primary variant', async () => {
+    const wrapper = mount(IconButton, {
+      props: { label: 'Spin again', icon: 'spin', variant: 'primary', large: true },
+      attachTo: document.body,
+    })
+    expect(wrapper.get('button').attributes('aria-label')).toBe('Spin again')
+    await expectNoA11yViolations(wrapper.element)
+  })
+})
+
+describe('PosterImage: edge cases', () => {
+  it('keeps the placeholder when the same film is picked again after a failure', async () => {
+    const wrapper = mount(PosterImage, { props: { filmId: 5, hasPoster: true } })
+    await wrapper.get('img').trigger('error')
+    await wrapper.setProps({ hasPoster: true })
+    expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  it('hides the placeholder text from assistive technology and has no axe violations', async () => {
+    const wrapper = mount(PosterImage, { props: { filmId: 5, hasPoster: false }, attachTo: document.body })
+    expect(wrapper.get('span').attributes('aria-hidden')).toBe('true')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('shows the placeholder when a poster appears for a film that had none and loads it', async () => {
+    const wrapper = mount(PosterImage, { props: { filmId: 5, hasPoster: false } })
+    await wrapper.setProps({ hasPoster: true })
+    expect(wrapper.get('img').attributes('src')).toBe('/api/films/5/poster')
+  })
+})
+
+describe('FormField: edge cases', () => {
+  const field = (props: object) =>
+    mount(FormField, {
+      props: { id: 'f', label: 'Title', ...props },
+      slots: { default: '<template #default="{ attrs }"><input v-bind="attrs" /></template>' },
+      attachTo: document.body,
+    })
+
+  it('describes the control by the hint alone, or by the error alone', () => {
+    expect(field({ hint: 'h' }).get('input').attributes('aria-describedby')).toBe('f-hint')
+    expect(field({ error: 'e' }).get('input').attributes('aria-describedby')).toBe('f-error')
+  })
+
+  it('shows no "(required)" text unless required', () => {
+    expect(field({}).get('label').text()).toBe('Title')
+  })
+
+  it('ignores an empty error text', () => {
+    const wrapper = field({ error: '' })
+    expect(wrapper.find('.field__error').exists()).toBe(false)
+    expect(wrapper.get('input').attributes('aria-invalid')).toBeUndefined()
+  })
+})
+
+describe('FilmCard: edge cases', () => {
+  it('shows a long title and a non-ASCII title unchanged', () => {
+    const title = '千と千尋の神隠し '.repeat(30).trim()
+    expect(mount(FilmCard, { props: { film: makeFilm({ title }) } }).get('h2').text()).toBe(title)
+  })
+
+  it('shows a rating of 0 and a runtime of 0 instead of hiding them', () => {
+    const text = mount(FilmCard, { props: { film: makeFilm({ voteAverage: 0, runtimeMinutes: 0 }) } }).text()
+    expect(text).toContain('0.0 / 10')
+    expect(text).toContain('0 min')
+  })
+
+  it('lists several countries, directors and genres', () => {
+    const text = mount(FilmCard, {
+      props: {
+        film: makeFilm({
+          countries: ['JP', 'FR'],
+          directors: [{ id: 1, name: 'A' }, { id: 2, name: 'B' }],
+          genres: [{ id: 18, name: 'Drama' }, { id: 35, name: 'Comedy' }],
+        }),
+      },
+    }).text()
+    expect(text).toContain('JP, FR')
+    expect(text).toContain('Directed by A, B · Drama, Comedy')
+  })
+
+  it('shows genres without directors', () => {
+    const wrapper = mount(FilmCard, { props: { film: makeFilm({ directors: [] }) } })
+    expect(wrapper.get('.film-card__credits').text()).toBe('Drama')
+  })
+})
+
+describe('AppLayout: edge cases', () => {
+  it('shows no section highlight on an unknown page', async () => {
+    const { wrapper } = await mountWithApp(AppLayout, '/nope')
+    expect(wrapper.findAll('nav a[aria-current="page"]')).toHaveLength(0)
+    expect(wrapper.findAll('nav a.is-section')).toHaveLength(0)
+  })
+
+  it('highlights the Watchlist section on the edit and match pages', async () => {
+    for (const path of ['/watchlist/3/edit', '/watchlist/3/match']) {
+      const { wrapper } = await mountWithApp(AppLayout, path)
+      expect(wrapper.findAll('nav a')[1]!.classes()).toContain('is-section')
+      wrapper.unmount()
+    }
+  })
+
+  it('moves the first Tab stop to the skip link', async () => {
+    const { wrapper } = await mountWithApp(AppLayout, '/')
+    const first = wrapper.element.querySelector('a[href], button')
+    expect(first?.classList.contains('skip')).toBe(true)
   })
 })

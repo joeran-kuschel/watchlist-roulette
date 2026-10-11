@@ -186,3 +186,216 @@ describe('FilmFormView: edit', () => {
     expect(wrapper.find('.danger [role="alert"]').exists()).toBe(false)
   })
 })
+
+describe('FilmFormView: more cases', () => {
+  const stalker = () => makeFilm({ id: 9, title: 'Stalker', releaseYear: 1979, letterboxdUrl: null })
+  const submit = async (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper']) => {
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+  }
+  const button = (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper'], name: string) =>
+    wrapper.findAll('button').find((b) => b.text() === name)!
+
+  it('counts several problems at once and links each to its field', async () => {
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await wrapper.get('#film-year').setValue('1700')
+    await wrapper.get('#film-url').setValue('ftp://x.org')
+    await wrapper.get('#film-added').setValue('2025-03-12')
+    await submit(wrapper)
+    expect(wrapper.get('[role="alert"] h2').text()).toBe('Please fix 3 problems')
+    expect(wrapper.findAll('[role="alert"] li a').map((a) => a.attributes('href'))).toEqual([
+      '#film-title',
+      '#film-year',
+      '#film-url',
+    ])
+  })
+
+  it('rejects a title of 501 characters and names the limit', async () => {
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await wrapper.get('#film-title').setValue('x'.repeat(501))
+    await submit(wrapper)
+    expect(errorsOf(wrapper)).toEqual(['The title can have at most 500 characters.'])
+  })
+
+  it('sends a non-ASCII title unchanged', async () => {
+    mocked.createFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await wrapper.get('#film-title').setValue('千と千尋の神隠し – Cléo 🎬')
+    await submit(wrapper)
+    expect(mocked.createFilm).toHaveBeenCalledWith(expect.objectContaining({ title: '千と千尋の神隠し – Cléo 🎬' }))
+  })
+
+  it('removes the summary and sends the form once the problems are fixed', async () => {
+    mocked.createFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await submit(wrapper)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await wrapper.get('#film-title').setValue('Joy')
+    await submit(wrapper)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(mocked.createFilm).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows "Saving…" and cannot be sent twice while the request runs', async () => {
+    mocked.createFilm.mockReturnValue(new Promise(() => {}))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await wrapper.get('#film-title').setValue('Joy')
+    await submit(wrapper)
+    const save = wrapper.get('button[type="submit"]')
+    expect(save.text()).toBe('Saving…')
+    expect(save.attributes('disabled')).toBeDefined()
+  })
+
+  it('shows a server fault as an alert without a field error', async () => {
+    mocked.createFilm.mockRejectedValue(new api.ApiError(500, 'boom'))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await wrapper.get('#film-title').setValue('Joy')
+    await submit(wrapper)
+    expect(wrapper.get('[role="alert"]').text()).toContain('The server had a problem')
+    expect(wrapper.find('[aria-invalid="true"]').exists()).toBe(false)
+  })
+
+  it('shows a 400 whose issues match no field as an alert with the message', async () => {
+    mocked.createFilm.mockRejectedValue(
+      new api.ApiError(400, 'Invalid request', undefined, [{ path: ['other'], message: 'x' }]),
+    )
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await wrapper.get('#film-title').setValue('Joy')
+    await submit(wrapper)
+    expect(wrapper.get('[role="alert"]').text()).toContain('Invalid request')
+    expect(wrapper.find('[aria-invalid="true"]').exists()).toBe(false)
+  })
+
+  it('maps several backend issues to several fields', async () => {
+    mocked.createFilm.mockRejectedValue(
+      new api.ApiError(400, 'Invalid request', undefined, [
+        { path: ['releaseYear'], message: 'Too early' },
+        { path: ['letterboxdUrl'], message: 'Not a link' },
+      ]),
+    )
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await wrapper.get('#film-title').setValue('Joy')
+    await submit(wrapper)
+    expect(errorsOf(wrapper)).toEqual(['Too early', 'Not a link'])
+    expect(document.activeElement).toBe(wrapper.get('[role="alert"]').element)
+  })
+
+  it('has no axe violations with a submit error and with the problem summary', async () => {
+    mocked.createFilm.mockRejectedValue(new api.ApiError(0, 'x'))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    await submit(wrapper)
+    await expectNoA11yViolations(wrapper.element)
+    await wrapper.get('#film-title').setValue('Joy')
+    await submit(wrapper)
+    expect(wrapper.get('[role="alert"]').text()).toMatch(/Can't reach the server/)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('has a way back to the watchlist from the back link and from Cancel', async () => {
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist')
+    expect(wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.attributes('href')).toBe('/watchlist')
+  })
+
+  it('only offers "Today if empty" when adding', async () => {
+    const add = await mountWithApp(FilmFormView, '/watchlist/new')
+    expect(add.wrapper.text()).toContain('Today if empty')
+    add.wrapper.unmount()
+    mocked.getFilm.mockResolvedValue(stalker())
+    const edit = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    expect(edit.wrapper.text()).not.toContain('Today if empty')
+  })
+
+  it('shows a loading message while the film loads', async () => {
+    mocked.getFilm.mockReturnValue(new Promise(() => {}))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    expect(wrapper.get('[aria-busy="true"]').text()).toBe('Loading film…')
+    expect(wrapper.find('form').exists()).toBe(false)
+  })
+
+  it('shows an unreachable server on load, with the delete section hidden', async () => {
+    mocked.getFilm.mockRejectedValue(new api.ApiError(0, 'x'))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    expect(wrapper.get('[role="alert"]').text()).toMatch(/Can't reach the server/)
+    expect(wrapper.find('.danger').exists()).toBe(false)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('shows a duplicate link on save of an edit', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    mocked.updateFilm.mockRejectedValue(new api.ApiError(409, 'exists'))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    await submit(wrapper)
+    expect(errorsOf(wrapper)).toEqual(['Another film already uses this Letterboxd link.'])
+  })
+
+  it('says so when the film was deleted elsewhere before saving', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    mocked.updateFilm.mockRejectedValue(new api.ApiError(404, 'Film not found'))
+    const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    await submit(wrapper)
+    expect(wrapper.get('[role="alert"]').text()).toContain('Film not found')
+    expect(router.currentRoute.value.path).toBe('/watchlist/9/edit')
+  })
+
+  it('does not save unsaved edits when asking to confirm a delete', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    await wrapper.get('#film-title').setValue('Changed')
+    await wrapper.get('.danger button').trigger('click')
+    expect(wrapper.get('.danger').text()).toContain('Delete Stalker?')
+    expect(mocked.updateFilm).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed delete (server down) without leaving and without a notice', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    mocked.deleteFilm.mockRejectedValue(new api.ApiError(0, 'x'))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    await wrapper.get('.danger button').trigger('click')
+    await button(wrapper, 'Yes, delete it').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toMatch(/Can't reach the server/)
+    expect(useWatchlistStore().notice).toBe('')
+  })
+
+  it('has no axe violations while asking to confirm the delete', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    await wrapper.get('.danger button').trigger('click')
+    expect(wrapper.find('.danger [role="alert"]').exists()).toBe(true)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('moves focus into the confirmation when "Delete film…" is pressed', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    const trigger = wrapper.get('.danger button')
+    ;(trigger.element as HTMLElement).focus()
+    await trigger.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.danger').element.contains(document.activeElement)).toBe(true)
+  })
+
+  it('returns focus to "Delete film…" after choosing "Keep film"', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    await wrapper.get('.danger button').trigger('click')
+    const keep = button(wrapper, 'Keep film')
+    ;(keep.element as HTMLElement).focus()
+    await keep.trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(button(wrapper, 'Delete film…').element)
+  })
+
+  it('keeps focus on the page after a failed delete', async () => {
+    mocked.getFilm.mockResolvedValue(stalker())
+    mocked.deleteFilm.mockRejectedValue(new api.ApiError(500, 'boom'))
+    const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+    await wrapper.get('.danger button').trigger('click')
+    const yes = button(wrapper, 'Yes, delete it')
+    ;(yes.element as HTMLElement).focus()
+    await yes.trigger('click')
+    await flushPromises()
+    expect(document.activeElement).not.toBe(document.body)
+  })
+})

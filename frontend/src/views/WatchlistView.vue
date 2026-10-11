@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
 import IconButton from '../components/IconButton.vue'
-import { formatDate } from '../format'
+import { formatDate, isHttpUrl } from '../format'
 import { useWatchlistStore } from '../stores/watchlist'
 import type { Film } from '../types'
 import { fromQuery, SORTS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
@@ -32,6 +32,7 @@ const goToPage = (page: number) => ({ query: toQuery({ ...view.value, page }) })
 const pageCount = computed(() => Math.max(1, Math.ceil(store.total / store.pageSize)))
 const rangeText = computed(() => {
   if (store.total === 0) return 'No films'
+  if (store.items.length === 0) return `No films on this page, ${store.total} in total`
   const start = (store.page - 1) * store.pageSize + 1
   const end = Math.min(store.page * store.pageSize, store.total)
   return `Showing ${start}–${end} of ${store.total}`
@@ -45,6 +46,17 @@ const tmdbBadge = (film: Film) =>
     error: 'TMDB lookup failed',
   })[film.tmdb.status as string]
 const needsMatch = (film: Film) => Boolean(tmdbBadge(film))
+
+// A live region that already holds text when it appears is often not read out, so its text is set a tick later
+const announced = ref('')
+onMounted(async () => {
+  await nextTick()
+  announced.value = store.notice
+})
+watch(
+  () => store.notice,
+  (notice) => (announced.value = notice),
+)
 
 onBeforeUnmount(() => (store.notice = ''))
 </script>
@@ -82,7 +94,7 @@ onBeforeUnmount(() => (store.notice = ''))
       <button class="btn" type="submit">Search</button>
     </form>
 
-    <p class="watchlist__notice" role="status">{{ store.notice }}</p>
+    <p class="watchlist__notice" role="status">{{ announced }}</p>
     <ErrorAlert v-if="store.error" :message="store.error">
       <button class="btn" type="button" @click="store.load(toListParams(view))">Try again</button>
     </ErrorAlert>
@@ -124,7 +136,7 @@ onBeforeUnmount(() => (store.notice = ''))
             <tr v-for="film in store.items" :key="film.id">
               <th scope="row">
                 <a
-                  v-if="film.letterboxdUrl"
+                  v-if="film.letterboxdUrl && isHttpUrl(film.letterboxdUrl)"
                   class="watchlist__title"
                   :href="film.letterboxdUrl"
                   target="_blank"
@@ -162,7 +174,7 @@ onBeforeUnmount(() => (store.notice = ''))
                 <IconButton
                   v-if="needsMatch(film)"
                   :label="`Choose TMDB match for ${film.title}`"
-                  tooltip="Choose match"
+                  tooltip="Choose TMDB match"
                   icon="match"
                   :to="`/watchlist/${film.id}/match`"
                 />

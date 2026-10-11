@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, createFilm, deleteFilm, describeError, getFilm, updateFilm } from '../api'
+import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
 import {
@@ -29,6 +30,8 @@ const loading = ref(false)
 const saving = ref(false)
 const confirmingDelete = ref(false)
 const summary = ref<HTMLElement | null>(null)
+const deleteButton = ref<HTMLElement | null>(null)
+const keepButton = ref<HTMLElement | null>(null)
 let savedTitle = ''
 
 const problems = computed(() =>
@@ -90,24 +93,38 @@ async function submit() {
   }
 }
 
+// The button that was pressed disappears, so focus goes to the one that replaces it (WCAG 2.4.3)
+async function askToDelete() {
+  confirmingDelete.value = true
+  await nextTick()
+  keepButton.value?.focus()
+}
+
+async function stopDeleting() {
+  confirmingDelete.value = false
+  await nextTick()
+  deleteButton.value?.focus()
+}
+
 async function remove() {
   submitError.value = ''
+  saving.value = true
   try {
     await deleteFilm(filmId.value as number)
     watchlist.notice = `${savedTitle} was deleted.`
     await router.push('/watchlist')
   } catch (e) {
     submitError.value = describeError(e)
-    confirmingDelete.value = false
+    await stopDeleting()
+  } finally {
+    saving.value = false
   }
 }
 </script>
 
 <template>
   <div class="page page--narrow">
-    <nav aria-label="Breadcrumb" class="back">
-      <RouterLink to="/watchlist">← Back to watchlist</RouterLink>
-    </nav>
+    <BackLink to="/watchlist">← Back to watchlist</BackLink>
     <h1>{{ isEdit ? 'Edit film' : 'Add film' }}</h1>
     <p class="lead">
       Poster, runtime and credits are filled in automatically from TMDB after saving.
@@ -177,13 +194,17 @@ async function remove() {
         <h2 id="danger-heading">Delete film</h2>
         <template v-if="!confirmingDelete">
           <p>Removes {{ savedTitle }} from your watchlist for good.</p>
-          <button class="btn" type="button" @click="confirmingDelete = true">Delete film…</button>
+          <button ref="deleteButton" class="btn" type="button" @click="askToDelete">
+            Delete film…
+          </button>
         </template>
         <template v-else>
           <p role="alert">Delete {{ savedTitle }}? This cannot be undone.</p>
           <div class="btn-row">
-            <button class="btn btn--primary" type="button" @click="remove">Yes, delete it</button>
-            <button class="btn" type="button" @click="confirmingDelete = false">Keep film</button>
+            <button class="btn btn--primary" type="button" :disabled="saving" @click="remove">
+              Yes, delete it
+            </button>
+            <button ref="keepButton" class="btn" type="button" @click="stopDeleting">Keep film</button>
           </div>
         </template>
       </section>
@@ -192,9 +213,6 @@ async function remove() {
 </template>
 
 <style scoped>
-.back {
-  margin-bottom: 16px;
-}
 form {
   display: flex;
   flex-direction: column;

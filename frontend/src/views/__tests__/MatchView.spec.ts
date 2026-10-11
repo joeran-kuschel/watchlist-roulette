@@ -108,3 +108,111 @@ describe('MatchView', () => {
     expect(wrapper.find('form').exists()).toBe(true)
   })
 })
+
+describe('MatchView: edge cases', () => {
+  const submitWith = async (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper'], value: string) => {
+    await wrapper.get('#tmdb-id').setValue(value)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+  }
+
+  it('shows a loading message and no form while the film loads', async () => {
+    mocked.getFilm.mockReturnValue(new Promise(() => {}))
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    expect(wrapper.get('[aria-busy="true"]').text()).toBe('Loading film…')
+    expect(wrapper.find('form').exists()).toBe(false)
+  })
+
+  it('shows a film that was deleted (404) as an error without a form', async () => {
+    mocked.getFilm.mockRejectedValue(new api.ApiError(404, 'Film not found'))
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Film not found')
+    expect(wrapper.find('form').exists()).toBe(false)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('says the server is unreachable when loading', async () => {
+    mocked.getFilm.mockRejectedValue(new api.ApiError(0, 'x'))
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    expect(wrapper.get('[role="alert"]').text()).toMatch(/Can't reach the server/)
+  })
+
+  it('leaves out the year in brackets when the film has none', async () => {
+    mocked.getFilm.mockResolvedValue(makeFilm({ title: 'Rare', releaseYear: null }))
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    expect(wrapper.get('.lead').text()).not.toContain('(')
+  })
+
+  it.each(['', '   ', '0', 'abc', 'https://www.themoviedb.org/tv/12'])('rejects %j without calling the server', async (value) => {
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    await submitWith(wrapper, value)
+    expect(mocked.updateFilm).not.toHaveBeenCalled()
+    expect(wrapper.get('#tmdb-id-error').text()).toMatch(/Enter the TMDB number/)
+  })
+
+  it('removes the field error when the next try works', async () => {
+    mocked.updateFilm.mockResolvedValue(ambiguous)
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    await submitWith(wrapper, 'abc')
+    expect(wrapper.find('#tmdb-id-error').exists()).toBe(true)
+    await submitWith(wrapper, '12')
+    expect(wrapper.find('#tmdb-id-error').exists()).toBe(false)
+    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 12 })
+  })
+
+  it('shows "Saving…" and a disabled button while the request runs', async () => {
+    mocked.updateFilm.mockReturnValue(new Promise(() => {}))
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    await submitWith(wrapper, '12')
+    const save = wrapper.get('button[type="submit"]')
+    expect(save.text()).toBe('Saving…')
+    expect(save.attributes('disabled')).toBeDefined()
+  })
+
+  it.each([
+    [404, 'Film not found', 'Film not found'],
+    [400, 'Invalid request', 'Invalid request'],
+    [500, 'boom', 'The server had a problem. Try again in a moment.'],
+  ])('shows a %i on save as an alert, not as a field error', async (status, message, shown) => {
+    mocked.updateFilm.mockRejectedValue(new api.ApiError(status, message))
+    const { wrapper, router } = await mountWithApp(MatchView, '/watchlist/3/match')
+    await submitWith(wrapper, '12')
+    expect(wrapper.get('[role="alert"]').text()).toContain(shown)
+    expect(wrapper.find('#tmdb-id-error').exists()).toBe(false)
+    expect(router.currentRoute.value.path).toBe('/watchlist/3/match')
+    expect(useWatchlistStore().notice).toBe('')
+  })
+
+  it('clears the alert of an earlier failed save on the next try', async () => {
+    mocked.updateFilm.mockRejectedValueOnce(new api.ApiError(500, 'boom'))
+    mocked.updateFilm.mockResolvedValueOnce(ambiguous)
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    await submitWith(wrapper, '12')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await submitWith(wrapper, '12')
+    expect(mocked.updateFilm).toHaveBeenCalledTimes(2)
+  })
+
+  it('has no axe violations with an alert and a field error', async () => {
+    mocked.updateFilm.mockRejectedValue(new api.ApiError(0, 'x'))
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    await submitWith(wrapper, '12')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await expectNoA11yViolations(wrapper.element)
+    await submitWith(wrapper, 'abc')
+    expect(wrapper.find('#tmdb-id-error').exists()).toBe(true)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('links back to the watchlist twice (breadcrumb and Cancel)', async () => {
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    expect(wrapper.findAll('a[href="/watchlist"]').map((a) => a.text())).toEqual(['← Back to watchlist', 'Cancel'])
+  })
+
+  it('opens the TMDB search in a new tab and says so', async () => {
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    const link = wrapper.get('ol a')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(link.text()).toContain('opens in a new tab')
+  })
+})

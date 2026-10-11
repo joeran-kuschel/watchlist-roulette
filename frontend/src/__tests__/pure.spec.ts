@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatRuntime, joinNames } from '../format'
+import { ApiError, describeError } from '../api'
+import { formatDate, formatRuntime, joinNames, text } from '../format'
 import { emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
 import { parseTmdbId, tmdbSearchUrl } from '../tmdbId'
@@ -173,5 +174,195 @@ describe('watchlist query', () => {
       page: 2,
       pageSize: 50,
     })
+  })
+})
+
+describe('format: edge cases', () => {
+  it('text() trims strings and turns numbers, null and undefined into text', () => {
+    expect(text('  a ')).toBe('a')
+    expect(text(0)).toBe('0')
+    expect(text(null)).toBe('')
+    expect(text(undefined)).toBe('')
+  })
+  it('formats a timestamp with an offset by its UTC day', () => {
+    expect(formatDate('2025-03-12T23:30:00-05:00')).toBe('13 Mar 2025')
+  })
+  it('joinNames of nobody is empty', () => {
+    expect(joinNames([])).toBe('')
+  })
+})
+
+describe('describeError', () => {
+  it.each([
+    [401, 'Not allowed'],
+    [422, 'Unprocessable'],
+  ])('shows the backend message for %i', (status, message) => {
+    expect(describeError(new ApiError(status, message))).toBe(message)
+  })
+  it.each([500, 502, 503])('uses fixed wording for %i', (status) => {
+    expect(describeError(new ApiError(status, 'stack trace'))).toBe('The server had a problem. Try again in a moment.')
+  })
+  it('uses a generic sentence for anything else', () => {
+    expect(describeError(new TypeError('x'))).toBe('Something went wrong.')
+    expect(describeError(undefined)).toBe('Something went wrong.')
+  })
+  it('keeps issues empty by default', () => {
+    expect(new ApiError(400, 'x').issues).toEqual([])
+    expect(new ApiError(400, 'x')).toBeInstanceOf(Error)
+  })
+})
+
+describe('parseRouletteFilters: edge cases', () => {
+  const input = (patch: Partial<ReturnType<typeof emptyFilters>>) => ({ ...emptyFilters(), ...patch })
+
+  it('accepts the limits of every range', () => {
+    const { params, errors } = parseRouletteFilters(input({ yearFrom: '1888', yearTo: '2100', maxRuntime: '10000' }))
+    expect(errors).toEqual({})
+    expect(params).toEqual({ yearFrom: 1888, yearTo: 2100, maxRuntime: 10000 })
+  })
+  it('rejects just past the limits', () => {
+    const { errors } = parseRouletteFilters(input({ yearTo: '2101', maxRuntime: '10001' }))
+    expect(Object.keys(errors).sort()).toEqual(['maxRuntime', 'yearTo'])
+  })
+  it('allows a single year and a lone end of the range', () => {
+    expect(parseRouletteFilters(input({ yearFrom: '1999', yearTo: '1999' })).errors).toEqual({})
+    expect(parseRouletteFilters(input({ yearTo: '1999' })).params).toEqual({ yearTo: 1999 })
+  })
+  it('trims whitespace and treats blank text as not set', () => {
+    const { params, errors } = parseRouletteFilters(input({ yearFrom: ' 1990 ', yearTo: '   ', country: ' jp ' }))
+    expect(errors).toEqual({})
+    expect(params).toEqual({ yearFrom: 1990, country: 'JP' })
+  })
+  it.each(['abc', '-1', '1e400', 'NaN', 'Infinity'])('rejects a runtime of %j', (maxRuntime) => {
+    expect(parseRouletteFilters(input({ maxRuntime })).errors).toHaveProperty('maxRuntime')
+  })
+  it.each(['J', 'J1', 'ÄÖ', 'J P'])('rejects the country %j', (country) => {
+    expect(parseRouletteFilters(input({ country })).errors).toHaveProperty('country')
+  })
+  it('reports every wrong field at once and returns no parameters', () => {
+    const { params, errors } = parseRouletteFilters(input({ yearFrom: 'x', country: 'x', maxRuntime: '0', genre: '18' }))
+    expect(Object.keys(errors).sort()).toEqual(['country', 'maxRuntime', 'yearFrom'])
+    expect(params).toEqual({})
+  })
+  it('only a genre counts as a filter', () => {
+    expect(parseRouletteFilters(input({ genre: '18' })).params).toEqual({ genre: 18 })
+  })
+})
+
+describe('film form validation: edge cases', () => {
+  const values = (patch = {}) => ({ ...emptyFilmForm(), title: 'Joy', ...patch })
+
+  it('accepts 500 characters, a non-ASCII title and the limits of the year', () => {
+    expect(validateFilmForm(values({ title: 'x'.repeat(500) })).errors).toEqual({})
+    expect(validateFilmForm(values({ title: 'Cléo 5 à 7 – 千と千尋の神隠し' })).payload.title).toBe('Cléo 5 à 7 – 千と千尋の神隠し')
+    expect(validateFilmForm(values({ releaseYear: '1888' })).errors).toEqual({})
+    expect(validateFilmForm(values({ releaseYear: '2100' })).errors).toEqual({})
+    expect(validateFilmForm(values({ releaseYear: '2101' })).errors).toHaveProperty('releaseYear')
+  })
+  it.each(['abc', '-1', '0', '19 90'])('rejects the year %j', (releaseYear) => {
+    expect(validateFilmForm(values({ releaseYear })).errors).toHaveProperty('releaseYear')
+  })
+  it.each(['javascript:alert(1)', 'mailto:a@b.c', 'file:///etc/passwd', 'boxd.it/abc', '//boxd.it/abc'])(
+    'rejects the link %j',
+    (letterboxdUrl) => {
+      expect(validateFilmForm(values({ letterboxdUrl })).errors).toHaveProperty('letterboxdUrl')
+    },
+  )
+  it('accepts http and https links in any case and trims them', () => {
+    expect(validateFilmForm(values({ letterboxdUrl: 'HTTP://boxd.it/a' })).errors).toEqual({})
+    expect(validateFilmForm(values({ letterboxdUrl: '  https://boxd.it/a ' })).payload.letterboxdUrl).toBe('https://boxd.it/a')
+  })
+  it('treats a link of only spaces as empty', () => {
+    const { errors, payload } = validateFilmForm(values({ letterboxdUrl: '   ' }))
+    expect(errors).toEqual({})
+    expect(payload.letterboxdUrl).toBeNull()
+  })
+  it.each(['2024-02-29'])('accepts the real date %s', (addedAt) => {
+    expect(validateFilmForm(values({ addedAt })).errors).toEqual({})
+  })
+  it.each(['2023-02-29', '25-1-1', '12.03.2025', '2025-03-12T10:00:00Z', 'tomorrow'])(
+    'rejects the date %j',
+    (addedAt) => {
+      expect(validateFilmForm(values({ addedAt })).errors).toHaveProperty('addedAt')
+    },
+  )
+  it.each(['2025-13-01', '2025-00-10', '2025-01-32'])('rejects the impossible date %j without throwing', (addedAt) => {
+    expect(validateFilmForm(values({ addedAt })).errors).toHaveProperty('addedAt')
+  })
+  it('reports all wrong fields together', () => {
+    const { errors } = validateFilmForm({ title: '', releaseYear: 'x', letterboxdUrl: 'x', addedAt: 'x' })
+    expect(Object.keys(errors).sort()).toEqual(['addedAt', 'letterboxdUrl', 'releaseYear', 'title'])
+  })
+  it('ignores issues without a path or with a numeric path', () => {
+    expect(issuesToErrors([{ path: [], message: 'x' }, { path: [0], message: 'y' }])).toEqual({})
+    expect(issuesToErrors([])).toEqual({})
+  })
+  it('maps each field of the backend', () => {
+    expect(
+      issuesToErrors([
+        { path: ['title'], message: 'a' },
+        { path: ['letterboxdUrl'], message: 'b' },
+        { path: ['addedAt'], message: 'c' },
+      ]),
+    ).toEqual({ title: 'a', letterboxdUrl: 'b', addedAt: 'c' })
+  })
+})
+
+describe('parseTmdbId: edge cases', () => {
+  it.each([
+    ['https://www.themoviedb.org/movie/12?language=de', 12],
+    ['https://www.themoviedb.org/movie/12#cast', 12],
+    ['HTTPS://WWW.THEMOVIEDB.ORG/movie/12', 12],
+    ['007', 7],
+    ['  https://www.themoviedb.org/movie/5-x  ', 5],
+  ])('reads %s', (value, id) => expect(parseTmdbId(value)).toBe(id))
+
+  it.each([
+    '99999999999999999999',
+    '+5',
+    '١٢٣',
+    'https://www.themoviedb.org/movie/12abc',
+    'https://www.themoviedb.org/movie/',
+    'https://evil.org/?u=https://www.themoviedb.org/movie/12',
+    'https://www.themoviedb.org.evil.org/movie/12',
+    'ftp://www.themoviedb.org/movie/12',
+    '12 13',
+  ])('rejects %j', (value) => expect(parseTmdbId(value)).toBeNull())
+
+  it('encodes a title with slashes, quotes and emoji in the search link', () => {
+    expect(tmdbSearchUrl('a/b "c" 🎬')).toBe('https://www.themoviedb.org/search/movie?query=a%2Fb%20%22c%22%20%F0%9F%8E%AC')
+  })
+})
+
+describe('watchlist query: edge cases', () => {
+  it.each(['1.5', '0', 'abc', '', ' ', '2abc', '1e1'])('falls back to page 1 for page=%j', (page) => {
+    expect(fromQuery({ page }).page).toBe(page === '1e1' ? 10 : 1)
+  })
+  it('falls back for a repeated key whose first value is empty', () => {
+    expect(fromQuery({ q: [null, 'b'] }).q).toBe('')
+  })
+  it('keeps a search with spaces and non-ASCII characters', () => {
+    expect(fromQuery({ q: 'cléo 5' }).q).toBe('cléo 5')
+  })
+  it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty'])('falls back to the default sort for sort=%s', (sort) => {
+    expect(fromQuery({ sort }).sort).toBe('added-desc')
+  })
+  it('trims the search before writing it to the URL and the API', () => {
+    const view = { q: '  joy ', watched: 'all', sort: 'added-desc', page: 1 } as const
+    expect(toQuery(view).q).toBe('joy')
+    expect(toListParams(view).q).toBe('joy')
+  })
+  it('round-trips every sort option through the URL', () => {
+    for (const sort of ['added-desc', 'added-asc', 'year-desc', 'year-asc', 'title'] as const) {
+      const view = { q: 'x', watched: 'true', sort, page: 4 } as const
+      expect(fromQuery(toQuery(view) as never)).toEqual(view)
+    }
+  })
+  it('maps each sort to a column and direction', () => {
+    const params = (sort: Parameters<typeof toListParams>[0]['sort']) =>
+      toListParams({ q: '', watched: 'all', sort, page: 1 })
+    expect(params('added-asc')).toMatchObject({ sort: 'added_at', order: 'asc' })
+    expect(params('year-asc')).toMatchObject({ sort: 'release_year', order: 'asc' })
+    expect(params('title')).toMatchObject({ sort: 'title', order: 'asc' })
   })
 })

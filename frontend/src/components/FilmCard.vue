@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatDate, formatRuntime, joinNames } from '../format'
+import { formatDate, formatRuntime, isHttpUrl, joinNames } from '../format'
 import type { Film } from '../types'
 import PosterImage from './PosterImage.vue'
 
@@ -46,7 +46,7 @@ const credits = computed(() =>
       <p class="film-card__meta">
         On your list since {{ formatDate(film.addedAt) }}
         <template v-if="film.watchedAt"> · Watched {{ formatDate(film.watchedAt) }}</template>
-        <template v-if="film.letterboxdUrl">
+        <template v-if="film.letterboxdUrl && isHttpUrl(film.letterboxdUrl)">
           ·
           <a :href="film.letterboxdUrl" target="_blank" rel="noopener noreferrer"
             >Open on Letterboxd<span class="sr-only"> (opens in a new tab)</span></a

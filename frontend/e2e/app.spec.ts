@@ -180,7 +180,7 @@ test('importing a CSV: check, confirm the removal, import', async ({ page }) => 
 
   const importButton = page.getByRole('button', { name: 'Import films' })
   await expect(importButton).toBeDisabled()
-  await page.getByLabel(/I understand that 1 films will be removed/).check()
+  await page.getByLabel(/I understand that 1 film will be removed/).check()
   await importButton.click()
   await expect(page.getByRole('heading', { name: 'Import finished' })).toBeVisible()
 })
