@@ -17,4 +17,10 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // In Docker Compose nginx forwards /api; the dev server does the same (see documentation/backend/docker.md)
+    proxy: {
+      '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:3000',
+    },
+  },
 })

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Watchlist</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Hanken Grotesk',system-ui,sans-serif;background:#12141A;color:#F2EFE8}
+a{color:#FF8A6B}a:hover{color:#FFB09A}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #FFD166;outline-offset:2px}
+.skip{position:absolute;left:16px;top:-60px;background:#FFD166;color:#12141A;padding:10px 16px;font-weight:700;border-radius:6px}
+.skip:focus{top:12px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B;vertical-align:middle}
+th{font-size:14px;color:#B4B8C2;font-weight:700;white-space:nowrap}
+
+.ib{position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;box-sizing:border-box;padding:0;border-radius:10px;border:1px solid #7A8090;background:transparent;color:#F2EFE8;cursor:pointer;text-decoration:none}
+.ib:hover{color:#F2EFE8;background:#2A2E3A}
+.ib.pri,.ib.pri:hover{background:#FF6B47;border-color:#FF6B47;color:#12141A}
+.ib.lg{width:64px;height:64px;border-radius:50%}
+.ib:disabled{color:#8D93A0;border-color:#4A4F5C;cursor:default;background:transparent}
+.ib .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#F2EFE8;color:#12141A;font-size:13px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;z-index:2}
+.ib:hover .tip,.ib:focus-visible .tip{opacity:1}
+</style>
+</helmet>
+<div style="min-height:1000px;background:#12141A;color:#F2EFE8;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;flex-direction:column">
+<a class="skip" href="#main">Skip to main content</a>
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:20px 48px;border-bottom:1px solid #3A3F4B">
+<div style="display:flex;align-items:center;gap:12px">
+<svg aria-hidden="true" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#FF6B47" stroke-width="2.5"><circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="3"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6" stroke-linecap="round"/></svg>
+<span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.01em">Watchlist Roulette</span>
+</div>
+<nav aria-label="Main">
+<ul style="display:flex;gap:8px;list-style:none;margin:0;padding:0">
+<li><a href="roulette.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Roulette</a></li>
+<li><a href="watchlist.dc.html" aria-current="page" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;background:#2A2E3A;color:#F2EFE8;text-decoration:none;font-weight:700">Watchlist</a></li>
+<li><a href="import.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Import</a></li>
+</ul>
+</nav>
+</header>
+
+<main id="main" style="flex:1;width:100%;max-width:1280px;box-sizing:border-box;margin:0 auto;padding:40px 48px">
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px">
+<div>
+<h1 style="margin:0 0 4px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:40px;letter-spacing:-0.02em">Watchlist</h1>
+<p style="margin:0;color:#B4B8C2">214 films · 142 unwatched</p>
+</div>
+<a class="ib pri" href="film-form.dc.html" aria-label="Add film"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tip" aria-hidden="true">Add film</span></a>
+</div>
+
+<form role="search" aria-label="Filter watchlist" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-bottom:24px">
+<div style="flex:1 1 260px"><label for="q" style="display:block;font-weight:700;margin-bottom:6px">Search by title</label>
+<input id="q" type="search" style="width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"></div>
+<div><label for="w" style="display:block;font-weight:700;margin-bottom:6px">Show</label>
+<select id="w" style="min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"><option>All films</option><option>Unwatched</option><option>Watched</option></select></div>
+<div><label for="s" style="display:block;font-weight:700;margin-bottom:6px">Sort by</label>
+<select id="s" style="min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"><option>Date added, newest first</option><option>Date added, oldest first</option><option>Release year</option><option>Title</option></select></div>
+</form>
+
+<div style="overflow-x:auto;border:1px solid #3A3F4B;border-radius:12px;background:#1C1F27">
+<table style="width:100%;min-width:720px;border-collapse:collapse">
+<caption style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Films on your watchlist</caption>
+<thead><tr><th scope="col">Title</th><th scope="col">Year</th><th scope="col">Added</th><th scope="col">Status</th><th scope="col"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Actions</span></th></tr></thead>
+<tbody>
+<tr><th scope="row" style="font-size:16px;color:#F2EFE8;font-weight:700"><a href="https://letterboxd.com/" style="color:#F2EFE8">Perfect Days</a></th><td>2023</td><td>12 Mar 2025</td><td><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid #7A8090;font-size:14px">To watch</span></td><td style="text-align:right"><button class="ib" type="button" aria-label="Mark Perfect Days as watched"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span class="tip" aria-hidden="true">Mark as watched</span></button></td></tr>
+<tr><th scope="row" style="font-size:16px;color:#F2EFE8;font-weight:700"><a href="https://letterboxd.com/" style="color:#F2EFE8">Stalker</a></th><td>1979</td><td>02 Feb 2025</td><td><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid #7A8090;font-size:14px">To watch</span></td><td style="text-align:right"><button class="ib" type="button" aria-label="Mark Stalker as watched"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span class="tip" aria-hidden="true">Mark as watched</span></button></td></tr>
+<tr><th scope="row" style="font-size:16px;color:#F2EFE8;font-weight:700"><a href="https://letterboxd.com/" style="color:#F2EFE8">Aftersun</a></th><td>2022</td><td>19 Jan 2025</td><td><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#2A2E3A;font-size:14px"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#F2EFE8" stroke-width="2"><path d="M2 7.5l3 3 7-7"/></svg>Watched 4 Mar</span></td><td style="text-align:right"><button class="ib" type="button" aria-label="Mark Aftersun as unwatched"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 4.4-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span class="tip" aria-hidden="true">Mark as unwatched</span></button></td></tr>
+<tr><th scope="row" style="font-size:16px;color:#F2EFE8;font-weight:700"><a href="https://letterboxd.com/" style="color:#F2EFE8">Cléo from 5 to 7</a></th><td>1962</td><td>30 Dec 2024</td><td><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid #FFD166;color:#FFD166;font-size:14px">Needs review: several TMDB matches</span></td><td style="text-align:right"><a class="ib" href="match-picker.dc.html" aria-label="Choose TMDB match for Cléo from 5 to 7"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M21 21l-5.2-5.2M8 10.5l2 2 3.5-4"/></svg><span class="tip" aria-hidden="true">Choose match</span></a></td></tr>
+<tr><th scope="row" style="font-size:16px;color:#F2EFE8;font-weight:700"><a href="https://letterboxd.com/" style="color:#F2EFE8">Rare Home Video</a></th><td>—</td><td>11 Nov 2024</td><td><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid #FFD166;color:#FFD166;font-size:14px">Not found on TMDB</span></td><td style="text-align:right"><a class="ib" href="film-form.dc.html" aria-label="Edit Rare Home Video"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19l-4 1z"/></svg><span class="tip" aria-hidden="true">Edit film</span></a></td></tr>
+</tbody>
+</table>
+</div>
+
+<nav aria-label="Pagination" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:20px">
+<p style="margin:0;color:#B4B8C2">Showing 1–50 of 214</p>
+<div style="display:flex;gap:8px">
+<button class="ib" type="button" disabled aria-label="Previous page"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span class="tip" aria-hidden="true">Previous page</span></button>
+<button class="ib" type="button" aria-label="Next page"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg><span class="tip" aria-hidden="true">Next page</span></button>
+</div>
+</nav>
+</main>
+<footer style="border-top:1px solid #3A3F4B;padding:24px 48px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;color:#B4B8C2;font-size:14px"><span role="img" aria-label="TMDB logo (official logo goes here)" style="display:inline-flex;align-items:center;justify-content:center;width:88px;height:22px;border:1px dashed #7A8090;border-radius:4px;font-size:11px;letter-spacing:.06em">TMDB LOGO</span><p style="margin:0;max-width:72ch;line-height:1.5">This product uses the TMDB API but is not endorsed or certified by TMDB. Film data and posters are provided by <a href="https://www.themoviedb.org/">TMDB</a>.</p></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

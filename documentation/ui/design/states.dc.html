@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Empty, loading and error states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Hanken Grotesk',system-ui,sans-serif;background:#12141A;color:#F2EFE8}
+a{color:#FF8A6B}a:hover{color:#FFB09A}
+a:focus-visible,button:focus-visible{outline:3px solid #FFD166;outline-offset:2px}
+.card{background:#1C1F27;border:1px solid #3A3F4B;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h2{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px}
+.card p{margin:0;color:#D5D8E0;line-height:1.5}
+.tag{margin:0;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#B4B8C2;font-weight:700}
+.sk{background:#2A2E3A;border-radius:6px}
+</style>
+</helmet>
+<div style="min-height:900px;box-sizing:border-box;padding:48px;background:#12141A;color:#F2EFE8;font-family:'Hanken Grotesk',system-ui,sans-serif">
+<h1 style="margin:0 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:40px;letter-spacing:-0.02em">Empty, loading and error states</h1>
+<p style="margin:0 0 32px;color:#B4B8C2;max-width:70ch;line-height:1.5">Each panel replaces the content area of the screen named in its label. The page header stays as it is.</p>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px">
+
+<section class="card" aria-labelledby="s1">
+<p class="tag">Roulette · watchlist is empty</p>
+<h2 id="s1">Your watchlist is empty</h2>
+<p>Import your Letterboxd export or add a first film, then come back and spin.</p>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px">
+<a href="import.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 20px;background:#FF6B47;color:#12141A;border-radius:8px;font-weight:700;text-decoration:none">Import from CSV</a>
+<a href="film-form.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border:1px solid #7A8090;border-radius:8px;color:#F2EFE8;text-decoration:none">Add a film</a>
+</div>
+</section>
+
+<section class="card" aria-labelledby="s2">
+<p class="tag">Roulette · no film matches</p>
+<h2 id="s2">No film fits these filters</h2>
+<p>Nothing unwatched matches a year range of 1990–1995 with a runtime up to 80 minutes. Loosen a filter and spin again.</p>
+<div style="margin-top:8px"><button type="button" style="min-height:44px;padding:0 20px;background:#2A2E3A;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit;font-weight:700;cursor:pointer">Clear filters</button></div>
+</section>
+
+<section class="card" aria-labelledby="s3" aria-busy="true">
+<p class="tag">Roulette · loading</p>
+<h2 id="s3">Picking a film…</h2>
+<p role="status">Loading your pick</p>
+<div aria-hidden="true" style="display:flex;gap:16px;margin-top:8px">
+<div class="sk" style="flex:0 0 96px;height:144px"></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px"><div class="sk" style="height:22px;width:70%"></div><div class="sk" style="height:14px;width:45%"></div><div class="sk" style="height:14px;width:90%"></div><div class="sk" style="height:14px;width:80%"></div></div>
+</div>
+</section>
+
+<section class="card" aria-labelledby="s4" style="border-color:#FFD166">
+<p class="tag">Any screen · server unreachable</p>
+<div role="alert" style="display:flex;flex-direction:column;gap:12px">
+<h2 id="s4">Can't reach the server</h2>
+<p>Your watchlist couldn't be loaded. Check that the app is running, then try again. Your data is not affected.</p>
+</div>
+<div style="margin-top:8px"><button type="button" style="min-height:44px;padding:0 20px;background:#FF6B47;color:#12141A;border:0;border-radius:8px;font:inherit;font-weight:700;cursor:pointer">Try again</button></div>
+</section>
+
+<section class="card" aria-labelledby="s5">
+<p class="tag">Watchlist · no results</p>
+<h2 id="s5">No films match your search</h2>
+<p>Nothing found for "zzz" among all films. Try a shorter title.</p>
+<div style="margin-top:8px"><button type="button" style="min-height:44px;padding:0 20px;background:#2A2E3A;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit;font-weight:700;cursor:pointer">Reset search</button></div>
+</section>
+
+<section class="card" aria-labelledby="s6">
+<p class="tag">Roulette · everything watched</p>
+<h2 id="s6">You've watched everything</h2>
+<p>All 214 films on your list are marked as watched. Add more films to keep spinning.</p>
+<div style="margin-top:8px"><a href="film-form.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 20px;background:#FF6B47;color:#12141A;border-radius:8px;font-weight:700;text-decoration:none">Add a film</a></div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

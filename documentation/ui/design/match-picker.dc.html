@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Choose TMDB match</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Hanken Grotesk',system-ui,sans-serif;background:#12141A;color:#F2EFE8}
+a{color:#FF8A6B}a:hover{color:#FFB09A}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #FFD166;outline-offset:2px}
+input[type=radio]:focus-visible{outline:3px solid #FFD166;outline-offset:3px}
+.skip{position:absolute;left:16px;top:-60px;background:#FFD166;color:#12141A;padding:10px 16px;font-weight:700;border-radius:6px}
+.skip:focus{top:12px}
+.in{box-sizing:border-box;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit}
+</style>
+</helmet>
+<div style="min-height:1000px;background:#12141A;color:#F2EFE8;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;flex-direction:column">
+<a class="skip" href="#main">Skip to main content</a>
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:20px 48px;border-bottom:1px solid #3A3F4B">
+<div style="display:flex;align-items:center;gap:12px">
+<svg aria-hidden="true" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#FF6B47" stroke-width="2.5"><circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="3"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6" stroke-linecap="round"/></svg>
+<span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.01em">Watchlist Roulette</span>
+</div>
+<nav aria-label="Main">
+<ul style="display:flex;gap:8px;list-style:none;margin:0;padding:0">
+<li><a href="roulette.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Roulette</a></li>
+<li><a href="watchlist.dc.html" aria-current="page" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;background:#2A2E3A;color:#F2EFE8;text-decoration:none;font-weight:700">Watchlist</a></li>
+<li><a href="import.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Import</a></li>
+</ul>
+</nav>
+</header>
+
+<main id="main" style="flex:1;width:100%;max-width:760px;box-sizing:border-box;margin:0 auto;padding:40px 48px">
+<nav aria-label="Breadcrumb" style="margin-bottom:16px"><a href="watchlist.dc.html">← Back to watchlist</a></nav>
+<h1 style="margin:0 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:40px;letter-spacing:-0.02em">Choose the TMDB match</h1>
+<p style="margin:8px 0 20px;color:#B4B8C2;line-height:1.5">Your film: <strong style="color:#F2EFE8">Cléo from 5 to 7</strong> (1962). TMDB found several films with this title, or the best match belongs to another film on your list.</p>
+<ol style="margin:0 0 24px;padding-left:24px;color:#D5D8E0;line-height:1.7">
+<li><a href="https://www.themoviedb.org/search/movie?query=Cl%C3%A9o">Search TMDB for “Cléo from 5 to 7”<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"> (opens in a new tab)</span></a> and open the right film.</li>
+<li>Copy the address of that page (or the number in it) and paste it below.</li>
+</ol>
+<form style="display:flex;flex-direction:column;gap:24px" novalidate>
+<div><label class="lb" for="tmdb" style="display:block;font-weight:700;margin-bottom:4px">TMDB movie address or number</label>
+<span id="tmdb-hint" style="display:block;font-size:14px;color:#B4B8C2;margin-bottom:8px">For example https://www.themoviedb.org/movie/262543-joy or 262543</span>
+<input id="tmdb" type="text" aria-describedby="tmdb-hint tmdb-err" aria-invalid="true" value="https://example.com/movie/12" style="width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit;border-color:#FFD166">
+<p id="tmdb-err" style="display:flex;gap:8px;align-items:center;margin:8px 0 0;color:#FFD166;font-size:14px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#FFD166" stroke-width="2"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4M8 11v.5" stroke-linecap="round"/></svg>Enter the TMDB number or paste the movie page address from themoviedb.org.</p></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px"><button type="submit" style="min-height:48px;padding:0 28px;background:#FF6B47;color:#12141A;border:0;border-radius:10px;font:inherit;font-size:17px;font-weight:700;cursor:pointer">Use this match</button><a href="watchlist.dc.html" style="display:inline-flex;align-items:center;min-height:48px;padding:0 24px;border:1px solid #7A8090;border-radius:10px;color:#F2EFE8;text-decoration:none">Cancel</a></div>
+</form>
+</main>
+<footer style="border-top:1px solid #3A3F4B;padding:24px 48px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;color:#B4B8C2;font-size:14px"><span role="img" aria-label="TMDB logo (official logo goes here)" style="display:inline-flex;align-items:center;justify-content:center;width:88px;height:22px;border:1px dashed #7A8090;border-radius:4px;font-size:11px;letter-spacing:.06em">TMDB LOGO</span><p style="margin:0;max-width:72ch;line-height:1.5">This product uses the TMDB API but is not endorsed or certified by TMDB. Film data and posters are provided by <a href="https://www.themoviedb.org/">TMDB</a>.</p></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

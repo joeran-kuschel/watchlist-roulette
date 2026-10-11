@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSV import</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Hanken Grotesk',system-ui,sans-serif;background:#12141A;color:#F2EFE8}
+a{color:#FF8A6B}a:hover{color:#FFB09A}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #FFD166;outline-offset:2px}
+.skip{position:absolute;left:16px;top:-60px;background:#FFD166;color:#12141A;padding:10px 16px;font-weight:700;border-radius:6px}
+.skip:focus{top:12px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B;vertical-align:top}
+th{font-size:14px;color:#B4B8C2;font-weight:700;white-space:nowrap}
+</style>
+</helmet>
+<div style="min-height:900px;background:#12141A;color:#F2EFE8;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;flex-direction:column">
+<a class="skip" href="#main">Skip to main content</a>
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:20px 48px;border-bottom:1px solid #3A3F4B">
+<div style="display:flex;align-items:center;gap:12px">
+<svg aria-hidden="true" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#FF6B47" stroke-width="2.5"><circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="3"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6" stroke-linecap="round"/></svg>
+<span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.01em">Watchlist Roulette</span>
+</div>
+<nav aria-label="Main">
+<ul style="display:flex;gap:8px;list-style:none;margin:0;padding:0">
+<li><a href="roulette.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Roulette</a></li>
+<li><a href="watchlist.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Watchlist</a></li>
+<li><a href="import.dc.html" aria-current="page" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;background:#2A2E3A;color:#F2EFE8;text-decoration:none;font-weight:700">Import</a></li>
+</ul>
+</nav>
+</header>
+
+<main id="main" style="flex:1;width:100%;max-width:760px;box-sizing:border-box;margin:0 auto;padding:40px 48px">
+<h1 style="margin:0 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:40px;letter-spacing:-0.02em">Import from CSV</h1>
+<p style="margin:0 0 24px;color:#B4B8C2;line-height:1.5;max-width:64ch">Upload your Letterboxd export. Check the file first: nothing changes until you confirm. Rows that cannot be imported are listed, never skipped silently.</p>
+<form style="display:flex;flex-direction:column;gap:12px;background:#1C1F27;border:1px solid #3A3F4B;border-radius:16px;padding:28px">
+<label for="csv" style="font-weight:700">CSV file</label>
+<span id="csv-hint" style="color:#B4B8C2;font-size:14px">Columns: Date, Name, Year, Letterboxd URI</span>
+<input id="csv" type="file" accept=".csv,text/csv" aria-describedby="csv-hint" style="min-height:44px;color:#F2EFE8;font:inherit">
+<div><button type="submit" style="min-height:48px;padding:0 28px;background:#FF6B47;color:#12141A;border:0;border-radius:10px;font:inherit;font-size:17px;font-weight:700;cursor:pointer">Check file</button></div>
+</form>
+<section aria-labelledby="res-h" style="margin-top:32px;display:flex;flex-direction:column;gap:20px">
+<h2 id="res-h" style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:26px">Check result</h2>
+<dl style="display:flex;flex-wrap:wrap;gap:12px 40px;margin:0;padding:20px 24px;background:#1C1F27;border:1px solid #3A3F4B;border-radius:16px">
+<div><dt style="color:#B4B8C2">Will be added</dt><dd style="margin:0;font-size:28px;font-weight:700">12</dd></div>
+<div><dt style="color:#B4B8C2">Will be updated</dt><dd style="margin:0;font-size:28px;font-weight:700">3</dd></div>
+<div><dt style="color:#B4B8C2">Unchanged</dt><dd style="margin:0;font-size:28px;font-weight:700">180</dd></div>
+<div><dt style="color:#B4B8C2">Will be removed</dt><dd style="margin:0;font-size:28px;font-weight:700">1</dd></div>
+<div><dt style="color:#B4B8C2">Rejected rows</dt><dd style="margin:0;font-size:28px;font-weight:700;color:#FFD166">2</dd></div>
+</dl>
+<section aria-labelledby="rm-h"><h3 id="rm-h" style="margin:0 0 8px;font-size:18px">These films are not in the file and will be removed</h3><ul style="margin:0;padding-left:20px"><li>Metropolis (1927)</li></ul></section>
+<section aria-labelledby="rej-h" style="border:1px solid #FFD166;border-radius:12px;padding:16px 20px"><h3 id="rej-h" style="margin:0 0 8px;font-size:18px">2 rows were rejected</h3>
+<table style="width:100%;border-collapse:collapse"><caption style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Rejected rows</caption>
+<thead><tr><th scope="col" style="text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B;font-size:14px;color:#B4B8C2">Line</th><th scope="col" style="text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B;font-size:14px;color:#B4B8C2">Reason</th></tr></thead>
+<tbody><tr><th scope="row" style="text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B">17</th><td style="text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B">Name is empty</td></tr><tr><th scope="row" style="text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B">88</th><td style="text-align:left;padding:12px 16px;border-bottom:1px solid #3A3F4B">Year must be between 1888 and 2100</td></tr></tbody></table></section>
+<form style="display:flex;flex-direction:column;gap:16px">
+<label style="display:flex;gap:12px;align-items:flex-start;min-height:44px"><input type="checkbox" style="width:24px;height:24px;margin:0;flex:none;accent-color:#FF6B47"><span>I understand that 1 films will be removed from my list.</span></label>
+<div><button type="submit" disabled style="min-height:48px;padding:0 28px;background:transparent;color:#8D93A0;border:1px solid #4A4F5C;border-radius:10px;font:inherit;font-size:17px;font-weight:700">Import films</button></div>
+</form>
+</section>
+</main>
+<footer style="border-top:1px solid #3A3F4B;padding:24px 48px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;color:#B4B8C2;font-size:14px"><span role="img" aria-label="TMDB logo (official logo goes here)" style="display:inline-flex;align-items:center;justify-content:center;width:88px;height:22px;border:1px dashed #7A8090;border-radius:4px;font-size:11px;letter-spacing:.06em">TMDB LOGO</span><p style="margin:0;max-width:72ch;line-height:1.5">This product uses the TMDB API but is not endorsed or certified by TMDB. Film data and posters are provided by <a href="https://www.themoviedb.org/">TMDB</a>.</p></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

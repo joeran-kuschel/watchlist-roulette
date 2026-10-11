@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roulette</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Hanken Grotesk',system-ui,sans-serif;background:#12141A;color:#F2EFE8}
+a{color:#FF8A6B}a:hover{color:#FFB09A}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #FFD166;outline-offset:2px}
+.skip{position:absolute;left:16px;top:-60px;background:#FFD166;color:#12141A;padding:10px 16px;font-weight:700;border-radius:6px}
+.skip:focus{top:12px}
+
+.ib{position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;box-sizing:border-box;padding:0;border-radius:10px;border:1px solid #7A8090;background:transparent;color:#F2EFE8;cursor:pointer;text-decoration:none}
+.ib:hover{color:#F2EFE8;background:#2A2E3A}
+.ib.pri,.ib.pri:hover{background:#FF6B47;border-color:#FF6B47;color:#12141A}
+.ib.lg{width:64px;height:64px;border-radius:50%}
+.ib:disabled{color:#8D93A0;border-color:#4A4F5C;cursor:default;background:transparent}
+.ib .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#F2EFE8;color:#12141A;font-size:13px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;z-index:2}
+.ib:hover .tip,.ib:focus-visible .tip{opacity:1}
+</style>
+</helmet>
+<div style="min-height:900px;background:#12141A;color:#F2EFE8;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;flex-direction:column">
+<a class="skip" href="#main">Skip to main content</a>
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:20px 48px;border-bottom:1px solid #3A3F4B">
+<div style="display:flex;align-items:center;gap:12px">
+<svg aria-hidden="true" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#FF6B47" stroke-width="2.5"><circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="3"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6" stroke-linecap="round"/></svg>
+<span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.01em">Watchlist Roulette</span>
+</div>
+<nav aria-label="Main">
+<ul style="display:flex;gap:8px;list-style:none;margin:0;padding:0">
+<li><a href="roulette.dc.html" aria-current="page" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;background:#2A2E3A;color:#F2EFE8;text-decoration:none;font-weight:700">Roulette</a></li>
+<li><a href="watchlist.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Watchlist</a></li>
+<li><a href="import.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;color:#D5D8E0;text-decoration:none;font-weight:500">Import</a></li>
+</ul>
+</nav>
+</header>
+
+<main id="main" style="flex:1;width:100%;max-width:1280px;box-sizing:border-box;margin:0 auto;padding:40px 48px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+
+<section aria-labelledby="filters-h" style="flex:1 1 280px;max-width:340px;min-width:0">
+<h1 style="margin:0 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:40px;line-height:1.05;letter-spacing:-0.02em">Tonight's film</h1>
+<p style="margin:0 0 28px;color:#B4B8C2;font-size:16px;line-height:1.5">142 unwatched films in your list. Narrow the pool or just spin.</p>
+<form aria-labelledby="filters-h" style="display:flex;flex-direction:column;gap:20px">
+<h2 id="filters-h" style="margin:0;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#B4B8C2;font-weight:700">Filters (optional)</h2>
+<fieldset style="border:0;margin:0;padding:0;display:flex;gap:12px">
+<legend style="padding:0;margin-bottom:8px;font-weight:700">Release year</legend>
+<div style="flex:1;min-width:0"><label for="yf" style="display:block;font-size:14px;color:#B4B8C2;margin-bottom:4px">From</label><input id="yf" type="number" inputmode="numeric" min="1888" max="2100" placeholder="1970" style="width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"></div>
+<div style="flex:1;min-width:0"><label for="yt" style="display:block;font-size:14px;color:#B4B8C2;margin-bottom:4px">To</label><input id="yt" type="number" inputmode="numeric" min="1888" max="2100" placeholder="2026" style="width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"></div>
+</fieldset>
+<div><label for="genre" style="display:block;font-weight:700;margin-bottom:8px">Genre</label>
+<select id="genre" style="width:100%;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"><option>Any genre</option><option>Drama</option><option>Comedy</option><option>Thriller</option></select></div>
+<div><label for="country" style="display:block;font-weight:700;margin-bottom:4px">Country code</label><span id="country-hint" style="display:block;font-size:14px;color:#B4B8C2;margin-bottom:8px">Two letters, for example JP or FR</span>
+<input id="country" type="text" maxlength="2" aria-describedby="country-hint" style="width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"></div>
+<div><label for="rt" style="display:block;font-weight:700;margin-bottom:4px">Max runtime (minutes)</label>
+<input id="rt" type="number" inputmode="numeric" min="1" placeholder="120" style="width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;background:#1C1F27;color:#F2EFE8;border:1px solid #7A8090;border-radius:8px;font:inherit"></div>
+<button class="ib" type="button" style="align-self:flex-start;width:44px;height:44px" aria-label="Clear filters"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg><span class="tip" aria-hidden="true">Clear filters</span></button>
+</form>
+</section>
+
+<section aria-labelledby="pick-h" style="flex:999 1 560px;min-width:0">
+<h2 id="pick-h" class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Your pick</h2>
+<div role="status" aria-live="polite" style="display:flex;flex-wrap:wrap;gap:32px;background:#1C1F27;border:1px solid #3A3F4B;border-radius:16px;padding:32px">
+<div aria-hidden="true" style="flex:0 0 220px;height:330px;border-radius:10px;background:#2A2E3A;border:1px dashed #7A8090;display:flex;align-items:center;justify-content:center;color:#B4B8C2;font-size:14px;text-align:center;padding:12px;box-sizing:border-box">Poster<br>(from TMDB)</div>
+<article style="flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<p style="margin:0;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#FF8A6B;font-weight:700">Picked for you</p>
+<h3 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:44px;line-height:1.05;letter-spacing:-0.02em">Perfect Days</h3>
+<dl style="display:flex;flex-wrap:wrap;gap:8px 24px;margin:0;color:#D5D8E0">
+<div><dt style="display:inline;color:#B4B8C2">Year </dt><dd style="display:inline;margin:0;font-weight:700">2023</dd></div>
+<div><dt style="display:inline;color:#B4B8C2">Runtime </dt><dd style="display:inline;margin:0;font-weight:700">124 min</dd></div>
+<div><dt style="display:inline;color:#B4B8C2">Rating </dt><dd style="display:inline;margin:0;font-weight:700">7.9 / 10</dd></div>
+<div><dt style="display:inline;color:#B4B8C2">Country </dt><dd style="display:inline;margin:0;font-weight:700">JP</dd></div>
+</dl>
+<p style="margin:0;color:#D5D8E0">Directed by <strong>Wim Wenders</strong> · Drama</p>
+<p style="margin:0;color:#D5D8E0;line-height:1.6;max-width:60ch">Sample overview text from TMDB appears here, a few lines at most, so the pick is enough to decide on.</p>
+<p style="margin:0;color:#B4B8C2;font-size:14px">On your list since 12 March 2025 · <a href="https://letterboxd.com/">Open on Letterboxd<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"> (opens in a new tab)</span></a></p>
+</article>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:32px">
+<button class="ib pri lg" type="button" aria-label="Spin again"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></svg><span class="tip" aria-hidden="true">Spin again</span></button>
+<button class="ib lg" type="button" aria-label="Mark as watched"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span class="tip" aria-hidden="true">Mark as watched</span></button>
+</div>
+<p style="margin:16px 0 0;color:#B4B8C2;font-size:14px">Marking a film as watched removes it from future spins.</p>
+</section>
+</main>
+<footer style="border-top:1px solid #3A3F4B;padding:24px 48px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;color:#B4B8C2;font-size:14px"><span role="img" aria-label="TMDB logo (official logo goes here)" style="display:inline-flex;align-items:center;justify-content:center;width:88px;height:22px;border:1px dashed #7A8090;border-radius:4px;font-size:11px;letter-spacing:.06em">TMDB LOGO</span><p style="margin:0;max-width:72ch;line-height:1.5">This product uses the TMDB API but is not endorsed or certified by TMDB. Film data and posters are provided by <a href="https://www.themoviedb.org/">TMDB</a>.</p></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
