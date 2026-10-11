@@ -160,6 +160,7 @@ onBeforeUnmount(() => (store.notice = ''))
                   >
                   <span v-else class="badge">To watch</span>
                   <span v-if="tmdbBadge(film)" class="badge badge--warn">{{ tmdbBadge(film) }}</span>
+                  <span v-else-if="film.tmdb.status === 'pending'" class="badge">Waiting for TMDB data</span>
                 </div>
               </td>
               <td class="watchlist__actions">

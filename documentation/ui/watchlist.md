@@ -24,7 +24,7 @@ Sort choices: `added-desc` (default), `added-asc`, `year-desc`, `year-asc`, `tit
 
 ## Table
 
-A real `<table>` with a hidden caption, column headers and the title as row header. The title links to Letterboxd (new tab) when the film has a link. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups; `pending` and `matched` show nothing extra.
+A real `<table>` with a hidden caption, column headers and the title as row header. The title links to Letterboxd (new tab) when the film has a link. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself). Without a `TMDB_ACCESS_TOKEN` every film stays pending, so every film shows it. `matched` films show nothing extra.
 
 ## States
 
