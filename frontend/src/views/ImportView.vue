@@ -102,7 +102,20 @@ async function apply() {
         :error="fileError"
         v-slot="{ attrs }"
       >
-        <input v-bind="attrs" type="file" accept=".csv,text/csv" @change="onFile" />
+        <div class="filepick">
+          <input
+            v-bind="attrs"
+            class="sr-only"
+            type="file"
+            accept=".csv,text/csv"
+            :aria-describedby="[attrs['aria-describedby'], 'csv-name'].filter(Boolean).join(' ')"
+            @change="onFile"
+          />
+          <!-- A second label for the input: its visible text becomes part of the input's name, so voice control
+               can say what it sees (WCAG 2.5.3). The name is then "CSV file Choose CSV file" -->
+          <label class="btn filepick__button" for="csv">Choose CSV file</label>
+          <span id="csv-name" class="filepick__name">{{ file?.name ?? 'No file chosen' }}</span>
+        </div>
       </FormField>
       <div>
         <button class="btn btn--primary" type="submit" :disabled="busy">
@@ -148,6 +161,24 @@ async function apply() {
 </template>
 
 <style scoped>
+.filepick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.filepick__button {
+  flex: none;
+}
+/* The input is visually hidden, so its own focus ring is clipped: the same ring is drawn on the button instead */
+.filepick input:focus-visible + .filepick__button {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.filepick__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .import__form {
   display: flex;
   flex-direction: column;

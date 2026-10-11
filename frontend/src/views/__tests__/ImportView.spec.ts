@@ -31,6 +31,11 @@ async function choose(wrapper: VueWrapper) {
   Object.defineProperty(input.element, 'files', { value: [file], configurable: true })
   await input.trigger('change')
 }
+async function pick(wrapper: VueWrapper, files: File[]) {
+  const input = wrapper.get('#csv')
+  Object.defineProperty(input.element, 'files', { value: files, configurable: true })
+  await input.trigger('change')
+}
 async function check(wrapper: VueWrapper) {
   await choose(wrapper)
   await wrapper.get('form').trigger('submit')
@@ -49,6 +54,108 @@ describe('ImportView', () => {
     expect(wrapper.get('#csv').attributes('accept')).toBe('.csv,text/csv')
     expect(wrapper.find('#result-heading').exists()).toBe(false)
     await expectNoA11yViolations(wrapper.element)
+  })
+
+  describe('file chooser', () => {
+    it('has a visible button for the input and says no file is chosen', async () => {
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      const button = wrapper.get('label.filepick__button')
+      expect(button.attributes('for')).toBe('csv')
+      expect(button.text()).toBe('Choose CSV file')
+      expect(wrapper.get('#csv-name').text()).toBe('No file chosen')
+      expect(wrapper.get('#csv').classes()).toContain('sr-only')
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('describes the input with the hint and the file name', async () => {
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      expect(wrapper.get('#csv').attributes('aria-describedby')).toBe('csv-hint csv-name')
+      await wrapper.get('form').trigger('submit')
+      expect(wrapper.get('#csv').attributes('aria-describedby')).toBe('csv-hint csv-error csv-name')
+    })
+
+    it('shows the chosen file name, replaces it, and resets when the selection is cleared', async () => {
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      await pick(wrapper, [file])
+      expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+      await pick(wrapper, [new File(['x'], 'other.csv', { type: 'text/csv' })])
+      expect(wrapper.get('#csv-name').text()).toBe('other.csv')
+      await pick(wrapper, [])
+      expect(wrapper.get('#csv-name').text()).toBe('No file chosen')
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('puts the error between the hint and the file name, and removes it when a file is chosen', async () => {
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      await wrapper.get('form').trigger('submit')
+      expect(wrapper.get('#csv').attributes('aria-describedby')).toBe('csv-hint csv-error csv-name')
+      expect(wrapper.get('#csv').attributes('aria-invalid')).toBe('true')
+      await expectNoA11yViolations(wrapper.element)
+      await pick(wrapper, [file])
+      expect(wrapper.get('#csv').attributes('aria-describedby')).toBe('csv-hint csv-name')
+      expect(wrapper.get('#csv').attributes('aria-invalid')).toBeUndefined()
+      expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+    })
+
+    it('opens the file dialog from the button (label for the input)', async () => {
+      const { wrapper } = await mountWithApp(ImportView, '/import', { attachTo: document.body })
+      const click = vi.fn<(e: Event) => void>((e) => e.preventDefault())
+      wrapper.get('#csv').element.addEventListener('click', click)
+      await wrapper.get('label.filepick__button').trigger('click')
+      expect(click).toHaveBeenCalledTimes(1)
+      wrapper.unmount()
+    })
+
+    it('shows file names with HTML characters as plain text', async () => {
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      const name = '<img src=x onerror=alert(1)> & "q".csv'
+      await pick(wrapper, [new File(['x'], name, { type: 'text/csv' })])
+      expect(wrapper.get('#csv-name').text()).toBe(name)
+      expect(wrapper.find('#csv-name img').exists()).toBe(false)
+    })
+
+    it('keeps the file name through the check and the import', async () => {
+      mocked.previewImport.mockResolvedValue(report())
+      mocked.applyImport.mockResolvedValue(report({ applied: true }))
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      await check(wrapper)
+      expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+      await expectNoA11yViolations(wrapper.element)
+      await confirmForm(wrapper).trigger('submit')
+      await flushPromises()
+      expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('shows "No file chosen" again when the selection is cleared after a check', async () => {
+      mocked.previewImport.mockResolvedValue(report())
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      await check(wrapper)
+      await pick(wrapper, [])
+      expect(wrapper.get('#csv-name').text()).toBe('No file chosen')
+      expect(wrapper.find('#result-heading').exists()).toBe(false)
+    })
+
+    it('shows the name of a non-CSV file and leaves the verdict to the backend', async () => {
+      mocked.previewImport.mockRejectedValue(new api.ApiError(400, 'The file is not a CSV.'))
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      const txt = new File(['hello'], 'notes.txt', { type: 'text/plain' })
+      await pick(wrapper, [txt])
+      expect(wrapper.get('#csv-name').text()).toBe('notes.txt')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(mocked.previewImport).toHaveBeenCalledWith(txt)
+      expect(wrapper.get('[role="alert"]').text()).toContain('not a CSV')
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('keeps a very long file name in the page and in the text', async () => {
+      const { wrapper } = await mountWithApp(ImportView, '/import')
+      const name = `${'a'.repeat(200)}.csv`
+      await pick(wrapper, [new File(['x'], name, { type: 'text/csv' })])
+      expect(wrapper.get('#csv-name').text()).toBe(name)
+      await expectNoA11yViolations(wrapper.element)
+    })
   })
 
   it('asks for a file before checking', async () => {

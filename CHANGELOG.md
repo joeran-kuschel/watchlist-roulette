@@ -30,3 +30,4 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Screen readers now start with the action when they read the buttons in the watchlist, for example "Edit film: Perfect Days" instead of "Edit Perfect Days".
 - The watchlist now works on a phone or other small screen: each film is a card with its title, year, date added, status and buttons, so nothing is cut off or hidden off-screen any more.
 - The roulette filters no longer show example values (1970, 2026, 120) inside the empty fields, where they looked like something you had already typed. The examples now appear as a short note next to the field.
+- The CSV import screen has a "Choose CSV file" button that shows the name of the chosen file in English, instead of the browser's own file field.
