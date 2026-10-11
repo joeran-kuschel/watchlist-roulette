@@ -5,7 +5,7 @@ import { ApiError, describeError, getFilm, updateFilm } from '../api'
 import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
-import { parseTmdbId, tmdbSearchUrl } from '../tmdbId'
+import { parseTmdbTitle, tmdbSearchUrl } from '../tmdbId'
 import { useWatchlistStore } from '../stores/watchlist'
 import type { Film } from '../types'
 
@@ -43,15 +43,15 @@ onMounted(load)
 
 async function submit() {
   submitError.value = ''
-  const tmdbId = parseTmdbId(input.value)
-  if (tmdbId === null) {
-    fieldError.value = 'Enter the TMDB number or paste the movie page address from themoviedb.org.'
+  const title = parseTmdbTitle(input.value)
+  if (title === null) {
+    fieldError.value = 'Enter the TMDB number or paste the movie or TV show page address from themoviedb.org.'
     return
   }
   fieldError.value = ''
   saving.value = true
   try {
-    const updated = await updateFilm(Number(route.params.id), { tmdbId })
+    const updated = await updateFilm(Number(route.params.id), { tmdbId: title.id, tmdbMediaType: title.mediaType })
     watchlist.notice = `TMDB id saved for ${updated.title}. Its details load in the background.`
     await router.push('/watchlist')
   } catch (e) {
@@ -87,7 +87,7 @@ async function submit() {
           <a :href="tmdbSearchUrl(film.title)" target="_blank" rel="noopener noreferrer"
             >Search TMDB for “{{ film.title }}”<span class="sr-only"> (opens in a new tab)</span></a
           >
-          and open the right film.
+          and open the right film or TV show.
         </li>
         <li>Copy the address of that page (or the number in it) and paste it below.</li>
       </ol>
@@ -96,8 +96,8 @@ async function submit() {
       <form novalidate @submit.prevent="submit">
         <FormField
           id="tmdb-id"
-          label="TMDB movie address or number"
-          hint="For example https://www.themoviedb.org/movie/262543-joy or 262543"
+          label="TMDB movie or TV show address or number"
+          hint="For example https://www.themoviedb.org/movie/262543-joy or https://www.themoviedb.org/tv/1396. A number alone means a movie."
           :error="fieldError"
           v-slot="{ attrs }"
         >

@@ -1,11 +1,12 @@
 import { getPool, query, withTransaction, type Db } from '../config/database.js'
-import type { TmdbMovie } from '../tmdb/client.js'
+import type { TmdbMediaType, TmdbMovie } from '../tmdb/client.js'
 
 export interface PendingFilm {
   id: number
   title: string
   releaseYear: number | null
   tmdbId: number | null
+  mediaType: TmdbMediaType
 }
 
 export type TmdbStatus = 'pending' | 'matched' | 'ambiguous' | 'not_found' | 'error'
@@ -14,8 +15,14 @@ const MAX_CAST = 10
 
 export async function loadPendingFilms(retryErrors: boolean, db: Db = getPool()): Promise<PendingFilm[]> {
   const statuses = retryErrors ? `('pending', 'error')` : `('pending')`
-  const rows = await query<{ id: string | number; title: string; release_year: number | null; tmdb_id: number | null }>(
-    `SELECT id, title, release_year, tmdb_id FROM films WHERE tmdb_status IN ${statuses} ORDER BY id`,
+  const rows = await query<{
+    id: string | number
+    title: string
+    release_year: number | null
+    tmdb_id: number | null
+    tmdb_media_type: TmdbMediaType
+  }>(
+    `SELECT id, title, release_year, tmdb_id, tmdb_media_type FROM films WHERE tmdb_status IN ${statuses} ORDER BY id`,
     [],
     db,
   )
@@ -24,6 +31,7 @@ export async function loadPendingFilms(retryErrors: boolean, db: Db = getPool())
     title: row.title,
     releaseYear: row.release_year,
     tmdbId: row.tmdb_id,
+    mediaType: row.tmdb_media_type,
   }))
 }
 

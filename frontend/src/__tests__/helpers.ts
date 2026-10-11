@@ -15,7 +15,7 @@ export function makeFilm(overrides: Partial<Film> = {}): Film {
     letterboxdUrl: 'https://boxd.it/abc',
     addedAt: '2025-03-12',
     watchedAt: null,
-    tmdb: { id: 976893, status: 'matched', syncedAt: '2026-10-11T12:00:00.000Z' },
+    tmdb: { id: 976893, mediaType: 'movie', status: 'matched', syncedAt: '2026-10-11T12:00:00.000Z' },
     originalTitle: null,
     tagline: null,
     overview: 'A janitor in Tokyo finds joy in small things.',

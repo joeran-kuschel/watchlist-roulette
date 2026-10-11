@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, describeError } from '../api'
-import { filmFacts, formatDate, formatRuntime, joinNames, text } from '../format'
+import { directorLabel, filmFacts, formatDate, formatRuntime, joinNames, text } from '../format'
 import { makeFilm } from './helpers'
 import { emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
-import { parseTmdbId, tmdbMovieUrl, tmdbSearchUrl } from '../tmdbId'
+import { parseTmdbTitle, tmdbSearchUrl, tmdbTitleUrl } from '../tmdbId'
 import { fromQuery, toListParams, toQuery } from '../watchlistQuery'
 
 describe('format', () => {
@@ -112,22 +112,38 @@ describe('film form validation', () => {
   })
 })
 
-describe('parseTmdbId', () => {
+describe('parseTmdbTitle', () => {
   it.each([
-    ['262543', 262543],
-    ['  262543 ', 262543],
-    ['https://www.themoviedb.org/movie/262543-joy', 262543],
-    ['https://themoviedb.org/movie/262543', 262543],
-    ['http://www.themoviedb.org/movie/12/cast', 12],
-  ])('reads %s', (text, id) => expect(parseTmdbId(text)).toBe(id))
+    ['262543', 262543, 'movie'],
+    ['  262543 ', 262543, 'movie'],
+    ['https://www.themoviedb.org/movie/262543-joy', 262543, 'movie'],
+    ['https://themoviedb.org/movie/262543', 262543, 'movie'],
+    ['http://www.themoviedb.org/movie/12/cast', 12, 'movie'],
+    ['https://www.themoviedb.org/tv/1396', 1396, 'tv'],
+    ['https://www.themoviedb.org/tv/1396-breaking-bad', 1396, 'tv'],
+    ['https://themoviedb.org/tv/1396/seasons?language=en', 1396, 'tv'],
+    ['HTTPS://WWW.THEMOVIEDB.ORG/TV/7#x', 7, 'tv'],
+  ])('reads %s', (text, id, mediaType) => expect(parseTmdbTitle(text)).toEqual({ id, mediaType }))
 
-  it.each(['', 'abc', '0', '-5', '1.5', 'https://example.com/movie/12', 'https://www.themoviedb.org/tv/12'])(
-    'rejects %j',
-    (text) => expect(parseTmdbId(text)).toBeNull(),
-  )
+  it.each([
+    '',
+    'abc',
+    '0',
+    '-5',
+    '1.5',
+    'https://example.com/movie/12',
+    'https://example.com/tv/12',
+    'https://www.themoviedb.org/person/12',
+    'https://www.themoviedb.org/tv/',
+    'https://www.themoviedb.org/tv/abc',
+    'https://www.themoviedb.org/tv/0',
+    'https://www.themoviedb.org.evil.test/tv/12',
+    'javascript:alert(1)',
+    '99999999999999999999',
+  ])('rejects %j', (text) => expect(parseTmdbTitle(text)).toBeNull())
 
-  it('builds an encoded search link', () => {
-    expect(tmdbSearchUrl('Cléo & Co')).toBe('https://www.themoviedb.org/search/movie?query=Cl%C3%A9o%20%26%20Co')
+  it('builds an encoded search link that finds movies and shows', () => {
+    expect(tmdbSearchUrl('Cléo & Co')).toBe('https://www.themoviedb.org/search?query=Cl%C3%A9o%20%26%20Co')
   })
 })
 
@@ -322,14 +338,14 @@ describe('film form validation: edge cases', () => {
   })
 })
 
-describe('parseTmdbId: edge cases', () => {
+describe('parseTmdbTitle: edge cases', () => {
   it.each([
     ['https://www.themoviedb.org/movie/12?language=de', 12],
     ['https://www.themoviedb.org/movie/12#cast', 12],
     ['HTTPS://WWW.THEMOVIEDB.ORG/movie/12', 12],
     ['007', 7],
     ['  https://www.themoviedb.org/movie/5-x  ', 5],
-  ])('reads %s', (value, id) => expect(parseTmdbId(value)).toBe(id))
+  ])('reads %s', (value, id) => expect(parseTmdbTitle(value)).toEqual({ id, mediaType: 'movie' }))
 
   it.each([
     '99999999999999999999',
@@ -341,10 +357,10 @@ describe('parseTmdbId: edge cases', () => {
     'https://www.themoviedb.org.evil.org/movie/12',
     'ftp://www.themoviedb.org/movie/12',
     '12 13',
-  ])('rejects %j', (value) => expect(parseTmdbId(value)).toBeNull())
+  ])('rejects %j', (value) => expect(parseTmdbTitle(value)).toBeNull())
 
   it('encodes a title with slashes, quotes and emoji in the search link', () => {
-    expect(tmdbSearchUrl('a/b "c" 🎬')).toBe('https://www.themoviedb.org/search/movie?query=a%2Fb%20%22c%22%20%F0%9F%8E%AC')
+    expect(tmdbSearchUrl('a/b "c" 🎬')).toBe('https://www.themoviedb.org/search?query=a%2Fb%20%22c%22%20%F0%9F%8E%AC')
   })
 })
 
@@ -381,13 +397,14 @@ describe('watchlist query: edge cases', () => {
   })
 })
 
-describe('tmdbMovieUrl', () => {
-  it('points at the movie page', () => {
-    expect(tmdbMovieUrl(262543)).toBe('https://www.themoviedb.org/movie/262543')
+describe('tmdbTitleUrl', () => {
+  it('points at the movie or the show page', () => {
+    expect(tmdbTitleUrl(262543, 'movie')).toBe('https://www.themoviedb.org/movie/262543')
+    expect(tmdbTitleUrl(1396, 'tv')).toBe('https://www.themoviedb.org/tv/1396')
   })
 
-  it('builds an address that parseTmdbId reads back', () => {
-    expect(parseTmdbId(tmdbMovieUrl(976893))).toBe(976893)
+  it.each(['movie', 'tv'] as const)('builds an address that parseTmdbTitle reads back for a %s', (mediaType) => {
+    expect(parseTmdbTitle(tmdbTitleUrl(976893, mediaType))).toEqual({ id: 976893, mediaType })
   })
 })
 
@@ -421,3 +438,19 @@ describe('filmFacts', () => {
     expect(filmFacts(makeFilm({ runtimeMinutes: 0 })).find((f) => f.label === 'Runtime')?.value).toBe('0 min')
   })
 })
+
+describe('film facts and labels for a TV show', () => {
+  const tv = makeFilm({ tmdb: { id: 1396, mediaType: 'tv', status: 'matched', syncedAt: null } })
+
+  it('calls the runtime of a show the episode runtime, and of a movie the runtime', () => {
+    expect(filmFacts(tv).map((f) => f.label)).toContain('Episode runtime')
+    expect(filmFacts(tv).map((f) => f.label)).not.toContain('Runtime')
+    expect(filmFacts(makeFilm()).map((f) => f.label)).toContain('Runtime')
+  })
+
+  it('says "Created by" for a show and "Directed by" for a movie', () => {
+    expect(directorLabel(tv)).toBe('Created by')
+    expect(directorLabel(makeFilm())).toBe('Directed by')
+  })
+})
+

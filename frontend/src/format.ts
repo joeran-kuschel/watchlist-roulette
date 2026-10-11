@@ -36,7 +36,7 @@ export function filmFacts(film: Film, detailed = false): Fact[] {
   const votes = detailed && film.voteCount ? ` (${film.voteCount.toLocaleString('en-GB')} votes)` : ''
   const facts: { label: string; value: string | number | null }[] = [
     { label: 'Year', value: film.releaseYear },
-    { label: 'Runtime', value: formatRuntime(film.runtimeMinutes) },
+    { label: film.tmdb.mediaType === 'tv' ? 'Episode runtime' : 'Runtime', value: formatRuntime(film.runtimeMinutes) },
     {
       label: detailed ? 'TMDB rating' : 'Rating',
       value: film.voteAverage === null ? null : `${film.voteAverage.toFixed(1)} / 10${votes}`,
@@ -45,3 +45,6 @@ export function filmFacts(film: Film, detailed = false): Fact[] {
   ]
   return facts.filter((fact): fact is Fact => fact.value !== null && fact.value !== '')
 }
+
+/** TMDB lists the creators of a show where it lists the director of a movie. */
+export const directorLabel = (film: Film) => (film.tmdb.mediaType === 'tv' ? 'Created by' : 'Directed by')

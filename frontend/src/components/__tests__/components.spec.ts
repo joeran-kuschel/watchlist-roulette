@@ -131,6 +131,14 @@ describe('PosterImage', () => {
 })
 
 describe('FilmCard', () => {
+  it('says "Created by" and "Episode runtime" for a TV show', () => {
+    const show = makeFilm({ tmdb: { id: 1396, mediaType: 'tv', status: 'matched', syncedAt: null } })
+    const text = mount(FilmCard, { props: { film: show } }).text()
+    expect(text).toContain('Created by Wim Wenders')
+    expect(text).not.toContain('Directed by')
+    expect(text).toContain('Episode runtime')
+  })
+
   it('shows the film details', async () => {
     const wrapper = mount(FilmCard, { props: { film: makeFilm() }, attachTo: document.body })
     const text = wrapper.text()

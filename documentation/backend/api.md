@@ -23,7 +23,7 @@ Errors have the form `{ "error": "message" }`; validation errors (`400`) add `is
 {
   "id": 1, "title": "Joy", "releaseYear": 2015, "letterboxdUrl": "https://boxd.it/8kEU",
   "addedAt": "2020-01-12", "watchedAt": null,
-  "tmdb": { "id": 262543, "status": "matched", "syncedAt": "2026-10-11T12:00:00.000Z" },
+  "tmdb": { "id": 262543, "mediaType": "movie", "status": "matched", "syncedAt": "2026-10-11T12:00:00.000Z" },
   "originalTitle": "Joy", "tagline": "…", "overview": "…", "runtimeMinutes": 124,
   "voteAverage": 6.6, "voteCount": 4000, "posterPath": "/p.jpg", "backdropPath": "/b.jpg",
   "countries": ["US"], "genres": [{ "id": 18, "name": "Drama" }],
@@ -43,9 +43,9 @@ Body: `title` (required), `releaseYear`, `letterboxdUrl` (http/https), `addedAt`
 
 ## `PATCH /api/films/:id`
 
-Any of: `title`, `releaseYear` (or `null`), `letterboxdUrl` (or `null`), `addedAt`, `watched` (`true` sets `watchedAt` unless already set, `false` clears it), `tmdbId`. At least one field is required.
+Any of: `title`, `releaseYear` (or `null`), `letterboxdUrl` (or `null`), `addedAt`, `watched` (`true` sets `watchedAt` unless already set, `false` clears it), `tmdbId`, `tmdbMediaType` (`movie` or `tv`; needs a `tmdbId`). At least one field is required.
 
-Setting `tmdbId` puts the film back to `pending` and starts a TMDB run that loads this id's data. `409` if another film already has that id.
+Setting `tmdbId` puts the film back to `pending` and starts a TMDB run that loads this id's data. Without `tmdbMediaType` the id is a movie's, also for a film that was a TV show before. `409` if another film already has that id for that media type; the same number as a movie and as a show can both be on the list.
 
 ## `GET /api/films/random`
 

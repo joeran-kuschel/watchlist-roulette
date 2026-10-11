@@ -24,9 +24,30 @@ export interface TmdbMovie {
   }
 }
 
+/** What TMDB sends for a TV show; `tvToMovie` turns it into a `TmdbMovie`, the shape the model stores. */
+export interface TmdbTv {
+  id: number
+  name: string
+  original_name: string
+  tagline?: string
+  overview?: string
+  episode_run_time?: number[]
+  vote_average?: number
+  vote_count?: number
+  poster_path?: string | null
+  backdrop_path?: string | null
+  genres: { id: number; name: string }[]
+  origin_country?: string[]
+  created_by?: { id: number; name: string }[]
+  credits?: { cast: { id: number; name: string; order: number }[] }
+}
+
+export type TmdbMediaType = 'movie' | 'tv'
+
 export interface TmdbClient {
   searchMovie(title: string): Promise<TmdbSearchResult[]>
   getMovie(id: number): Promise<TmdbMovie | null>
+  getTv(id: number): Promise<TmdbTv | null>
 }
 
 export class TmdbError extends Error {
@@ -69,5 +90,6 @@ export function createTmdbClient(accessToken: string, language: string, fetchFn:
       return Array.isArray(data?.results) ? data.results : []
     },
     getMovie: (id) => get<TmdbMovie>(`/movie/${id}`, { append_to_response: 'credits' }),
+    getTv: (id) => get<TmdbTv>(`/tv/${id}`, { append_to_response: 'credits' }),
   }
 }

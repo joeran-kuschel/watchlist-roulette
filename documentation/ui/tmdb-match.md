@@ -4,15 +4,15 @@ Route `/watchlist/:id/match`. Fixes a film whose automatic TMDB lookup failed. C
 
 ## Why it works by id
 
-The backend has no endpoint that lists TMDB candidates. A match is fixed by sending the TMDB movie id (see [TMDB enrichment](../backend/tmdb-enrichment.md#fixing-a-match)). So the screen:
+The backend has no endpoint that lists TMDB candidates. A match is fixed by sending the TMDB id and its kind, movie or TV show (see [TMDB enrichment](../backend/tmdb-enrichment.md#fixing-a-match)). So the screen:
 
 1. explains why the film has no match (from `tmdb.status`: `ambiguous`, `not_found`, `error`, `pending`, `matched`),
 2. links to a TMDB search for the film's title (new tab),
-3. takes the movie's page address (or the number in it) and sends `PATCH /api/films/:id` with `{ "tmdbId": <id> }`.
+3. takes the page address of the movie or TV show (or a number, which means a movie) and sends `PATCH /api/films/:id` with `{ "tmdbId": <id>, "tmdbMediaType": "movie" | "tv" }`.
 
 ## Input
 
-`parseTmdbId()` accepts `262543` or `https://www.themoviedb.org/movie/262543-joy` (also without `www`, with a trailing path). Anything else shows "Enter the TMDB number or paste the movie page address…" and no request is sent.
+`parseTmdbTitle()` accepts `https://www.themoviedb.org/movie/262543-joy` and `https://www.themoviedb.org/tv/1396` (also without `www`, with a trailing path) and returns the id and the kind. A bare number such as `262543` means a movie, because TMDB numbers movies and shows separately and a number alone cannot name a show; the hint under the field says so. Anything else shows "Enter the TMDB number or paste the movie or TV show page address…" and no request is sent. The search link goes to TMDB's search for all kinds of titles.
 
 ## Result
 

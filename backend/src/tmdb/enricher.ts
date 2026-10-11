@@ -1,7 +1,8 @@
 import { isUniqueViolation } from '../errors.js'
 import { loadPendingFilms, saveMovie, setStatus, type PendingFilm } from '../models/tmdb.js'
-import { TmdbError, type TmdbClient } from './client.js'
+import { TmdbError, type TmdbClient, type TmdbMovie } from './client.js'
 import { chooseMatch } from './match.js'
+import { tvToMovie } from './tv.js'
 
 export interface Enricher {
   /** Starts a run in the background; resolves when it (and any follow-up run) is done. */
@@ -18,7 +19,13 @@ const isAuthFailure = (error: unknown) => error instanceof TmdbError && error.st
 const isTransient = (error: unknown) =>
   error instanceof TmdbError && (error.status === undefined || error.status === 429 || error.status >= 500)
 
-/** Looks one film up on TMDB and stores the result (or why there is none). */
+async function fetchTitle(client: TmdbClient, film: PendingFilm, tmdbId: number): Promise<TmdbMovie | null> {
+  if (film.mediaType === 'movie') return client.getMovie(tmdbId)
+  const show = await client.getTv(tmdbId)
+  return show && tvToMovie(show)
+}
+
+/** Looks one film up on TMDB and stores the result (or why there is none). Only movies are searched by title. */
 async function enrichFilm(client: TmdbClient, film: PendingFilm): Promise<void> {
   let tmdbId = film.tmdbId
   if (tmdbId === null) {
@@ -26,7 +33,7 @@ async function enrichFilm(client: TmdbClient, film: PendingFilm): Promise<void> 
     if (match.status !== 'matched') return setStatus(film.id, match.status)
     tmdbId = match.tmdbId
   }
-  const movie = await client.getMovie(tmdbId)
+  const movie = await fetchTitle(client, film, tmdbId)
   if (!movie) return setStatus(film.id, 'not_found')
   try {
     await saveMovie(film.id, movie)

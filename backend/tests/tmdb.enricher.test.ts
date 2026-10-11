@@ -42,6 +42,7 @@ const movie = (id: number, extra: Partial<TmdbMovie> = {}): TmdbMovie => ({
 const client = (overrides: Partial<TmdbClient> = {}): TmdbClient => ({
   searchMovie: vi.fn().mockResolvedValue([{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }]),
   getMovie: vi.fn().mockResolvedValue(movie(100)),
+  getTv: vi.fn().mockResolvedValue(null),
   ...overrides,
 })
 

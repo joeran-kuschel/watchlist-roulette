@@ -11,6 +11,7 @@ interface FilmRow {
   added_at: string | Date
   watched_at: Date | null
   tmdb_id: number | null
+  tmdb_media_type: 'movie' | 'tv'
   tmdb_status: string
   tmdb_synced_at: Date | null
   original_title: string | null
@@ -36,7 +37,7 @@ export interface Film {
   letterboxdUrl: string | null
   addedAt: string
   watchedAt: string | null
-  tmdb: { id: number | null; status: string; syncedAt: string | null }
+  tmdb: { id: number | null; mediaType: 'movie' | 'tv'; status: string; syncedAt: string | null }
   originalTitle: string | null
   tagline: string | null
   overview: string | null
@@ -64,6 +65,7 @@ function toFilm(row: FilmRow): Film {
     watchedAt: row.watched_at?.toISOString() ?? null,
     tmdb: {
       id: row.tmdb_id,
+      mediaType: row.tmdb_media_type,
       status: row.tmdb_status,
       syncedAt: row.tmdb_synced_at?.toISOString() ?? null,
     },
@@ -199,6 +201,7 @@ export async function updateFilm(id: number, patch: FilmPatch, db: Db = getPool(
     if (value !== undefined) set(column, value)
   }
   if (patch.tmdbId !== undefined) {
+    set('tmdb_media_type', patch.tmdbMediaType ?? 'movie')
     sets.push(`tmdb_status = 'pending'`)
   }
   if (patch.watched === false) sets.push('watched_at = NULL')
