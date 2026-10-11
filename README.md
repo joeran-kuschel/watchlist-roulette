@@ -25,7 +25,10 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 
 ## Project Setup
 
+The Vue app lives in `frontend/`; run the commands below from there.
+
 ```sh
+cd frontend
 npm install
 ```
 
