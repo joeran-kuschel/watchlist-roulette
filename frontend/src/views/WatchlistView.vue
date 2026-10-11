@@ -125,27 +125,29 @@ onBeforeUnmount(() => (store.notice = ''))
 
     <template v-else-if="store.status === 'ready'">
       <div class="table-wrap">
-        <table class="watchlist__table">
+        <!-- The roles repeat what the elements already mean. On small screens CSS turns the rows into cards, and
+             some screen readers (VoiceOver) then drop the table meaning unless it is stated -->
+        <table class="watchlist__table" role="table">
           <caption class="sr-only">
             Films on your watchlist
           </caption>
-          <thead>
-            <tr>
-              <th scope="col">Title</th>
-              <th scope="col">Year</th>
-              <th scope="col">Added</th>
-              <th scope="col">Status</th>
-              <th scope="col"><span class="sr-only">Actions</span></th>
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Title</th>
+              <th scope="col" role="columnheader">Year</th>
+              <th scope="col" role="columnheader">Added</th>
+              <th scope="col" role="columnheader">Status</th>
+              <th scope="col" role="columnheader"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="film in store.items" :key="film.id">
-              <th scope="row">
+          <tbody role="rowgroup">
+            <tr v-for="film in store.items" :key="film.id" role="row">
+              <th scope="row" role="rowheader">
                 <RouterLink class="watchlist__title" :to="`/watchlist/${film.id}`">{{ film.title }}</RouterLink>
               </th>
-              <td>{{ film.releaseYear ?? '—' }}</td>
-              <td>{{ formatDate(film.addedAt) }}</td>
-              <td>
+              <td role="cell" class="watchlist__year">{{ film.releaseYear ?? '—' }}</td>
+              <td role="cell" class="watchlist__added">{{ formatDate(film.addedAt) }}</td>
+              <td role="cell" class="watchlist__status-cell">
                 <div class="watchlist__status">
                   <span v-if="film.watchedAt" class="badge badge--done"
                     >Watched {{ formatDate(film.watchedAt) }}</span
@@ -155,7 +157,7 @@ onBeforeUnmount(() => (store.notice = ''))
                   <span v-else-if="film.tmdb.status === 'pending'" class="badge">Waiting for TMDB data</span>
                 </div>
               </td>
-              <td class="watchlist__actions">
+              <td role="cell" class="watchlist__actions">
                 <IconButton
                   v-if="film.watchedAt"
                   :label="`Mark as unwatched: ${film.title}`"
@@ -248,6 +250,85 @@ onBeforeUnmount(() => (store.notice = ''))
 }
 .watchlist__actions > * + * {
   margin-left: 8px;
+}
+/* Phones and small tablets: one card per film instead of a table that is wider than the screen (WCAG 1.4.10).
+   The markup stays a table; the column headers are hidden visually but stay for screen readers. */
+@media (max-width: 800px) {
+  .table-wrap {
+    overflow: visible;
+    border: 0;
+    background: none;
+  }
+  .watchlist__table {
+    min-width: 0;
+  }
+  .watchlist__table,
+  .watchlist__table tbody {
+    display: block;
+  }
+  .watchlist__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .watchlist__table tbody tr {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'title title'
+      'year added'
+      'status status'
+      'actions actions';
+    gap: 8px 6px;
+    margin-bottom: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  .watchlist__table tbody tr > * {
+    padding: 0;
+    border: 0;
+  }
+  .watchlist__table tbody th {
+    grid-area: title;
+    overflow-wrap: anywhere;
+  }
+  .watchlist__year {
+    grid-area: year;
+  }
+  .watchlist__added {
+    grid-area: added;
+  }
+  .watchlist__year,
+  .watchlist__added {
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  /* The second declaration has an empty alternative text after the slash, which keeps this decoration out of the
+     reading of screen readers (they get the column name from the table). Browsers that do not know that syntax
+     (Firefox before 128, Safari before 17.4) skip it and keep the first one, so the label is never lost. */
+  .watchlist__added::before {
+    content: '· Added ';
+    content: '· Added ' / '';
+  }
+  .watchlist__status-cell {
+    grid-area: status;
+  }
+  .watchlist__actions {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    text-align: left;
+    white-space: normal;
+  }
+  .watchlist__actions > * + * {
+    margin-left: 0;
+  }
 }
 .watchlist__pages {
   display: flex;

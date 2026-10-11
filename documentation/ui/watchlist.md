@@ -26,6 +26,18 @@ Sort choices: `added-desc` (default), `added-asc`, `year-desc`, `year-asc`, `tit
 
 A real `<table>` with a hidden caption, column headers and the title as row header. The title links to the film's [details page](film-details.md), in the same tab; the Letterboxd and TMDB links are on that page. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself). Without a `TMDB_ACCESS_TOKEN` every film stays pending, so every film shows it. `matched` films show nothing extra.
 
+### On small screens
+
+Up to 800 px wide (phones and small tablets) the table does not fit, so each film is shown as a **card** instead (WCAG 1.4.10, reflow: no horizontal scrolling at 320 px). It is still the same `<table>`; only CSS changes (`WatchlistView.vue`, media query `max-width: 800px`):
+
+- the title (the link to the film's page), then "year · Added *date*", then the status badges, then the action buttons, which are always on screen,
+- the column headers are hidden visually but stay in the page for screen readers,
+- the word "Added" before the date is drawn by CSS with an empty alternative text, so screen readers do not read it twice (they get the column name from the table). Browsers that do not know that syntax (Firefox before 128, Safari before 17.4) keep a plain version of it, so the label is never lost; there a screen reader may read "Added" twice.
+
+Because some screen readers (VoiceOver) drop the table meaning when a table is styled as blocks, the table, row groups, rows, headers and cells carry explicit ARIA roles (`table`, `rowgroup`, `row`, `columnheader`, `rowheader`, `cell`). They repeat what the elements already mean, on purpose. Above 800 px (and at widths in between, such as 800.4 px when zoomed) the normal table is shown, with a minimum width of 720 px; the card layout is the only thing the media query changes.
+
+The layout is checked in a real browser (`e2e/app.spec.ts`) at 320, 375 and 799 px (no page wider than the screen, every action button on screen, headers hidden but present) and at 801 px (table with visible headers).
+
 ## States
 
 Loading, load error with **Try again**, an empty list ("Your watchlist is empty", with links to import and add), and no results for a search ("No films match your search", with **Reset search**). A `role="status"` line below the filters announces results of actions ("X is marked as watched.", "X was added.") and is cleared when the screen is left.
