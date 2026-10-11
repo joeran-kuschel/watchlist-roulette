@@ -1,0 +1,14 @@
+# Settings that are not secret. The database login lives in the Secret "watchlist-db" and the TMDB token in
+# "watchlist-tmdb"; k8s/deploy.sh creates both (they are not in git).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: watchlist-config
+data:
+  NODE_ENV: "production"
+  # "true" for a remote database that requires SSL, "false" for the in-cluster Postgres
+  DB_SSL: "false"
+  # Addresses the frontend is opened at, comma-separated. Only these may write to the API from a browser.
+  # Set it together with the host in ingress.yaml.
+  CORS_ORIGIN: "http://watchlist.local"
+  TMDB_LANGUAGE: "en-US"

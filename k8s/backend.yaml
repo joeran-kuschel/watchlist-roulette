@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      initContainers:
+        # waits for the database named in DATABASE_URL (the in-cluster one or a remote one)
+        - name: wait-for-db
+          image: postgres:17-alpine
+          command: [sh, -c, 'until pg_isready -d "$DATABASE_URL"; do echo "Waiting for PostgreSQL"; sleep 2; done']
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: watchlist-db, key: DATABASE_URL } }
+      containers:
+        - name: backend
+          # the tag is replaced with the freshly built one by deploy.sh
+          image: watchlist-backend:dev
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: watchlist-config
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: watchlist-db, key: DATABASE_URL } }
+            - name: TMDB_ACCESS_TOKEN
+              valueFrom: { secretKeyRef: { name: watchlist-tmdb, key: TMDB_ACCESS_TOKEN, optional: true } }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+          livenessProbe:
+            httpGet: { path: /health, port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /health, port: 3000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  # reached through the Ingress, not published on the host
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+  selector:
+    app: backend

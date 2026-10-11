@@ -29,7 +29,7 @@ Watchlist Roulette: keep a movie watchlist in a database and let the app pick a 
 
 ## Current decisions
 
-- Run locally with Docker Compose on Docker Desktop. Kubernetes manifests (`k8s/`) come later; do not add them before it is asked for.
+- Two ways to run locally: Docker Compose (`docker-compose.yml`) and Docker Desktop's Kubernetes (`k8s/`, context `docker-desktop`, namespace `watchlist-roulette`, served at `http://watchlist.local` through the nginx ingress controller shared with `dinner-planner` and `time-tracking`). Never target another kube context, and never install or change the shared ingress controller. Keep both ways working: a change that cannot be deployed with `./k8s/deploy.sh` and reached at `http://watchlist.local` is not finished.
 - The watchlist lives in a PostgreSQL container with a named volume. A remote database must stay possible through `DATABASE_URL`.
 - Films are imported from a user-provided CSV with the columns: movie name, date added, Letterboxd link, release year. The exact header names and date format are confirmed when the file arrives; the import must report rows it rejects instead of skipping them silently.
 - User-facing docs (README.md) are written in English. Feature documentation in `documentation/` is English too.
@@ -40,7 +40,7 @@ Watchlist Roulette: keep a movie watchlist in a database and let the app pick a 
 - **Frontend** (`frontend/`): Vue 3 (`<script setup>`, TypeScript), Vite, Pinia, Vue Router. Tests: Vitest + Vue Test Utils, Playwright for e2e. Lint: oxlint + ESLint, format: Prettier
 - **Backend** (`backend/`): Node.js 24, Express 5, `pg`, `zod`, `csv-parse`, `multer`, TypeScript (ESM). Structure: `src/routes`, `src/controllers`, `src/models`, `src/config`, `src/import` (CSV parsing and import plan), `src/tmdb` (client, matching, enricher). Tests: Vitest, with pg-mem for SQL
 - **Database**: PostgreSQL. Schema in `backend/migrations/*.sql`
-- **Deployment**: `docker-compose.yml` (frontend served by nginx, which forwards `/api` to the backend; backend; postgres). Kubernetes later
+- **Deployment**: `docker-compose.yml` (frontend served by nginx, which forwards `/api` to the backend; backend; postgres) and `k8s/` (manifests, `deploy.sh`, backup and restore scripts; see `k8s/README.md` and `documentation/backend/kubernetes.md`)
 
 Feature details, endpoints and known gaps are documented per feature in `documentation/` (index: `documentation/README.md`).
 
@@ -78,6 +78,10 @@ cd backend && npm run dev
 
 # Run everything in Docker Desktop
 docker compose up --build
+
+# Deploy to Docker Desktop's Kubernetes (builds, loads the images into the node, applies k8s/)
+./k8s/deploy.sh
+./k8s/backup-db.sh        # the volume is lost on a Docker Desktop reset; an hourly job: ./k8s/install-backup-job.sh
 docker compose down        # keeps the database volume
 docker compose down -v     # deletes the database volume (and all data)
 ```
@@ -86,17 +90,20 @@ docker compose down -v     # deletes the database volume (and all data)
 
 - Configuration comes from environment variables (`DATABASE_URL`, `DB_SSL`, `CORS_ORIGIN`, `TMDB_ACCESS_TOKEN`, `TMDB_LANGUAGE`, …), documented in `.env.example` and passed by `docker-compose.yml`. Add every new setting to both and to the docs.
 - `DB_SSL` (`"true"`/`"false"`) turns SSL on for the database connection, independent of `NODE_ENV`.
-- Credentials in the repo are local placeholders only. Real secrets never go into git.
+- Credentials in the repo are local placeholders only. Real secrets never go into git. On Kubernetes the Secrets `watchlist-db` and `watchlist-tmdb` are created by `k8s/deploy.sh` and are not in `k8s/`; `watchlist-db` is never replaced once it exists.
+- Settings that are not secret live in `k8s/configmap.yaml`. `CORS_ORIGIN` there must match the host in `k8s/ingress.yaml`.
 
 ## Migrations
 
 - Schema changes are new numbered files in `backend/migrations/`; never edit an applied migration.
-- Postgres runs init scripts only on first start with an empty volume. An existing volume needs the SQL applied by hand (or a migration runner, once we add one — ask first).
+- After adding or changing a file in `backend/migrations/`, run `./k8s/generate-init-scripts.sh` to regenerate `k8s/postgres-init-scripts.yaml`. Never edit the generated file by hand. A test fails if the two drift apart.
+- Postgres runs init scripts only on first start with an empty volume. An existing volume (Compose or Kubernetes) needs the SQL applied by hand (or a migration runner, once we add one — ask first).
 - A remote database needs the schema applied by hand.
 
 ## Testing
 
 - Backend model tests run real SQL against the migrations in pg-mem. API tests (`films.api`, `import.api`) call the Express app with supertest on a pg-mem database and a fake enricher. Pure logic (CSV, plan, matching) is tested without a database. What pg-mem can't do (`LIKE ... ESCAPE`, rollback) is covered by `postgres.integration.test.ts` against a real PostgreSQL via `TEST_DATABASE_URL`.
+- `k8s-manifests.test.ts` checks the manifests with `js-yaml` (no Secrets in git, init scripts in sync, services match deployments, ingress matches `CORS_ORIGIN`); `k8s-scripts.test.ts` runs the backup and restore scripts against a fake `kubectl` on the `PATH`.
 - Never put the TMDB token in tests; the TMDB client is tested with a fake `fetch`.
 - Frontend unit tests sit next to the code in `__tests__/` folders (the create-vue layout) and use Vitest + Vue Test Utils. Add an `axe` accessibility check for every new component.
 - axe runs in jsdom, where color contrast can't be checked. Check contrast in a real browser.

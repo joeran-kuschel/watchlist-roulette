@@ -10,6 +10,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Added enrichment from TMDB: poster, overview, tagline, runtime, rating, country, genres, director and cast, with a way to fix films that couldn't be matched.
 - Added Docker Compose to run the app on Docker Desktop. The app and the API are only reachable from this computer, and the containers restart on their own.
 - Writes to the API from web pages on other sites are refused.
+- Added a Kubernetes setup for Docker Desktop: one command deploys the app at http://watchlist.local next to the other apps, with backup and restore scripts and an optional hourly backup job.
 - Added the roulette screen: pick a random unwatched film, narrow the pool by release year, genre, country and runtime, spin again, and mark the film as watched.
 - Added the watchlist screen: browse all films, search by title, show all, unwatched or watched films, sort, and page through the list. Films can be marked watched or unwatched from the list.
 - Added adding, editing and deleting a film from the watchlist.
