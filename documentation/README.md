@@ -19,6 +19,7 @@ Every feature is documented here, split into UI and backend.
 - [App shell](ui/app-shell.md): layout, routes, API module, shared components, styling
 - [Roulette](ui/roulette.md): pick a random film, with filters
 - [Watchlist](ui/watchlist.md): the list of films, search, sort, paging
+- [Film details](ui/film-details.md): the page behind a film's title, with Letterboxd and TMDB links
 - [Add and edit a film](ui/film-form.md): the film form and deleting
 - [Choosing the TMDB match](ui/tmdb-match.md): fix a film's TMDB match by id
 - [CSV import](ui/import.md): check, confirm, import

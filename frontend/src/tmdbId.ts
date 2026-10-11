@@ -13,3 +13,5 @@ export function parseTmdbId(text: string): number | null {
 
 export const tmdbSearchUrl = (title: string) =>
   `https://www.themoviedb.org/search/movie?query=${encodeURIComponent(title)}`
+
+export const tmdbMovieUrl = (id: number) => `https://www.themoviedb.org/movie/${id}`

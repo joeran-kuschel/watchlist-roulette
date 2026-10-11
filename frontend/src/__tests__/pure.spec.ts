@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, describeError } from '../api'
-import { formatDate, formatRuntime, joinNames, text } from '../format'
+import { filmFacts, formatDate, formatRuntime, joinNames, text } from '../format'
+import { makeFilm } from './helpers'
 import { emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
-import { parseTmdbId, tmdbSearchUrl } from '../tmdbId'
+import { parseTmdbId, tmdbMovieUrl, tmdbSearchUrl } from '../tmdbId'
 import { fromQuery, toListParams, toQuery } from '../watchlistQuery'
 
 describe('format', () => {
@@ -377,5 +378,46 @@ describe('watchlist query: edge cases', () => {
     expect(params('added-asc')).toMatchObject({ sort: 'added_at', order: 'asc' })
     expect(params('year-asc')).toMatchObject({ sort: 'release_year', order: 'asc' })
     expect(params('title')).toMatchObject({ sort: 'title', order: 'asc' })
+  })
+})
+
+describe('tmdbMovieUrl', () => {
+  it('points at the movie page', () => {
+    expect(tmdbMovieUrl(262543)).toBe('https://www.themoviedb.org/movie/262543')
+  })
+
+  it('builds an address that parseTmdbId reads back', () => {
+    expect(parseTmdbId(tmdbMovieUrl(976893))).toBe(976893)
+  })
+})
+
+describe('filmFacts', () => {
+  it('lists year, runtime, rating and country of a film', () => {
+    const film = makeFilm({ countries: ['JP', 'DE'], voteAverage: 7.94, voteCount: 12345 })
+    expect(filmFacts(film)).toEqual([
+      { label: 'Year', value: 2023 },
+      { label: 'Runtime', value: '124 min' },
+      { label: 'Rating', value: '7.9 / 10' },
+      { label: 'Country', value: 'JP, DE' },
+    ])
+  })
+
+  it('adds the vote count and calls the rating "TMDB rating" when detailed', () => {
+    const facts = filmFacts(makeFilm({ voteAverage: 7.9, voteCount: 12345 }), true)
+    expect(facts.find((f) => f.label === 'TMDB rating')?.value).toBe('7.9 / 10 (12,345 votes)')
+    expect(facts.some((f) => f.label === 'Rating')).toBe(false)
+  })
+
+  it('leaves out what the film does not have, and the votes when there are none', () => {
+    const bare = makeFilm({ releaseYear: null, runtimeMinutes: null, voteAverage: null, voteCount: null, countries: [] })
+    expect(filmFacts(bare)).toEqual([])
+    expect(filmFacts(bare, true)).toEqual([])
+    expect(filmFacts(makeFilm({ voteAverage: 6, voteCount: 0 }), true).find((f) => f.label === 'TMDB rating')?.value).toBe(
+      '6.0 / 10',
+    )
+  })
+
+  it('shows a runtime of 0 minutes as it is stored', () => {
+    expect(filmFacts(makeFilm({ runtimeMinutes: 0 })).find((f) => f.label === 'Runtime')?.value).toBe('0 min')
   })
 })

@@ -1,23 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatDate, formatRuntime, isHttpUrl, joinNames } from '../format'
+import { filmFacts, formatDate, isHttpUrl, joinNames } from '../format'
 import type { Film } from '../types'
+import FilmFacts from './FilmFacts.vue'
 import PosterImage from './PosterImage.vue'
 
 const props = defineProps<{ film: Film }>()
 
-const facts = computed(() => {
-  const { film } = props
-  return [
-    { label: 'Year', value: film.releaseYear },
-    { label: 'Runtime', value: formatRuntime(film.runtimeMinutes) },
-    {
-      label: 'Rating',
-      value: film.voteAverage === null ? null : `${film.voteAverage.toFixed(1)} / 10`,
-    },
-    { label: 'Country', value: film.countries.join(', ') || null },
-  ].filter((fact) => fact.value !== null && fact.value !== '')
-})
 const credits = computed(() =>
   [
     props.film.directors.length ? `Directed by ${joinNames(props.film.directors)}` : '',
@@ -35,12 +24,7 @@ const credits = computed(() =>
     </div>
     <div class="film-card__body">
       <h2 class="film-card__title">{{ film.title }}</h2>
-      <dl v-if="facts.length" class="film-card__facts">
-        <div v-for="fact in facts" :key="fact.label">
-          <dt>{{ fact.label }}</dt>
-          <dd>{{ fact.value }}</dd>
-        </div>
-      </dl>
+      <FilmFacts :facts="filmFacts(film)" />
       <p v-if="credits" class="film-card__credits">{{ credits }}</p>
       <p v-if="film.overview" class="film-card__overview">{{ film.overview }}</p>
       <p class="film-card__meta">
@@ -78,24 +62,6 @@ const credits = computed(() =>
   font-size: 2.75rem;
   font-weight: 800;
   overflow-wrap: anywhere;
-}
-.film-card__facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  margin: 0;
-  color: var(--text-soft);
-}
-.film-card__facts div {
-  display: flex;
-  gap: 6px;
-}
-.film-card__facts dt {
-  color: var(--muted);
-}
-.film-card__facts dd {
-  margin: 0;
-  font-weight: 700;
 }
 .film-card__credits,
 .film-card__overview {

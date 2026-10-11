@@ -6,7 +6,7 @@ The frame around every screen, and the building blocks the screens share. Code i
 
 `components/AppLayout.vue` renders, in order: a skip link, the header with the main navigation, `<main id="main">` with the current screen, and the TMDB footer ([TMDB attribution](tmdb-attribution.md)).
 
-- The navigation is a `<nav aria-label="Main">`. The link of the current page has `aria-current="page"`. Pages inside a section (`/watchlist/new`, `/watchlist/3/edit`) highlight their section but are not marked as the current page.
+- The navigation is a `<nav aria-label="Main">`. The link of the current page has `aria-current="page"`. Pages inside a section (`/watchlist/new`, `/watchlist/3`, `/watchlist/3/edit`) highlight their section but are not marked as the current page.
 - `<main>` has `tabindex="-1"` so the router can move focus to it.
 
 ## Routes
@@ -15,6 +15,7 @@ The frame around every screen, and the building blocks the screens share. Code i
 |---|---|---|
 | `/` | [Roulette](roulette.md) | Roulette |
 | `/watchlist` | [Watchlist](watchlist.md) | Watchlist |
+| `/watchlist/:id` | [Film details](film-details.md) | Film details |
 | `/watchlist/new` | [Add / edit film](film-form.md) | Add film |
 | `/watchlist/:id/edit` | [Add / edit film](film-form.md) | Edit film |
 | `/watchlist/:id/match` | [TMDB match](tmdb-match.md) | Choose TMDB match |

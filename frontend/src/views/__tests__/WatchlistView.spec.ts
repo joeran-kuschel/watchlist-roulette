@@ -69,13 +69,12 @@ describe('WatchlistView', () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     const rows = wrapper.findAll('tbody tr')
     const first = rows[0]!
-    expect(first.get('th a').attributes('href')).toBe('https://boxd.it/abc')
-    expect(first.get('th a').text()).toContain('opens Letterboxd in a new tab')
+    expect(first.get('th a').attributes('href')).toBe('/watchlist/1')
     expect(first.text()).toContain('2023')
     expect(first.text()).toContain('12 Mar 2025')
     expect(first.text()).toContain('To watch')
     expect(rows[1]!.text()).toContain('Watched 4 Mar 2025')
-    expect(rows[2]!.find('th a').exists()).toBe(false)
+    expect(rows[2]!.get('th a').attributes('href')).toBe('/watchlist/3')
     expect(rows[2]!.text()).toContain('—')
     expect(rows[2]!.text()).toContain('Needs review: several TMDB matches')
     expect(rows[3]!.text()).toContain('Not found on TMDB')
@@ -329,15 +328,15 @@ describe('WatchlistView: edge cases', () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     expect(wrapper.get('tbody th').text()).toBe(title)
     expect(wrapper.findAll('tbody td')[0]!.text()).toBe('—')
-    expect(wrapper.find('tbody th a').exists()).toBe(false)
+    expect(wrapper.get('tbody th a').attributes('href')).toMatch(/^\/watchlist\/\d+$/)
   })
 
-  it('opens Letterboxd safely in a new tab and says so', async () => {
+  it('links the title to the details page in the same tab, with the title as its only text', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     const link = wrapper.get('tbody th a')
-    expect(link.attributes('target')).toBe('_blank')
-    expect(link.attributes('rel')).toBe('noopener noreferrer')
-    expect(link.text()).toContain('opens Letterboxd in a new tab')
+    expect(link.attributes('target')).toBeUndefined()
+    expect(link.attributes('href')).toBe('/watchlist/1')
+    expect(link.text()).toBe('Perfect Days')
   })
 
   it('has no axe violations in the load error, the no-results and the loading state', async () => {

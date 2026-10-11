@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
 import IconButton from '../components/IconButton.vue'
-import { formatDate, isHttpUrl } from '../format'
+import { formatDate } from '../format'
 import { useWatchlistStore } from '../stores/watchlist'
 import type { Film } from '../types'
 import { fromQuery, SORTS, TMDB_FILTERS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
@@ -141,15 +141,7 @@ onBeforeUnmount(() => (store.notice = ''))
           <tbody>
             <tr v-for="film in store.items" :key="film.id">
               <th scope="row">
-                <a
-                  v-if="film.letterboxdUrl && isHttpUrl(film.letterboxdUrl)"
-                  class="watchlist__title"
-                  :href="film.letterboxdUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >{{ film.title }}<span class="sr-only"> (opens Letterboxd in a new tab)</span></a
-                >
-                <template v-else>{{ film.title }}</template>
+                <RouterLink class="watchlist__title" :to="`/watchlist/${film.id}`">{{ film.title }}</RouterLink>
               </th>
               <td>{{ film.releaseYear ?? '—' }}</td>
               <td>{{ formatDate(film.addedAt) }}</td>
