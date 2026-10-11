@@ -108,6 +108,6 @@ export const applyImport = (file: File, options: ApplyImportOptions = {}) =>
 
 /**
  * The poster comes through the backend, so the browser never contacts TMDB.
- * Needs a backend route that streams the film's TMDB poster (see documentation/ui/posters.md).
+ * The backend route streams the film's TMDB poster (see documentation/backend/tmdb-enrichment.md).
  */
 export const posterUrl = (filmId: number) => `${BASE}/films/${filmId}/poster`

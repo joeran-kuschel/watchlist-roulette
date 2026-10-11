@@ -6,6 +6,7 @@ import { getPool } from './config/database.js'
 import { HttpError, isUniqueViolation } from './errors.js'
 import { filmRoutes } from './routes/films.js'
 import type { Enricher } from './tmdb/enricher.js'
+import { createPosterFetcher, type PosterFetcher } from './tmdb/poster.js'
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof ZodError) {
@@ -44,11 +45,13 @@ function sameOriginWrites(origins: string[]): RequestHandler {
 
 export interface AppOptions {
   enricher: Enricher
+  /** Loads poster images from TMDB; replaced by a fake in tests. */
+  fetchPoster?: PosterFetcher
   /** Comma-separated origins allowed to call the API from a browser. Without it, none are. */
   corsOrigin?: string
 }
 
-export function createApp({ enricher, corsOrigin }: AppOptions) {
+export function createApp({ enricher, corsOrigin, fetchPoster = createPosterFetcher() }: AppOptions) {
   const app = express()
   app.disable('x-powered-by')
   const origins = corsOrigin?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? []
@@ -60,7 +63,7 @@ export function createApp({ enricher, corsOrigin }: AppOptions) {
     await getPool().query('SELECT 1')
     res.json({ status: 'ok' })
   })
-  app.use('/api', filmRoutes(enricher))
+  app.use('/api', filmRoutes(enricher, fetchPoster))
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Not found' })
   })
