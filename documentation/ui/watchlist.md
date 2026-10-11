@@ -13,6 +13,10 @@ Route `/watchlist`. All films in a table. Code: `views/WatchlistView.vue`, `stor
 
 The screen's state lives in the query string, so a search can be bookmarked and the back button works: `?q=…&watched=false&tmdb=ambiguous&sort=year-asc&page=2`. Only non-default values are written. `watchlistQuery.ts` reads and writes it; unknown values fall back to the defaults.
 
+### Coming back from a film
+
+Whenever the watchlist's query changes, `WatchlistView.vue` hands it to the watchlist store (`rememberList`). The store's `listLocation` getter (`/watchlist` plus that query) is what every "back to the list" link and redirect uses: **← Back to watchlist** and **Cancel** on the [details](film-details.md), [add and edit](film-form.md) and [TMDB match](tmdb-match.md) pages, and the redirect after saving, adding, deleting or matching. So search, filters, sort and page are still there after opening a film. **Reset search** empties the remembered query. Marking a film as watched does not change the URL, so the list stays as it was. The query is kept in memory only: after a reload of the page, or when a film page is opened directly, the way back leads to the plain `/watchlist`. It is not copied into the film page addresses, and the browser's back button works as before.
+
 TMDB status choices (`tmdb`): `pending` (Pending), `ambiguous` (Needs review), `not_found` (Not found), `error` (Lookup failed), `matched` (Matched); the default is any status. One status at a time. The names are short versions of the badge texts in the table (the badges are defined in `WatchlistView.vue`, the filter names in `watchlistQuery.ts`), and the value is sent as the backend's `tmdbStatus`. An unknown value in the URL is ignored. Use it to find films that need attention, for example **Needs review**, then **Choose match**.
 
 Sort choices: `added-desc` (default), `added-asc`, `year-desc`, `year-asc`, `title`. They map to the backend's `sort` and `order`.

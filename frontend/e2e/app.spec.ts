@@ -130,6 +130,25 @@ test('the watchlist lists films, can be searched and updates a film', async ({ p
   await expect(page).toHaveURL(/q=after/)
 })
 
+test('going back from a film keeps the search, filters and page of the watchlist', async ({ page }) => {
+  const listUrl = /\/watchlist\?q=a&watched=false&sort=title&page=2$/
+  await page.goto('/watchlist?q=a&watched=false&sort=title&page=2')
+  await page.getByRole('link', { name: 'Perfect Days', exact: true }).click()
+  await expect(page).toHaveURL(/\/watchlist\/1$/)
+
+  await page.getByRole('link', { name: '← Back to watchlist' }).click()
+  await expect(page).toHaveURL(listUrl)
+  await expect(page.getByLabel('Search by title')).toHaveValue('a')
+  await expect(page.getByLabel('Show')).toHaveValue('false')
+  await expect(page.getByLabel('Sort by')).toHaveValue('title')
+
+  // Cancel on the edit page leads back to the same list
+  await page.getByRole('link', { name: 'Perfect Days', exact: true }).click()
+  await page.getByRole('link', { name: 'Edit Perfect Days' }).click()
+  await page.getByRole('link', { name: 'Cancel' }).click()
+  await expect(page).toHaveURL(listUrl)
+})
+
 test('a film title opens its details page with links and an Edit button', async ({ page }) => {
   await page.goto('/watchlist')
   await page.getByRole('link', { name: 'Perfect Days', exact: true }).click()

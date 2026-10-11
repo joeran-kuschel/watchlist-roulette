@@ -2,6 +2,8 @@
 
 Route `/watchlist/:id/match`. Fixes a film whose automatic TMDB lookup failed. Code: `views/MatchView.vue`, `tmdbId.ts`.
 
+**← Back to watchlist**, **Cancel** and the redirect after saving lead to the watchlist as the user left it, with search, filters and page (see [Coming back from a film](watchlist.md#coming-back-from-a-film)).
+
 ## Why it works by id
 
 The backend has no endpoint that lists TMDB candidates. A match is fixed by sending the TMDB id and its kind, movie or TV show (see [TMDB enrichment](../backend/tmdb-enrichment.md#fixing-a-match)). So the screen:

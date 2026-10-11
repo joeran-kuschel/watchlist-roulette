@@ -4,7 +4,7 @@ Route `/watchlist/:id`. A read-only page about one film. Code: `views/FilmDetail
 
 ## What the user does
 
-- Opens it by clicking a film's title in the [watchlist](watchlist.md). The link opens in the same tab. **← Back to watchlist** returns to the list.
+- Opens it by clicking a film's title in the [watchlist](watchlist.md). The link opens in the same tab. **← Back to watchlist** returns to the list with the search, filters, sort and page the user left (see [Coming back from a film](watchlist.md#coming-back-from-a-film)); after a reload it leads to the plain list.
 - Reads everything the app knows about the film. Nothing can be changed here except through **Edit**, which opens the [film form](film-form.md). The quick actions (mark watched, delete, choose match) stay in the watchlist.
 
 ## What it shows

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import * as api from '../../api'
 import { expectNoA11yViolations, makeFilm, mountWithApp } from '../../__tests__/helpers'
+import { useWatchlistStore } from '../../stores/watchlist'
 import AppLayout from '../../components/AppLayout.vue'
 import FilmDetailsView from '../FilmDetailsView.vue'
 
@@ -154,6 +155,38 @@ describe('FilmDetailsView', () => {
     expect(edit.attributes('aria-label')).toBe('Edit Perfect Days')
     expect(edit.classes()).toContain('btn')
     expect(wrapper.get('a[href="/watchlist"]').text()).toBe('← Back to watchlist')
+  })
+
+  it('links back to the watchlist as the user left it', async () => {
+    const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/7')
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist')
+    useWatchlistStore().rememberList({ q: 'cléo', watched: 'false', page: '2' })
+    await flushPromises()
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist?q=cl%C3%A9o&watched=false&page=2')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('keeps the remembered list on the back link of the not-found page', async () => {
+    mocked.getFilm.mockRejectedValue(new api.ApiError(404, 'Film not found'))
+    const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/999')
+    useWatchlistStore().rememberList({ q: 'a', page: '2' })
+    await flushPromises()
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist?q=a&page=2')
+  })
+
+  it('keeps the remembered list when the route switches to another film', async () => {
+    const { wrapper, router } = await mountWithApp(FilmDetailsView, '/watchlist/7')
+    useWatchlistStore().rememberList({ q: 'a', page: '2' })
+    await router.push('/watchlist/8')
+    await flushPromises()
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist?q=a&page=2')
+  })
+
+  it('writes repeated query values into the back link', async () => {
+    const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/7')
+    useWatchlistStore().rememberList({ tmdb: ['ambiguous', 'error'] })
+    await flushPromises()
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist?tmdb=ambiguous&tmdb=error')
   })
 
   it('is read-only: it has no form fields and no watched or delete buttons', async () => {

@@ -53,7 +53,7 @@ async function submit() {
   try {
     const updated = await updateFilm(Number(route.params.id), { tmdbId: title.id, tmdbMediaType: title.mediaType })
     watchlist.notice = `TMDB id saved for ${updated.title}. Its details load in the background.`
-    await router.push('/watchlist')
+    await router.push(watchlist.listLocation)
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
       fieldError.value = 'Another film on your list already uses this TMDB movie.'
@@ -68,7 +68,7 @@ async function submit() {
 
 <template>
   <div class="page page--narrow">
-    <BackLink to="/watchlist">← Back to watchlist</BackLink>
+    <BackLink :to="watchlist.listLocation">← Back to watchlist</BackLink>
     <h1>Choose the TMDB match</h1>
 
     <ErrorAlert v-if="loadError" :message="loadError">
@@ -107,7 +107,7 @@ async function submit() {
           <button class="btn btn--primary" type="submit" :disabled="saving">
             {{ saving ? 'Saving…' : 'Use this match' }}
           </button>
-          <RouterLink class="btn" to="/watchlist">Cancel</RouterLink>
+          <RouterLink class="btn" :to="watchlist.listLocation">Cancel</RouterLink>
         </div>
       </form>
     </template>

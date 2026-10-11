@@ -227,6 +227,39 @@ describe('MatchView: edge cases', () => {
     expect(wrapper.findAll('a[href="/watchlist"]').map((a) => a.text())).toEqual(['← Back to watchlist', 'Cancel'])
   })
 
+  it('uses the remembered watchlist query for both links and after saving', async () => {
+    mocked.updateFilm.mockResolvedValue(ambiguous)
+    const { wrapper, router } = await mountWithApp(MatchView, '/watchlist/3/match')
+    useWatchlistStore().rememberList({ q: 'cléo', page: '2' })
+    await flushPromises()
+    const listUrl = '/watchlist?q=cl%C3%A9o&page=2'
+    expect(wrapper.findAll(`a[href="${listUrl}"]`).map((a) => a.text())).toEqual(['← Back to watchlist', 'Cancel'])
+    await expectNoA11yViolations(wrapper.element)
+    await wrapper.get('#tmdb-id').setValue('262543')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe(listUrl))
+  })
+
+  it('stays on the match page after a failed save', async () => {
+    mocked.updateFilm.mockRejectedValue(new api.ApiError(500, 'boom'))
+    const { wrapper, router } = await mountWithApp(MatchView, '/watchlist/3/match')
+    useWatchlistStore().rememberList({ q: 'cléo' })
+    await wrapper.get('#tmdb-id').setValue('262543')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/watchlist/3/match')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+  })
+
+  it('follows Cancel back to the remembered watchlist query', async () => {
+    const { wrapper, router } = await mountWithApp(MatchView, '/watchlist/3/match')
+    useWatchlistStore().rememberList({ q: 'cléo', page: '2' })
+    await flushPromises()
+    await wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/watchlist?q=cl%C3%A9o&page=2'))
+  })
+
   it('opens the TMDB search in a new tab and says so', async () => {
     const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
     const link = wrapper.get('ol a')
