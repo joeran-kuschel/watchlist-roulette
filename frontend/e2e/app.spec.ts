@@ -132,7 +132,7 @@ test('the watchlist lists films, can be searched and updates a film', async ({ p
 
 test('a film title opens its details page with links and an Edit button', async ({ page }) => {
   await page.goto('/watchlist')
-  await page.getByRole('link', { name: 'Perfect Days' }).click()
+  await page.getByRole('link', { name: 'Perfect Days', exact: true }).click()
   await expect(page).toHaveURL(/\/watchlist\/1$/)
   await expect(page).toHaveTitle('Film details · Watchlist Roulette')
   await expect(page.getByRole('heading', { level: 1, name: 'Perfect Days' })).toBeVisible()
@@ -215,6 +215,25 @@ test('keyboard users can skip to the main content', async ({ page }) => {
   await expect(skip).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(page.locator('main')).toBeFocused()
+})
+
+test('the favicon files are served and the header shows the logo', async ({ page, request }) => {
+  await page.goto('/')
+  for (const [path, type] of [
+    ['/favicon.svg', 'image/svg+xml'],
+    ['/favicon.ico', 'image/'],
+    ['/apple-touch-icon.png', 'image/png'],
+  ] as const) {
+    const response = await request.get(path)
+    expect(response.ok(), path).toBe(true)
+    expect(response.headers()['content-type']).toContain(type)
+  }
+  const links = await page.locator('head link[rel~="icon"], head link[rel="apple-touch-icon"]').evaluateAll(
+    (els) => els.map((el) => el.getAttribute('href')),
+  )
+  expect(links).toEqual(['/favicon.svg', '/favicon.ico', '/apple-touch-icon.png'])
+  await expect(page.locator('header svg[aria-hidden="true"]').first()).toBeVisible()
+  await expect(page.locator('header')).toContainText('Watchlist Roulette')
 })
 
 test('an unknown address shows the not-found page', async ({ page }) => {

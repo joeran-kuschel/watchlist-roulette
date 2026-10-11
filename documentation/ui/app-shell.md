@@ -40,6 +40,7 @@ The backend only accepts writes from origins listed in `CORS_ORIGIN`. With `npm 
 | `FormField` | Label, hint and error message for one control, wired with `for`, `aria-describedby` and `aria-invalid`. The control is placed in the slot and gets the attributes through the slot prop `attrs`. |
 | `ErrorAlert` | An error in a `role="alert"` element, with room for a retry button. |
 | `AppIcon` | The icons, inline SVG, hidden from assistive technology. |
+| `BrandMark` | The logo in the header, see [Logo and favicon](branding.md). |
 | `BackLink` | The "← Back to …" link at the top of the form and match pages (a plain link, not a landmark). |
 | `PosterImage` | A film poster from the backend, with a placeholder. See [Posters](posters.md). |
 

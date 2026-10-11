@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { expectNoA11yViolations, makeFilm, mountWithApp } from '../../__tests__/helpers'
 import AppIcon from '../AppIcon.vue'
 import AppLayout from '../AppLayout.vue'
+import BrandMark from '../BrandMark.vue'
 import ErrorAlert from '../ErrorAlert.vue'
 import FilmCard from '../FilmCard.vue'
 import FilmFacts from '../FilmFacts.vue'
@@ -305,7 +306,7 @@ describe('ImportSummary', () => {
 })
 
 describe('AppIcon', () => {
-  const names = ['spin', 'eye', 'eye-off', 'pencil', 'match', 'plus', 'left', 'right', 'x', 'alert', 'logo'] as const
+  const names = ['spin', 'eye', 'eye-off', 'pencil', 'match', 'plus', 'left', 'right', 'x', 'alert'] as const
 
   it.each(names)('draws the %s icon, hidden from assistive technology', (name) => {
     const svg = mount(AppIcon, { props: { name } }).get('svg')
@@ -322,9 +323,10 @@ describe('AppIcon', () => {
     })
   })
 
-  it('uses a 32 px grid only for the logo', () => {
-    expect(mount(AppIcon, { props: { name: 'logo' } }).get('svg').attributes('viewBox')).toBe('0 0 32 32')
-    expect(mount(AppIcon, { props: { name: 'eye' } }).get('svg').attributes('viewBox')).toBe('0 0 24 24')
+  it('draws every icon on a 24 px grid', () => {
+    for (const name of names) {
+      expect(mount(AppIcon, { props: { name } }).get('svg').attributes('viewBox')).toBe('0 0 24 24')
+    }
   })
 
   it('draws a different shape for every icon', () => {
@@ -499,5 +501,31 @@ describe('FilmFacts', () => {
 
   it('renders nothing for an empty list, so no empty <dl> reaches assistive technology', () => {
     expect(mount(FilmFacts, { props: { facts: [] } }).find('dl').exists()).toBe(false)
+  })
+})
+
+describe('BrandMark', () => {
+  it('draws the film ring: a ring in the text color around a dot in the accent color', () => {
+    const svg = mount(BrandMark).get('svg')
+    expect(svg.attributes('viewBox')).toBe('0 0 64 64')
+    const [ring, dot] = svg.findAll('circle')
+    expect(ring!.attributes('stroke')).toBe('currentColor')
+    expect(ring!.attributes('stroke-dasharray')).toBeDefined()
+    expect(dot!.attributes('fill')).toBe('var(--accent)')
+  })
+
+  it('is decorative and 32 px by default, or the given size', () => {
+    const svg = mount(BrandMark).get('svg')
+    expect(svg.attributes('aria-hidden')).toBe('true')
+    expect(svg.attributes('focusable')).toBe('false')
+    expect(svg.attributes()).toMatchObject({ width: '32', height: '32' })
+    expect(mount(BrandMark, { props: { size: 48 } }).get('svg').attributes()).toMatchObject({ width: '48', height: '48' })
+  })
+
+  it('is shown in the page header next to the app name, with the name as the only text', async () => {
+    const { wrapper } = await mountWithApp(AppLayout, '/')
+    const brand = wrapper.get('.layout__brand')
+    expect(brand.find('svg').attributes('aria-hidden')).toBe('true')
+    expect(brand.text()).toBe('Watchlist Roulette')
   })
 })

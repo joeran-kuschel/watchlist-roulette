@@ -10,7 +10,6 @@ export type IconName =
   | 'right'
   | 'x'
   | 'alert'
-  | 'logo'
 
 defineProps<{ name: IconName; size?: number }>()
 
@@ -26,7 +25,6 @@ const PATHS: Record<IconName, string> = {
   right: 'M9 5l7 7-7 7',
   x: 'M6 6l12 12M18 6L6 18',
   alert: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7.5v5M12 16v.5',
-  logo: 'M28 16a12 12 0 1 1-24 0 12 12 0 0 1 24 0zM19 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM16 4v6M16 22v6M4 16h6M22 16h6',
 }
 </script>
 
@@ -36,7 +34,7 @@ const PATHS: Record<IconName, string> = {
     focusable="false"
     :width="size ?? 24"
     :height="size ?? 24"
-    :viewBox="name === 'logo' ? '0 0 32 32' : '0 0 24 24'"
+    viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
     stroke-width="2"

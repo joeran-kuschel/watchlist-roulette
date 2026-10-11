@@ -17,6 +17,7 @@ Every feature is documented here, split into UI and backend.
 - [UI](ui/README.md): requirements for all UI
 - [UI design](ui/design.md): mockups and design decisions
 - [App shell](ui/app-shell.md): layout, routes, API module, shared components, styling
+- [Logo and favicon](ui/branding.md): the film ring mark, favicon files, regenerating the icons
 - [Roulette](ui/roulette.md): pick a random film, with filters
 - [Watchlist](ui/watchlist.md): the list of films, search, sort, paging
 - [Film details](ui/film-details.md): the page behind a film's title, with Letterboxd and TMDB links

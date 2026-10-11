@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRoute } from 'vue-router'
-import AppIcon from './AppIcon.vue'
+import BrandMark from './BrandMark.vue'
 import TmdbAttribution from './TmdbAttribution.vue'
 
 const links = [
@@ -19,7 +19,7 @@ const inSection = (to: string) => (to === '/' ? route.path === '/' : route.path.
     <a class="skip" href="#main">Skip to main content</a>
     <header class="layout__header">
       <div class="layout__brand">
-        <AppIcon name="logo" :size="32" class="layout__logo" />
+        <BrandMark :size="36" class="layout__logo" />
         <span>Watchlist Roulette</span>
       </div>
       <nav aria-label="Main">
@@ -83,7 +83,7 @@ main {
   font-size: 1.375rem;
 }
 .layout__logo {
-  color: var(--accent);
+  color: var(--text);
 }
 ul {
   display: flex;
