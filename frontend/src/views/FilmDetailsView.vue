@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ApiError, describeError, getFilm } from '../api'
+import { ApiError, describeError, getFilm, updateFilm } from '../api'
 import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FilmFacts from '../components/FilmFacts.vue'
 import PosterImage from '../components/PosterImage.vue'
-import { directorLabel, filmFacts, formatDate, isHttpUrl, joinNames } from '../format'
+import { directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, needsMatch } from '../format'
 import { tmdbTitleUrl } from '../tmdbId'
 import type { Film } from '../types'
 
@@ -15,6 +15,11 @@ const route = useRoute()
 const film = ref<Film | null>(null)
 const error = ref('')
 const notFound = ref(false)
+const actionError = ref('')
+const notice = ref('')
+// The film whose watched state is being saved. Per film, so a slow request for the film the user left
+// does not block the button of the next one
+const savingId = ref<number | null>(null)
 
 // Counts the requests, so a slow answer for an earlier film never overwrites the one that was asked for last
 let latestRequest = 0
@@ -22,6 +27,8 @@ let latestRequest = 0
 async function load() {
   const request = ++latestRequest
   error.value = ''
+  actionError.value = ''
+  notice.value = ''
   notFound.value = false
   try {
     const loaded = await getFilm(Number(route.params.id))
@@ -42,6 +49,23 @@ watch(
     void load()
   },
 )
+
+async function setWatched(current: Film, watched: boolean) {
+  if (savingId.value === current.id) return // a click while the request runs
+  savingId.value = current.id
+  actionError.value = ''
+  notice.value = ''
+  try {
+    const updated = await updateFilm(current.id, { watched })
+    if (film.value?.id !== current.id) return
+    film.value = updated
+    notice.value = `${current.title} is marked as ${watched ? 'watched' : 'unwatched'}.`
+  } catch (e) {
+    if (film.value?.id === current.id) actionError.value = describeError(e)
+  } finally {
+    if (savingId.value === current.id) savingId.value = null
+  }
+}
 
 const facts = computed(() => {
   const f = film.value
@@ -90,8 +114,22 @@ const links = computed(() => {
             <p v-if="showOriginalTitle" class="details__original">Original title: {{ film.originalTitle }}</p>
             <p v-if="film.tagline" class="details__tagline">{{ film.tagline }}</p>
           </div>
-          <RouterLink class="btn" :to="`/watchlist/${film.id}/edit`" :aria-label="`Edit ${film.title}`">Edit</RouterLink>
+          <div class="details__actions">
+            <!-- aria-disabled, not disabled: a disabled button that has the focus loses it in Firefox and Safari -->
+            <button
+              class="btn"
+              type="button"
+              :aria-disabled="savingId === film.id ? 'true' : undefined"
+              @click="setWatched(film, !film.watchedAt)"
+            >
+              {{ film.watchedAt ? 'Mark as unwatched' : 'Mark as watched' }}
+            </button>
+            <RouterLink v-if="needsMatch(film)" class="btn" :to="`/watchlist/${film.id}/match`">Choose TMDB match</RouterLink>
+            <RouterLink class="btn" :to="`/watchlist/${film.id}/edit`" :aria-label="`Edit ${film.title}`">Edit</RouterLink>
+          </div>
         </div>
+        <ErrorAlert v-if="actionError" :message="actionError" />
+        <p class="sr-only" role="status">{{ notice }}</p>
 
         <FilmFacts :facts="facts" layout="grid" />
 
@@ -149,6 +187,11 @@ const links = computed(() => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+}
+.details__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 h1 {
   overflow-wrap: anywhere;

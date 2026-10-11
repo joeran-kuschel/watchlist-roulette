@@ -130,7 +130,8 @@ a:hover {
   border-color: var(--accent);
   color: var(--accent-text);
 }
-.btn:disabled {
+.btn:disabled,
+.btn[aria-disabled='true'] {
   color: var(--disabled);
   border-color: var(--border);
   cursor: default;

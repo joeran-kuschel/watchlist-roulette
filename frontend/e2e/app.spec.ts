@@ -148,6 +148,45 @@ test('a film title opens its details page with links and an Edit button', async 
   await expect(page).toHaveURL(/\/watchlist\/1\/edit$/)
 })
 
+test('the details page marks a film as watched and links to the TMDB match of an ambiguous one', async ({ page }) => {
+  await page.goto('/watchlist/1')
+  await expect(page.getByText('Not watched yet')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Choose TMDB match' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Mark as watched' }).click()
+  await expect(page.getByRole('button', { name: 'Mark as unwatched' })).toBeVisible()
+  await expect(page.getByText(/Watched \d+ \w+ \d{4}/)).toBeVisible()
+  await expect(page.getByText('Perfect Days is marked as watched.')).toBeAttached()
+  await expectAccessible(page)
+
+  await page.goto('/watchlist/3')
+  await page.getByRole('link', { name: 'Choose TMDB match' }).click()
+  await expect(page).toHaveURL(/\/watchlist\/3\/match$/)
+})
+
+test('the details page tabs through the actions in order and toggles the watched state', async ({ page }) => {
+  await page.goto('/watchlist/3')
+  const mark = page.getByRole('button', { name: 'Mark as watched' })
+  await mark.focus()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'Choose TMDB match' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'Edit Cléo from 5 to 7' })).toBeFocused()
+  await mark.click()
+  await page.getByRole('button', { name: 'Mark as unwatched' }).click()
+  await expect(page.getByText('Not watched yet')).toBeVisible()
+  await expect(page.getByText('Cléo from 5 to 7 is marked as unwatched.')).toBeAttached()
+})
+
+test('the details page shows an alert when marking a film fails', async ({ page }) => {
+  await page.route('**/api/films/1', (route) =>
+    route.request().method() === 'PATCH' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"x"}' }) : route.fallback(),
+  )
+  await page.goto('/watchlist/1')
+  await page.getByRole('button', { name: 'Mark as watched' }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Mark as watched' })).toBeEnabled()
+})
+
 test('the details page of an unknown film says so', async ({ page }) => {
   await page.goto('/watchlist/99')
   await expect(page.getByRole('heading', { level: 1, name: 'Film not found' })).toBeVisible()
