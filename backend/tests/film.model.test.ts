@@ -146,6 +146,21 @@ describe('listFilms', () => {
     expect((await list({ tmdbStatus: 'ambiguous' })).items.map((f) => f.title)).toEqual(['Beta'])
   })
 
+  it.each(['pending', 'matched', 'ambiguous', 'not_found', 'error'])('returns only the films with TMDB status %s', async (status) => {
+    await pool.query('DELETE FROM films')
+    for (const s of ['pending', 'matched', 'ambiguous', 'not_found', 'error']) {
+      const film = await createFilm({ title: `Film ${s}` })
+      await pool.query(`UPDATE films SET tmdb_status = $1 WHERE id = $2`, [s, film.id])
+    }
+    const result = await list({ tmdbStatus: status as ListQuery['tmdbStatus'] })
+    expect(result.items.map((f) => f.title)).toEqual([`Film ${status}`])
+    expect(result.total).toBe(1)
+  })
+
+  it('returns an empty page when no film has the TMDB status', async () => {
+    expect(await list({ tmdbStatus: 'error' })).toMatchObject({ items: [], total: 0 })
+  })
+
   it('returns an empty page for an empty database', async () => {
     await pool.query('DELETE FROM films')
     expect(await list()).toMatchObject({ items: [], total: 0 })

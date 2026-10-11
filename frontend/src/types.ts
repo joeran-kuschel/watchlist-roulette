@@ -37,6 +37,7 @@ export interface FilmPage {
 export interface ListParams {
   q?: string
   watched?: 'true' | 'false' | 'all'
+  tmdbStatus?: TmdbStatus
   sort?: 'added_at' | 'release_year' | 'title'
   order?: 'asc' | 'desc'
   page?: number

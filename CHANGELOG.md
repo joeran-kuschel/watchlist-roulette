@@ -19,3 +19,4 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Added the TMDB notice and a logo placeholder at the bottom of every page. The official TMDB logo still has to be added (see `documentation/ui/tmdb-attribution.md`).
 - Posters now show. They are loaded through your own server, so your browser never contacts TMDB. Films without a poster still show a "No poster" box.
 - The whole app works with a keyboard and screen readers: skip link, labelled icon buttons with tooltips, announced results and errors.
+- Added a TMDB status filter to the watchlist, so you can find films that still need a match (Needs review, Not found, Lookup failed) or are still pending. It works together with search and the watched filter, and the choice is kept in the address so you can bookmark it.

@@ -132,43 +132,56 @@ describe('parseTmdbId', () => {
 
 describe('watchlist query', () => {
   it('uses defaults for an empty or unknown query', () => {
-    expect(fromQuery({})).toEqual({ q: '', watched: 'all', sort: 'added-desc', page: 1 })
-    expect(fromQuery({ watched: 'maybe', sort: 'nope', page: '-3' })).toEqual({
+    expect(fromQuery({})).toEqual({ q: '', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 })
+    expect(fromQuery({ watched: 'maybe', tmdb: 'nope', sort: 'nope', page: '-3' })).toEqual({
       q: '',
       watched: 'all',
+      tmdb: 'all',
       sort: 'added-desc',
       page: 1,
     })
   })
 
+  it.each(['constructor', '__proto__', 'toString', ''])('does not accept %j as a TMDB status', (tmdb) => {
+    expect(fromQuery({ tmdb }).tmdb).toBe('all')
+  })
+
+  it('sends no TMDB status to the API when all are shown', () => {
+    expect(toListParams({ q: '', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 }).tmdbStatus).toBeUndefined()
+  })
+
   it('reads valid values and takes the first of repeated ones', () => {
-    expect(fromQuery({ q: ['a', 'b'], watched: 'false', sort: 'year-asc', page: '3' })).toEqual({
+    expect(fromQuery({ q: ['a', 'b'], watched: 'false', tmdb: ['not_found', 'error'], sort: 'year-asc', page: '3' })).toEqual({
       q: 'a',
       watched: 'false',
+      tmdb: 'not_found',
       sort: 'year-asc',
       page: 3,
     })
   })
 
   it('writes only non-default values to the URL', () => {
-    expect(toQuery({ q: ' ', watched: 'all', sort: 'added-desc', page: 1 })).toEqual({
+    expect(toQuery({ q: ' ', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 })).toEqual({
       q: undefined,
       watched: undefined,
+      tmdb: undefined,
       sort: undefined,
       page: undefined,
     })
-    expect(toQuery({ q: 'joy', watched: 'true', sort: 'title', page: 2 })).toEqual({
+    expect(toQuery({ q: 'joy', watched: 'true', tmdb: 'ambiguous', sort: 'title', page: 2 })).toEqual({
       q: 'joy',
       watched: 'true',
+      tmdb: 'ambiguous',
       sort: 'title',
       page: '2',
     })
   })
 
   it('translates the sort choice for the API', () => {
-    expect(toListParams({ q: 'joy', watched: 'false', sort: 'year-desc', page: 2 })).toEqual({
+    expect(toListParams({ q: 'joy', watched: 'false', tmdb: 'pending', sort: 'year-desc', page: 2 })).toEqual({
       q: 'joy',
       watched: 'false',
+      tmdbStatus: 'pending',
       sort: 'release_year',
       order: 'desc',
       page: 2,
@@ -348,19 +361,19 @@ describe('watchlist query: edge cases', () => {
     expect(fromQuery({ sort }).sort).toBe('added-desc')
   })
   it('trims the search before writing it to the URL and the API', () => {
-    const view = { q: '  joy ', watched: 'all', sort: 'added-desc', page: 1 } as const
+    const view = { q: '  joy ', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 } as const
     expect(toQuery(view).q).toBe('joy')
     expect(toListParams(view).q).toBe('joy')
   })
   it('round-trips every sort option through the URL', () => {
     for (const sort of ['added-desc', 'added-asc', 'year-desc', 'year-asc', 'title'] as const) {
-      const view = { q: 'x', watched: 'true', sort, page: 4 } as const
+      const view = { q: 'x', watched: 'true', tmdb: 'matched', sort, page: 4 } as const
       expect(fromQuery(toQuery(view) as never)).toEqual(view)
     }
   })
   it('maps each sort to a column and direction', () => {
     const params = (sort: Parameters<typeof toListParams>[0]['sort']) =>
-      toListParams({ q: '', watched: 'all', sort, page: 1 })
+      toListParams({ q: '', watched: 'all', tmdb: 'all', sort, page: 1 })
     expect(params('added-asc')).toMatchObject({ sort: 'added_at', order: 'asc' })
     expect(params('year-asc')).toMatchObject({ sort: 'release_year', order: 'asc' })
     expect(params('title')).toMatchObject({ sort: 'title', order: 'asc' })

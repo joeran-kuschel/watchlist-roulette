@@ -7,7 +7,7 @@ import IconButton from '../components/IconButton.vue'
 import { formatDate, isHttpUrl } from '../format'
 import { useWatchlistStore } from '../stores/watchlist'
 import type { Film } from '../types'
-import { fromQuery, SORTS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
+import { fromQuery, SORTS, TMDB_FILTERS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
 
 const store = useWatchlistStore()
 const route = useRoute()
@@ -15,12 +15,12 @@ const router = useRouter()
 
 const view = computed(() => fromQuery(route.query))
 // What is typed or chosen in the form; it reaches the URL (and the list) on submit or change
-const form = reactive({ q: '', watched: view.value.watched, sort: view.value.sort })
+const form = reactive({ q: '', watched: view.value.watched, tmdb: view.value.tmdb, sort: view.value.sort })
 
 watch(
   () => route.query,
   () => {
-    Object.assign(form, { q: view.value.q, watched: view.value.watched, sort: view.value.sort })
+    Object.assign(form, { q: view.value.q, watched: view.value.watched, tmdb: view.value.tmdb, sort: view.value.sort })
     void store.load(toListParams(view.value))
   },
   { immediate: true },
@@ -37,7 +37,7 @@ const rangeText = computed(() => {
   const end = Math.min(store.page * store.pageSize, store.total)
   return `Showing ${start}–${end} of ${store.total}`
 })
-const isFiltered = computed(() => view.value.q !== '' || view.value.watched !== 'all')
+const isFiltered = computed(() => view.value.q !== '' || view.value.watched !== 'all' || view.value.tmdb !== 'all')
 
 const tmdbBadge = (film: Film) =>
   ({
@@ -82,6 +82,12 @@ onBeforeUnmount(() => (store.notice = ''))
           <option value="all">All films</option>
           <option value="false">Unwatched</option>
           <option value="true">Watched</option>
+        </select>
+      </FormField>
+      <FormField id="tmdb" label="TMDB status" v-slot="{ attrs }">
+        <select v-bind="attrs" v-model="form.tmdb" class="input" @change="apply">
+          <option value="all">Any status</option>
+          <option v-for="(label, status) in TMDB_FILTERS" :key="status" :value="status">{{ label }}</option>
         </select>
       </FormField>
       <FormField id="sort" label="Sort by" v-slot="{ attrs }">

@@ -379,3 +379,70 @@ describe('WatchlistView: edge cases', () => {
     expect(wrapper.get('nav[aria-label="Pagination"] p').text()).not.toMatch(/Showing 4951/)
   })
 })
+
+describe('WatchlistView TMDB status filter', () => {
+  it('offers a labelled select with every status', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.get('label[for="tmdb"]').text()).toBe('TMDB status')
+    expect(wrapper.findAll('#tmdb option').map((o) => [o.attributes('value'), o.text()])).toEqual([
+      ['all', 'Any status'],
+      ['pending', 'Pending'],
+      ['ambiguous', 'Needs review'],
+      ['not_found', 'Not found'],
+      ['error', 'Lookup failed'],
+      ['matched', 'Matched'],
+    ])
+    expect((wrapper.get('#tmdb').element as HTMLSelectElement).value).toBe('all')
+  })
+
+  it('puts the choice into the URL, reloads with tmdbStatus and keeps the other filters', async () => {
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist?watched=false&page=2')
+    await wrapper.get('#tmdb').setValue('ambiguous')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ watched: 'false', tmdb: 'ambiguous' })
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(
+      expect.objectContaining({ watched: 'false', tmdbStatus: 'ambiguous', page: 1 }),
+    )
+    expect(wrapper.text()).toContain('matching films')
+  })
+
+  it('takes the status out of the URL again when "Any status" is chosen', async () => {
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist?tmdb=pending')
+    await wrapper.get('#tmdb').setValue('all')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({})
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ tmdbStatus: undefined }))
+  })
+
+  it('fills the select from the URL and sends the status', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=not_found')
+    expect((wrapper.get('#tmdb').element as HTMLSelectElement).value).toBe('not_found')
+    expect(mocked.listFilms).toHaveBeenCalledWith(expect.objectContaining({ tmdbStatus: 'not_found' }))
+  })
+
+  it('ignores an unknown status in the URL', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=nope')
+    expect((wrapper.get('#tmdb').element as HTMLSelectElement).value).toBe('all')
+    expect(mocked.listFilms).toHaveBeenCalledWith(expect.objectContaining({ tmdbStatus: undefined }))
+  })
+
+  it('keeps the status in the pagination links', async () => {
+    mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=pending&page=2')
+    const next = wrapper.get('a[aria-label="Next page"]').attributes('href')!
+    expect(new URLSearchParams(next.split('?')[1])).toEqual(new URLSearchParams({ tmdb: 'pending', page: '3' }))
+  })
+
+  it('shows the no-results state and the reset link when no film has the status', async () => {
+    mocked.listFilms.mockResolvedValue(listing([], 0))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=error')
+    expect(wrapper.text()).toContain('No films match your search')
+    expect(wrapper.get('a[href="/watchlist"].btn').text()).toBe('Reset search')
+  })
+
+  it('has no accessibility violations with the status chosen', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=ambiguous')
+    expect(wrapper.find('#tmdb').exists()).toBe(true)
+    await expectNoA11yViolations(wrapper.element)
+  })
+})

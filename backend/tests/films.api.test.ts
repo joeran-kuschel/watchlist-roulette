@@ -51,6 +51,21 @@ describe('GET /api/films', () => {
     expect(res.body.items[0].title).toBe('Alpha')
   })
 
+  it.each(['pending', 'matched', 'ambiguous', 'not_found', 'error'])('accepts tmdbStatus=%s and filters by it', async (status) => {
+    const { id } = (await add('Tagged')).body
+    await add('Other')
+    await pool.query(`UPDATE films SET tmdb_status = $1 WHERE id = $2`, [status, id])
+    const res = await testApp().get(`/api/films?tmdbStatus=${status}`)
+    expect(res.status).toBe(200)
+    expect(res.body.items.map((f: { title: string }) => f.title)).toContain('Tagged')
+    expect(res.body.items.every((f: { tmdb: { status: string } }) => f.tmdb.status === status)).toBe(true)
+  })
+
+  it('answers 400 for an unknown tmdbStatus', async () => {
+    expect((await testApp().get('/api/films?tmdbStatus=nope')).status).toBe(400)
+    expect((await testApp().get('/api/films?tmdbStatus=')).status).toBe(400)
+  })
+
   it('answers 400 for an invalid query', async () => {
     expect((await testApp().get('/api/films?sort=password')).status).toBe(400)
     expect((await testApp().get('/api/films?pageSize=5000')).status).toBe(400)
