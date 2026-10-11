@@ -74,7 +74,7 @@ TMDB's terms require the TMDB logo and this notice wherever TMDB data is shown:
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 - Every screen has a footer with the logo and the notice (one footer component in Vue).
-- The mockups show a labelled placeholder for the logo. The implementation must use the **official** logo from <https://www.themoviedb.org/about/logos-attribution>, unmodified, and it must be smaller than the app's own logo. Downloading it needs the user's OK.
+- The mockups (`design/*.dc.html`) show a labelled placeholder for the logo and are intentionally left as they are; they are drawings, not the app. The implementation uses the **official** logo from <https://www.themoviedb.org/about/logos-attribution>, unmodified and smaller than the app's own logo (see [TMDB attribution](tmdb-attribution.md)).
 
 ## Posters
 
