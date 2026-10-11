@@ -8,6 +8,7 @@ export type IconName =
   | 'plus'
   | 'left'
   | 'right'
+  | 'chevron-down'
   | 'x'
   | 'alert'
 
@@ -23,6 +24,7 @@ const PATHS: Record<IconName, string> = {
   plus: 'M12 5v14M5 12h14',
   left: 'M15 5l-7 7 7 7',
   right: 'M9 5l7 7-7 7',
+  'chevron-down': 'M5 9l7 7 7-7',
   x: 'M6 6l12 12M18 6L6 18',
   alert: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7.5v5M12 16v.5',
 }

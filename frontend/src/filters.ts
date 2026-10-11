@@ -19,6 +19,10 @@ export const emptyFilters = (): RouletteFilterInput => ({
   maxRuntime: '',
 })
 
+/** How many filter fields have a value, for the collapsed filter panel. */
+export const countActiveFilters = (input: RouletteFilterInput) =>
+  Object.values(input).filter((value) => text(value) !== '').length
+
 export const MIN_YEAR = 1888
 export const MAX_YEAR = 2100
 

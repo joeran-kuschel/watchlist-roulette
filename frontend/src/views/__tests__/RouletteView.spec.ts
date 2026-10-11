@@ -14,7 +14,21 @@ vi.mock('../../api', async (importOriginal) => ({
 const mocked = vi.mocked(api)
 
 beforeEach(() => vi.resetAllMocks())
-afterEach(() => (document.body.innerHTML = ''))
+afterEach(() => {
+  document.body.innerHTML = ''
+  vi.unstubAllGlobals()
+})
+
+/** jsdom has no matchMedia; this one reports a phone-sized (stacked) screen and lets a test resize it. */
+function stubNarrowScreen() {
+  let onChange: (event: { matches: boolean }) => void = () => {}
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    addEventListener: (_: string, listener: typeof onChange) => (onChange = listener),
+    removeEventListener: () => {},
+  }))
+  return { resize: (matches: boolean) => onChange({ matches }) }
+}
 
 describe('RouletteView', () => {
   it('spins on arrival and shows the pick', async () => {
@@ -299,5 +313,122 @@ describe('RouletteView: edge cases', () => {
     })
     await flushPromises()
     expect(second.text()).not.toContain('Nothing to spin')
+  })
+
+  describe('on a narrow screen', () => {
+    it('collapses the filters, and the summary opens and closes them', async () => {
+      stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      const panel = wrapper.get('details')
+      expect(panel.element.open).toBe(false)
+      expect(wrapper.get('summary').text()).toBe('Filters')
+      // jsdom does not toggle a <details> on a summary click: open it and fire the event it fires
+      panel.element.open = true
+      await panel.trigger('toggle')
+      expect(panel.element.open).toBe(true)
+      panel.element.open = false
+      await panel.trigger('toggle')
+      await flushPromises()
+      expect(panel.element.open).toBe(false)
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('tells how many filters are set while the panel is closed', async () => {
+      stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      await wrapper.get('#country').setValue('JP')
+      await wrapper.get('#max-runtime').setValue('120')
+      expect(wrapper.get('summary').text()).toBe('Filters (2 active)')
+    })
+
+    it('opens the panel and focuses the first wrong field when a filter is invalid', async () => {
+      stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      await wrapper.get('#country').setValue('Japan')
+      mocked.randomFilm.mockClear()
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(wrapper.get('details').element.open).toBe(true)
+      expect(document.activeElement?.id).toBe('country')
+      expect(mocked.randomFilm).not.toHaveBeenCalled()
+    })
+
+    it('passes an axe check with the panel open and its errors shown', async () => {
+      stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      await wrapper.get('#year-from').setValue('1500')
+      await wrapper.get('#country').setValue('Japan')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(wrapper.get('details').element.open).toBe(true)
+      expect(document.activeElement?.id).toBe('year-from')
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('remembers that the user opened the panel when the screen goes wide and narrow again', async () => {
+      const screen = stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      const panel = wrapper.get('details')
+      panel.element.open = true
+      await panel.trigger('toggle')
+      screen.resize(true)
+      await flushPromises()
+      screen.resize(false)
+      await flushPromises()
+      expect(panel.element.open).toBe(true)
+    })
+
+    it('moves focus to the wrong field also when the panel was already open', async () => {
+      stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      const panel = wrapper.get('details')
+      panel.element.open = true
+      await panel.trigger('toggle')
+      await wrapper.get('#country').setValue('Japan')
+      ;(document.querySelector('button[aria-label="Spin again"]') as HTMLElement).focus()
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(document.activeElement?.id).toBe('country')
+    })
+
+    it('keeps the filters heading for screen readers instead of removing it', async () => {
+      stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      expect(wrapper.get('#filters-heading').classes()).toContain('sr-only')
+      expect(wrapper.get('#filters-heading').text()).toBe('Filters (optional)')
+    })
+
+    it('shows the filters again, without a toggle, when the screen becomes wide', async () => {
+      const screen = stubNarrowScreen()
+      mocked.randomFilm.mockResolvedValue(makeFilm())
+      const { wrapper } = await mountWithApp(RouletteView)
+      expect(wrapper.get('details').element.open).toBe(false)
+      screen.resize(true)
+      await flushPromises()
+      expect(wrapper.get('details').element.open).toBe(true)
+    })
+  })
+
+  it('does not move focus when a filter is invalid and the filters are already shown', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    await wrapper.get('#country').setValue('Japan')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('#country').attributes('aria-invalid')).toBe('true')
+    expect(document.activeElement?.id).not.toBe('country')
+  })
+
+  it('keeps the filters open on a screen without matchMedia (and on wide screens)', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    expect(wrapper.get('details').element.open).toBe(true)
   })
 })

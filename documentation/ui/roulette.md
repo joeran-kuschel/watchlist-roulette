@@ -10,6 +10,14 @@ Route `/`. Picks a random unwatched film. Code: `views/RouletteView.vue`, `store
 - **Mark as watched** marks the shown film; it is excluded from future spins. The button is disabled once the film is watched.
 - Optional filters: release year from/to, genre, country code, max runtime. **Clear filters** empties them.
 
+## Narrow screens
+
+Side by side with the result (viewport 900px or wider) the filters are always shown. Below that they are stacked above the result, so they sit in a collapsible `<details>` panel whose summary reads "Filters" or "Filters (2 active)". It starts closed, so the pick and the **Spin again** button are on screen without scrolling. The breakpoint is the same in `RouletteView.vue` (CSS) and in `useMediaQuery('(min-width: 900px)')` (`media.ts`).
+
+- If **Spin again** finds an invalid filter, the panel opens (if it was closed) and focus moves to the first wrong field, so the error is never out of sight. The "Filters (optional)" heading stays for screen readers (visually hidden). Closed or open, the filters stay in the DOM, so the form keeps working.
+- Where possible, fields share a row: country code and max runtime sit side by side, and so do the two years. The genre list and **Clear filters** take their own row. Inputs in a row stay level even if one field has a hint.
+- Without `matchMedia` the panel stays open.
+
 ## Backend
 
 - `GET /api/films/random` with the filters as query parameters. The backend does the picking and only draws unwatched films, so the choice does not depend on what the screen has loaded.

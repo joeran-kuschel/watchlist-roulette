@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ApiError, describeError } from '../api'
 import { directorLabel, filmFacts, formatDate, formatRuntime, joinNames, text } from '../format'
 import { makeFilm } from './helpers'
-import { emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
+import { countActiveFilters, emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
 import { parseTmdbTitle, tmdbSearchUrl, tmdbTitleUrl } from '../tmdbId'
 import { fromQuery, toListParams, toQuery } from '../watchlistQuery'
@@ -454,3 +454,9 @@ describe('film facts and labels for a TV show', () => {
   })
 })
 
+describe('countActiveFilters', () => {
+  it('counts the fields that have a value, ignoring blanks', () => {
+    expect(countActiveFilters(emptyFilters())).toBe(0)
+    expect(countActiveFilters({ ...emptyFilters(), yearFrom: '1990', country: '  ', genre: '18' })).toBe(2)
+  })
+})
