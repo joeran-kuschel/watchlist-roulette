@@ -32,6 +32,16 @@ Trouble at TMDB itself (unreachable, rate limit `429`, `5xx`) leaves the film `p
 
 List the films to fix with `GET /api/films?tmdbStatus=ambiguous` (or `not_found`). Find the id in the TMDB URL (`themoviedb.org/movie/<id>`) and send `PATCH /api/films/:id` with `{ "tmdbId": <id> }`. The film loads that movie's data.
 
+## Posters
+
+`GET /api/films/:id/poster` loads the film's poster from `https://image.tmdb.org/t/p/w500<poster_path>` and sends it back with its content type and `Cache-Control: public, max-age=3600` and `X-Content-Type-Options: nosniff`, so the browser never contacts TMDB. Code: `tmdb/poster.ts` (fetcher), `poster` in `controllers/films.ts`.
+
+- Image requests need no token, so none is sent.
+- The stored path must look like `/name.jpg` or `/name.png`; anything else is never requested.
+- `404` for an unknown film, a film without a poster, or an image TMDB does not have. `502` when TMDB fails or sends something that is not a JPEG or PNG (the UI then shows its "No poster" box).
+- Images larger than 2 MB are refused (`502`); the image is held in memory while it is sent.
+- Nothing is cached on the server; the browser cache is enough for a single-user app. The URL is keyed by film id, so after a re-match the browser may show the old poster for up to an hour.
+
 ## Attribution
 
 TMDB's terms require the notice "This product uses the TMDB API but is not endorsed or certified by TMDB." with their logo in the UI. It must be added when the UI shows TMDB data.

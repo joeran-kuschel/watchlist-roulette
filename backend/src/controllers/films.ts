@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express'
-import { HttpError } from '../errors.js'
+import { HttpError, notFound } from '../errors.js'
 import * as films from '../models/film.js'
 import type { Enricher } from '../tmdb/enricher.js'
+import type { PosterFetcher } from '../tmdb/poster.js'
 import {
   filmCreateSchema,
   filmPatchSchema,
@@ -20,6 +21,22 @@ export const random = async (req: Request, res: Response) => {
 
 export const get = async (req: Request, res: Response) => {
   res.json(await films.getFilm(idParamSchema.parse(req.params).id))
+}
+
+export const poster = (fetchPoster: PosterFetcher) => async (req: Request, res: Response) => {
+  const { posterPath } = await films.getFilm(idParamSchema.parse(req.params).id)
+  if (!posterPath) throw notFound('Poster')
+  let image
+  try {
+    image = await fetchPoster(posterPath)
+  } catch (error) {
+    console.error('Poster could not be loaded:', (error as Error).message)
+    throw new HttpError(502, 'The poster could not be loaded')
+  }
+  if (!image) throw notFound('Poster')
+  res
+    .set({ 'Content-Type': image.contentType, 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' })
+    .send(image.body)
 }
 
 export const create = async (req: Request, res: Response) => {

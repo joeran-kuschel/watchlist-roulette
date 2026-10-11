@@ -17,5 +17,5 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Added choosing the right TMDB match for a film that TMDB could not match on its own, by pasting the movie's address.
 - Added the CSV import screen in two steps: check the file first, then confirm. It shows which films will be added, updated and removed, and every rejected row with its reason.
 - Added the TMDB notice and a logo placeholder at the bottom of every page. The official TMDB logo still has to be added (see `documentation/ui/tmdb-attribution.md`).
-- Posters are requested from your own server, so your browser never contacts TMDB. The server does not provide posters yet (see `documentation/ui/posters.md`), so films show a "No poster" box for now.
+- Posters now show. They are loaded through your own server, so your browser never contacts TMDB. Films without a poster still show a "No poster" box.
 - The whole app works with a keyboard and screen readers: skip link, labelled icon buttons with tooltips, announced results and errors.
