@@ -4,7 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
-- Added the app's logo, a ring of film perforations around a dot, in the page header, and as the icon in the browser tab and on iOS home screens (light and dark browser themes are both covered).
+- Added the app's logo, a ring of film perforations around a dot, in the page header, and as the icon in the browser tab and on iOS home screens (the icon follows your light or dark color-scheme setting).
 - Added the backend and database for the watchlist: add, edit, delete, search, sort and page through films, and mark them watched or unwatched.
 - Added a random film pick that only draws unwatched films and can be limited by release year, genre, country and runtime.
 - Added the CSV import for Letterboxd watchlist exports, with a preview that shows what would be added, changed and removed before anything is written. Watched films are never removed, and rows that can't be read are reported.

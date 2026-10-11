@@ -1,5 +1,5 @@
 // Draws the app icons from the "film ring" mark (see documentation/ui/branding.md) and writes
-//   public/favicon.svg          vector favicon, light or dark ring depending on the browser theme
+//   public/favicon.svg          vector favicon, light or dark ring depending on the color scheme
 //   public/favicon.ico          16, 32 and 48 px, for browsers without SVG favicons
 //   public/apple-touch-icon.png 180 px, for iOS home screens
 // Run with: npm run icons   (needs a Chromium for Playwright: npx playwright install chromium,
@@ -22,7 +22,7 @@ const mark = (m, ring) =>
   `<circle cx="32" cy="32" r="24" fill="none" stroke="${ring}" stroke-width="${m.sw}" stroke-dasharray="${m.dash}"/>` +
   `<circle cx="32" cy="32" r="${m.dot}" fill="${ACCENT}"/>`
 
-// The favicon on a transparent ground: the ring follows the browser's light or dark theme
+// The favicon on a transparent ground: the ring follows the light or dark color-scheme preference
 const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 <style>.ring{stroke:${DARK}}@media (prefers-color-scheme:dark){.ring{stroke:${CREAM}}}</style>
 <circle class="ring" cx="32" cy="32" r="24" fill="none" stroke-width="${SMALL.sw}" stroke-dasharray="${SMALL.dash}"/>

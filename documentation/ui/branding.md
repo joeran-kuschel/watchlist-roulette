@@ -7,7 +7,7 @@ The app's mark is the **film ring**: a ring of film perforations around a dot. T
 | Place | How |
 |---|---|
 | Page header | `components/BrandMark.vue` next to the name "Watchlist Roulette" (the mark is decorative, the name is the text). The ring takes the text color, the dot the accent color. |
-| Browser tab | `public/favicon.svg`, a vector icon with a transparent ground. The ring is dark in light browser themes and cream in dark ones (`prefers-color-scheme` inside the SVG). |
+| Browser tab | `public/favicon.svg`, a vector icon with a transparent ground. The ring is dark for a light color scheme and cream for a dark one (`prefers-color-scheme` inside the SVG). That is the operating system's preference, so a browser with its own custom theme can mismatch it (a dark ring on a dark tab); the dot stays visible either way. The link has `sizes="any"` so Chrome prefers the SVG over the `.ico`. |
 | Older browsers | `public/favicon.ico` with 16, 32 and 48 px images (PNG inside). A dark tile with a cream ring, so it works on any tab color. |
 | iOS home screen | `public/apple-touch-icon.png`, 180 px, the same dark tile (iOS rounds the corners itself). |
 
@@ -44,7 +44,15 @@ It needs a Chromium for Playwright (`npx playwright install chromium`). To use o
 
 ## Tests
 
-`src/__tests__/branding.spec.ts` checks the links in `index.html`, the SVG, the `.ico` structure (16, 32, 48 px, PNG images) and the touch icon size. `BrandMark` and its use in the header are tested in `components/__tests__/components.spec.ts`, and an end-to-end test checks that the icon files are served.
+`src/__tests__/branding.spec.ts` checks:
+
+- `index.html`: the icon links match the files in `public/`, one title, viewport and `#app`, `theme-color`.
+- `favicon.svg`: well-formed, no external references or scripts, no background, light and dark ring colors, dot in the accent color.
+- `favicon.ico`: the entries (16, 32, 48 px) match the PNG images inside, which have an alpha channel, transparent corners and the accent dot in the center.
+- `apple-touch-icon.png`: 180 px, opaque, dark corners, accent center.
+- The `icons` script: it exists, and its geometry constants agree with `BrandMark.vue` and `favicon.svg`, so the drawings cannot drift apart silently.
+
+`BrandMark` and its use in the header are tested in `components/__tests__/components.spec.ts`, and an end-to-end test checks that the icon files are served. How the mark looks at 16 px and in each browser's tab is not tested; check it by eye after changing the mark.
 
 ## Not done
 
