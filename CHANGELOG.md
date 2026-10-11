@@ -31,3 +31,4 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - The watchlist now works on a phone or other small screen: each film is a card with its title, year, date added, status and buttons, so nothing is cut off or hidden off-screen any more.
 - The roulette filters no longer show example values (1970, 2026, 120) inside the empty fields, where they looked like something you had already typed. The examples now appear as a short note next to the field.
 - The CSV import screen has a "Choose CSV file" button that shows the name of the chosen file in English, instead of the browser's own file field.
+- Going back to the watchlist from a film's page, the edit page or the TMDB match page now keeps your search, filters, sort and page, instead of starting again at page 1. The app forgets this when you reload the page.

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import * as api from '../../api'
 import { expectNoA11yViolations, makeFilm, mountWithApp } from '../../__tests__/helpers'
+import { useWatchlistStore } from '../../stores/watchlist'
 import { RouterView } from 'vue-router'
 import WatchlistView from '../WatchlistView.vue'
 
@@ -9,6 +10,7 @@ vi.mock('../../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api')>()),
   listFilms: vi.fn<typeof import('../../api').listFilms>(),
   updateFilm: vi.fn<typeof import('../../api').updateFilm>(),
+  getFilm: vi.fn<typeof import('../../api').getFilm>(),
 }))
 const mocked = vi.mocked(api)
 
@@ -99,6 +101,23 @@ describe('WatchlistView', () => {
     expect(wrapper.find('a[href="/watchlist/3/match"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/watchlist/1/edit"]').exists()).toBe(true)
     expect(wrapper.find('a[href="/watchlist/new"]').exists()).toBe(true)
+  })
+
+  it('remembers its query for the way back from a film page, also unknown values', async () => {
+    const { router } = await mountWithApp(WatchlistView, '/watchlist?q=days&tmdb=ambiguous&sort=nonsense&page=2')
+    const store = useWatchlistStore()
+    expect(store.listLocation.query).toEqual({ q: 'days', tmdb: 'ambiguous', sort: 'nonsense', page: '2' })
+    await router.push('/watchlist?watched=true')
+    await flushPromises()
+    expect(store.listLocation.query).toEqual({ watched: 'true' })
+  })
+
+  it('keeps the remembered query after a film was marked as watched', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?watched=false&page=2')
+    mocked.updateFilm.mockResolvedValue(makeFilm({ id: 1, watchedAt: '2026-10-11T10:00:00.000Z' }))
+    await wrapper.get('button[aria-label="Mark as watched: Perfect Days"]').trigger('click')
+    await flushPromises()
+    expect(useWatchlistStore().listLocation.query).toEqual({ watched: 'false', page: '2' })
   })
 
   it('marks a film as watched and announces it', async () => {
@@ -295,6 +314,7 @@ describe('WatchlistView: edge cases', () => {
     await wrapper.get('a.btn').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/watchlist')
+    expect(useWatchlistStore().listLocation.query).toEqual({})
   })
 
   it('treats a watched filter alone as filtered when nothing matches', async () => {
@@ -362,6 +382,32 @@ describe('WatchlistView: edge cases', () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=3')
     expect(wrapper.get('nav[aria-label="Pagination"] p').text()).toBe('Showing 101–120 of 120')
     await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('returns to the same list from two film pages in a row, and the last list wins', async () => {
+    mocked.getFilm.mockImplementation(async (id) => films.find((f) => f.id === id)!)
+    const { wrapper, router } = await mountWithApp(RouterView, '/watchlist?q=a&sort=title&page=2')
+    const openFilm = async (name: string) => {
+      await wrapper.get(`a[href^="/watchlist/"][href$="/${name}"]`).trigger('click')
+      await vi.waitFor(() => expect(wrapper.find('.back a').exists()).toBe(true))
+    }
+    const goBack = async () => {
+      await wrapper.get('.back a').trigger('click')
+      await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/watchlist'))
+      await flushPromises()
+    }
+    await openFilm('1')
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist?q=a&sort=title&page=2')
+    await goBack()
+    expect(router.currentRoute.value.fullPath).toBe('/watchlist?q=a&sort=title&page=2')
+    await openFilm('2')
+    await goBack()
+    expect(router.currentRoute.value.fullPath).toBe('/watchlist?q=a&sort=title&page=2')
+
+    await router.push('/watchlist?watched=true')
+    await flushPromises()
+    await openFilm('1')
+    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist?watched=true')
   })
 
   it('does not reload the list when the user leaves for another screen', async () => {

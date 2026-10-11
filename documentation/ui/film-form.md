@@ -2,7 +2,7 @@
 
 Routes `/watchlist/new` and `/watchlist/:id/edit`. One form for both. Code: `views/FilmFormView.vue`, `filmForm.ts`.
 
-It is a page, not a dialog: no focus trap is needed and the back button works.
+It is a page, not a dialog: no focus trap is needed and the back button works. **← Back to watchlist**, **Cancel** and the redirect after saving, adding or deleting lead to the watchlist as the user left it, with search, filters and page (see [Coming back from a film](watchlist.md#coming-back-from-a-film)).
 
 ## Fields
 

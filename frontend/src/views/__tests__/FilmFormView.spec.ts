@@ -297,6 +297,82 @@ describe('FilmFormView: more cases', () => {
     expect(wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.attributes('href')).toBe('/watchlist')
   })
 
+  describe('with a remembered watchlist query', () => {
+    const remembered = { q: 'cléo', tmdb: 'ambiguous', page: '3' }
+    const listUrl = '/watchlist?q=cl%C3%A9o&tmdb=ambiguous&page=3'
+
+    it('points the back link and Cancel at it', async () => {
+      const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
+      useWatchlistStore().rememberList(remembered)
+      await flushPromises()
+      expect(wrapper.get('.back a').attributes('href')).toBe(listUrl)
+      expect(wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.attributes('href')).toBe(listUrl)
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('returns to it after adding a film', async () => {
+      mocked.createFilm.mockResolvedValue(makeFilm({ id: 10, title: 'Joy' }))
+      const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/new')
+      useWatchlistStore().rememberList(remembered)
+      await wrapper.get('#film-title').setValue('Joy')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe(listUrl))
+    })
+
+    it('returns to it after saving a film', async () => {
+      mocked.getFilm.mockResolvedValue(makeFilm({ id: 9 }))
+      mocked.updateFilm.mockResolvedValue(makeFilm({ id: 9 }))
+      const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+      useWatchlistStore().rememberList(remembered)
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe(listUrl))
+    })
+
+    it('stays on the form after a failed save and keeps the way back', async () => {
+      mocked.createFilm.mockRejectedValue(new api.ApiError(500, 'boom'))
+      const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/new')
+      useWatchlistStore().rememberList(remembered)
+      await wrapper.get('#film-title').setValue('Joy')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(router.currentRoute.value.path).toBe('/watchlist/new')
+      expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+      expect(wrapper.get('.back a').attributes('href')).toBe(listUrl)
+    })
+
+    it('stays on the edit page after a failed delete', async () => {
+      mocked.getFilm.mockResolvedValue(makeFilm({ id: 9 }))
+      mocked.deleteFilm.mockRejectedValue(new api.ApiError(500, 'boom'))
+      const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+      useWatchlistStore().rememberList(remembered)
+      await wrapper.findAll('.danger button').find((b) => b.text().startsWith('Delete'))!.trigger('click')
+      await wrapper.findAll('.danger button').find((b) => b.text() === 'Yes, delete it')!.trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.path).toBe('/watchlist/9/edit')
+    })
+
+    it('follows Cancel back to it', async () => {
+      const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/new')
+      useWatchlistStore().rememberList(remembered)
+      await flushPromises()
+      await wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.trigger('click')
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe(listUrl))
+    })
+
+    it('returns to it after deleting a film', async () => {
+      mocked.getFilm.mockResolvedValue(makeFilm({ id: 9 }))
+      mocked.deleteFilm.mockResolvedValue(undefined)
+      const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
+      useWatchlistStore().rememberList(remembered)
+      await wrapper.findAll('.danger button').find((b) => b.text().startsWith('Delete'))!.trigger('click')
+      await wrapper.findAll('.danger button').find((b) => b.text() === 'Yes, delete it')!.trigger('click')
+      await flushPromises()
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe(listUrl))
+    })
+  })
+
   it('only offers "Today if empty" when adding', async () => {
     const add = await mountWithApp(FilmFormView, '/watchlist/new')
     expect(add.wrapper.text()).toContain('Today if empty')

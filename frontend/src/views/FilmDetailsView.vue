@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useWatchlistStore } from '../stores/watchlist'
 import { ApiError, describeError, getFilm } from '../api'
 import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
@@ -11,6 +12,7 @@ import { tmdbTitleUrl } from '../tmdbId'
 import type { Film } from '../types'
 
 const route = useRoute()
+const watchlist = useWatchlistStore()
 
 const film = ref<Film | null>(null)
 const error = ref('')
@@ -65,7 +67,7 @@ const links = computed(() => {
 
 <template>
   <div class="page">
-    <BackLink to="/watchlist">← Back to watchlist</BackLink>
+    <BackLink :to="watchlist.listLocation">← Back to watchlist</BackLink>
 
     <template v-if="error">
       <h1 v-if="notFound">Film not found</h1>

@@ -21,6 +21,7 @@ watch(
   () => route.query,
   () => {
     Object.assign(form, { q: view.value.q, watched: view.value.watched, tmdb: view.value.tmdb, sort: view.value.sort })
+    store.rememberList(route.query)
     void store.load(toListParams(view.value))
   },
   { immediate: true },

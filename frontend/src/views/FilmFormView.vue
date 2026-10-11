@@ -79,7 +79,7 @@ async function submit() {
       ? await updateFilm(filmId.value as number, payload)
       : await createFilm(payload)
     watchlist.notice = `${film.title} was ${isEdit.value ? 'saved' : 'added'}.`
-    await router.push('/watchlist')
+    await router.push(watchlist.listLocation)
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
       await showProblems({ letterboxdUrl: 'Another film already uses this Letterboxd link.' })
@@ -112,7 +112,7 @@ async function remove() {
   try {
     await deleteFilm(filmId.value as number)
     watchlist.notice = `${savedTitle} was deleted.`
-    await router.push('/watchlist')
+    await router.push(watchlist.listLocation)
   } catch (e) {
     submitError.value = describeError(e)
     await stopDeleting()
@@ -124,7 +124,7 @@ async function remove() {
 
 <template>
   <div class="page page--narrow">
-    <BackLink to="/watchlist">← Back to watchlist</BackLink>
+    <BackLink :to="watchlist.listLocation">← Back to watchlist</BackLink>
     <h1>{{ isEdit ? 'Edit film' : 'Add film' }}</h1>
     <p class="lead">
       Poster, runtime and credits are filled in automatically from TMDB after saving.
@@ -187,7 +187,7 @@ async function remove() {
         <button class="btn btn--primary" type="submit" :disabled="saving">
           {{ saving ? 'Saving…' : 'Save film' }}
         </button>
-        <RouterLink class="btn" to="/watchlist">Cancel</RouterLink>
+        <RouterLink class="btn" :to="watchlist.listLocation">Cancel</RouterLink>
       </div>
 
       <section v-if="isEdit" class="danger" aria-labelledby="danger-heading">

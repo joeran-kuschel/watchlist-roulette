@@ -1,4 +1,5 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import type { LocationQuery } from 'vue-router'
 import { defineStore } from 'pinia'
 import { describeError, listFilms, updateFilm } from '../api'
 import type { Film, ListParams } from '../types'
@@ -14,6 +15,14 @@ export const useWatchlistStore = defineStore('watchlist', () => {
   const error = ref('')
   /** Spoken by a status region after an action; shown on the next screen too. */
   const notice = ref('')
+
+  /** The query of the watchlist the user last saw (search, filters, sort, page); kept in memory only. */
+  const listQuery = ref<LocationQuery>({})
+  /** Where every "back to the list" link and redirect goes. */
+  const listLocation = computed(() => ({ path: '/watchlist', query: { ...listQuery.value } }))
+  const rememberList = (query: LocationQuery) => {
+    listQuery.value = { ...query }
+  }
 
   let latestLoad = 0
 
@@ -49,5 +58,5 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     }
   }
 
-  return { items, total, page, pageSize, status, error, notice, load, setWatched }
+  return { items, total, page, pageSize, status, error, notice, listLocation, rememberList, load, setWatched }
 })

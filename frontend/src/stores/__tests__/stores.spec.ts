@@ -97,6 +97,33 @@ describe('watchlist store', () => {
     pageSize: 50,
   })
 
+  it('points the list location at /watchlist until a query is remembered', () => {
+    const store = useWatchlistStore()
+    expect(store.listLocation).toEqual({ path: '/watchlist', query: {} })
+    store.rememberList({ q: 'days', watched: 'false', tmdb: 'ambiguous', sort: 'title', page: '2' })
+    expect(store.listLocation).toEqual({
+      path: '/watchlist',
+      query: { q: 'days', watched: 'false', tmdb: 'ambiguous', sort: 'title', page: '2' },
+    })
+  })
+
+  it('remembers a copy of the query and forgets it when an empty one is remembered', () => {
+    const store = useWatchlistStore()
+    const query = { q: 'days' }
+    store.rememberList(query)
+    query.q = 'changed'
+    expect(store.listLocation.query).toEqual({ q: 'days' })
+    store.rememberList({})
+    expect(store.listLocation.query).toEqual({})
+  })
+
+  it('remembers the last of two queries and keeps repeated query values', () => {
+    const store = useWatchlistStore()
+    store.rememberList({ q: 'first', page: '2' })
+    store.rememberList({ sort: 'title', tag: ['a', 'b'] })
+    expect(store.listLocation.query).toEqual({ sort: 'title', tag: ['a', 'b'] })
+  })
+
   it('loads a page', async () => {
     mocked.listFilms.mockResolvedValue(page())
     const store = useWatchlistStore()
