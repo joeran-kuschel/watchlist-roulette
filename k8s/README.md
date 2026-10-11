@@ -40,8 +40,10 @@ After adding or changing a file in `backend/migrations/`, run `./k8s/generate-in
 
 ```bash
 kubectl --context docker-desktop -n watchlist-roulette exec -i deploy/postgres -- \
-  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backend/migrations/003_example.sql
+  sh -c 'psql -v ON_ERROR_STOP=1 --single-transaction -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backend/migrations/003_tmdb_media_type.sql
 ```
+
+Migration `003_tmdb_media_type.sql` (TMDB movies and TV shows) has to be applied this way to an existing database **before** deploying the version that needs it. It is additive: one new column and a changed unique constraint, and existing films stay movies. Run `./k8s/backup-db.sh` first. The order matters and a rollback of the code is only safe for movies: see "Order and rollback of 003" in `documentation/backend/database.md`.
 
 ## Backups
 

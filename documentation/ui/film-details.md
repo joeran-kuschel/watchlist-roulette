@@ -1,6 +1,6 @@
 # Film details
 
-Route `/watchlist/:id`. A read-only page about one film. Code: `views/FilmDetailsView.vue`, `tmdbMovieUrl()` in `tmdbId.ts`. The facts (year, runtime, rating, country) are built by `filmFacts()` in `format.ts` and shown by `components/FilmFacts.vue`; the [roulette](roulette.md) card uses the same two, in a compact inline layout, and this page in a grid with genres and director added.
+Route `/watchlist/:id`. A read-only page about one film. Code: `views/FilmDetailsView.vue`, `tmdbTitleUrl()` in `tmdbId.ts`. The facts (year, runtime, rating, country) are built by `filmFacts()` in `format.ts` and shown by `components/FilmFacts.vue`; the [roulette](roulette.md) card uses the same two, in a compact inline layout, and this page in a grid with genres and director added.
 
 ## What the user does
 
@@ -12,12 +12,12 @@ Route `/watchlist/:id`. A read-only page about one film. Code: `views/FilmDetail
 The poster (the [poster proxy](posters.md), or the "No poster" box), then:
 
 - the title as the page heading, the original title when it differs, and the tagline,
-- year, runtime, TMDB rating with the number of votes, countries, genres and director,
+- year, runtime, TMDB rating with the number of votes, countries, genres and director (for a TV show: "Episode runtime" and "Created by"),
 - when the film was added and whether it was watched,
 - the **Overview** and the **Cast** (the first ten names TMDB lists),
 - a **Links** section with **Letterboxd** and **The Movie Database (TMDB)**.
 
-Anything TMDB has not delivered yet (a pending, not found or ambiguous film) is left out instead of shown empty. The Letterboxd link only appears when the film has a web address, and the TMDB link only when the film has a TMDB id (`https://www.themoviedb.org/movie/<id>`). A film with neither has no Links section. Both links open in a new tab, with `rel="noopener noreferrer"` and a hidden "(opens in a new tab)" in their names. The Letterboxd address is only rendered as a link when it starts with `http:` or `https:`.
+Anything TMDB has not delivered yet (a pending, not found or ambiguous film) is left out instead of shown empty. The Letterboxd link only appears when the film has a web address, and the TMDB link only when the film has a TMDB id (`https://www.themoviedb.org/movie/<id>`, or `/tv/<id>` for a TV show, from the stored media type). A film with neither has no Links section. Both links open in a new tab, with `rel="noopener noreferrer"` and a hidden "(opens in a new tab)" in their names. The Letterboxd address is only rendered as a link when it starts with `http:` or `https:`.
 
 ## Backend
 

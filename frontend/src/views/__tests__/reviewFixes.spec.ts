@@ -92,7 +92,7 @@ describe('Letterboxd links only for web addresses', () => {
 describe('Watchlist: tooltip names', () => {
   it('shows a tooltip that is part of the accessible name (WCAG 2.5.3)', async () => {
     mocked.listFilms.mockResolvedValue({
-      items: [makeFilm({ title: 'Cléo', tmdb: { id: null, status: 'ambiguous', syncedAt: null } })],
+      items: [makeFilm({ title: 'Cléo', tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null } })],
       total: 1,
       page: 1,
       pageSize: 50,

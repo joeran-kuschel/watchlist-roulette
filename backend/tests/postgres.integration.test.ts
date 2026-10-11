@@ -66,6 +66,7 @@ describe.skipIf(!url)('real PostgreSQL', () => {
     const { id } = await createFilm({ title: 'Joy', releaseYear: 2015 })
     const client = {
       searchMovie: async () => [{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }],
+      getTv: async () => null,
       getMovie: async () => ({
         id: 100,
         title: 'Joy',
@@ -125,5 +126,47 @@ describe.skipIf(!url)('real PostgreSQL', () => {
     const results = await Promise.all([send(), send()])
     for (const { status } of results) expect([200, 409]).toContain(status)
     expect((await pool.query('SELECT count(*) FROM films')).rows[0].count).toBe('1')
+  })
+
+  describe('TMDB media type (migration 003)', () => {
+    const insert = (title: string, type: string) =>
+      pool.query(`INSERT INTO films (title, tmdb_id, tmdb_media_type) VALUES ($1, 5, $2)`, [title, type])
+
+    it('lets a movie and a TV show share a TMDB id but not two films of the same type', async () => {
+      await insert('A movie', 'movie')
+      await insert('A show', 'tv')
+      await expect(insert('Another movie', 'movie')).rejects.toMatchObject({ code: '23505' })
+      await expect(insert('Another show', 'tv')).rejects.toMatchObject({ code: '23505' })
+    })
+
+    it('no longer has the old single-column unique constraint and rejects unknown types', async () => {
+      const { rows } = await pool.query(
+        `SELECT conname FROM pg_constraint WHERE conrelid = 'films'::regclass AND contype = 'u' ORDER BY conname`,
+      )
+      expect(rows.map((r) => r.conname)).not.toContain('films_tmdb_id_key')
+      expect(rows.map((r) => r.conname)).toContain('films_tmdb_media_type_id_key')
+      await expect(insert('Book', 'book')).rejects.toMatchObject({ code: '23514' })
+    })
+
+    it('applies to a database that already holds matched films and keeps them as movies', async () => {
+      await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public')
+      const files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()
+      for (const file of files.filter((f) => f < '003')) await pool.query(readFileSync(join(migrationsDir, file), 'utf8'))
+      await pool.query(`INSERT INTO films (title, tmdb_id, tmdb_status) VALUES ('Joy', 262543, 'matched'), ('Plain', NULL, 'pending')`)
+      for (const file of files.filter((f) => f >= '003')) await pool.query(readFileSync(join(migrationsDir, file), 'utf8'))
+      const { rows } = await pool.query(`SELECT title, tmdb_id, tmdb_media_type FROM films ORDER BY id`)
+      expect(rows).toEqual([
+        { title: 'Joy', tmdb_id: 262543, tmdb_media_type: 'movie' },
+        { title: 'Plain', tmdb_id: null, tmdb_media_type: 'movie' },
+      ])
+    })
+
+    it('answers 409, not 500, when two films get the same show id by PATCH', async () => {
+      const a = await createFilm({ title: 'A' })
+      const b = await createFilm({ title: 'B' })
+      await testApp().patch(`/api/films/${a.id}`).send({ tmdbId: 5, tmdbMediaType: 'tv' })
+      const res = await testApp().patch(`/api/films/${b.id}`).send({ tmdbId: 5, tmdbMediaType: 'tv' })
+      expect(res.status).toBe(409)
+    })
   })
 })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { filmFacts, formatDate, isHttpUrl, joinNames } from '../format'
+import { directorLabel, filmFacts, formatDate, isHttpUrl, joinNames } from '../format'
 import type { Film } from '../types'
 import FilmFacts from './FilmFacts.vue'
 import PosterImage from './PosterImage.vue'
@@ -9,7 +9,7 @@ const props = defineProps<{ film: Film }>()
 
 const credits = computed(() =>
   [
-    props.film.directors.length ? `Directed by ${joinNames(props.film.directors)}` : '',
+    props.film.directors.length ? `${directorLabel(props.film)} ${joinNames(props.film.directors)}` : '',
     joinNames(props.film.genres),
   ]
     .filter(Boolean)

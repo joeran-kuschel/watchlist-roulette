@@ -11,7 +11,7 @@ const film = (id: number, title: string, extra: Record<string, unknown> = {}) =>
   letterboxdUrl: `https://boxd.it/${id}`,
   addedAt: '2025-03-12',
   watchedAt: null,
-  tmdb: { id: id * 10, status: 'matched', syncedAt: null },
+  tmdb: { id: id * 10, mediaType: 'movie', status: 'matched', syncedAt: null },
   originalTitle: null,
   tagline: null,
   overview: 'A sample overview that is long enough to wrap onto more than one line in the film card.',
@@ -31,7 +31,7 @@ async function stubApi(page: Page) {
   const films = [
     film(1, 'Perfect Days'),
     film(2, 'Aftersun', { watchedAt: '2025-03-04T10:00:00.000Z' }),
-    film(3, 'Cléo from 5 to 7', { tmdb: { id: null, status: 'ambiguous', syncedAt: null } }),
+    film(3, 'Cléo from 5 to 7', { tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null } }),
   ]
   const calls: string[] = []
   await page.route('**/api/**', async (route) => {
@@ -182,7 +182,7 @@ test('choosing a TMDB match from a pasted address', async ({ page }) => {
   await page.goto('/watchlist/3/match')
   await expect(page.getByRole('heading', { name: 'Choose the TMDB match' })).toBeVisible()
   await expectAccessible(page)
-  await page.getByLabel('TMDB movie address or number').fill('nonsense')
+  await page.getByLabel('TMDB movie or TV show address or number').fill('nonsense')
   await page.getByRole('button', { name: 'Use this match' }).click()
   await expect(page.getByText('Enter the TMDB number')).toBeVisible()
 })

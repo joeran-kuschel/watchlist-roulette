@@ -31,7 +31,7 @@ const bare = (overrides = {}) =>
   makeFilm({
     id: 8,
     letterboxdUrl: null,
-    tmdb: { id: null, status: 'pending', syncedAt: null },
+    tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null },
     originalTitle: null,
     tagline: null,
     overview: null,
@@ -103,7 +103,7 @@ describe('FilmDetailsView', () => {
     const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/8')
     expect(wrapper.findAll('#links-heading ~ ul a').map((a) => a.attributes('href'))).toEqual(['https://boxd.it/x'])
 
-    mocked.getFilm.mockResolvedValue(bare({ tmdb: { id: 5, status: 'matched', syncedAt: null } }))
+    mocked.getFilm.mockResolvedValue(bare({ tmdb: { id: 5, mediaType: 'movie', status: 'matched', syncedAt: null } }))
     const other = await mountWithApp(FilmDetailsView, '/watchlist/8')
     expect(other.wrapper.findAll('#links-heading ~ ul a').map((a) => a.attributes('href'))).toEqual([
       'https://www.themoviedb.org/movie/5',
@@ -262,4 +262,44 @@ describe('FilmDetailsView', () => {
     await flushPromises()
     expect(mocked.getFilm).not.toHaveBeenCalled()
   })
+
+  describe('for a TV show', () => {
+    const tv = makeFilm({
+      id: 9,
+      title: 'Breaking Bad',
+      tmdb: { id: 1396, mediaType: 'tv', status: 'matched', syncedAt: null },
+      runtimeMinutes: 47,
+      directors: [{ id: 66633, name: 'Vince Gilligan' }],
+    })
+
+    it('links to the show page on TMDB, not the movie page', async () => {
+      mocked.getFilm.mockResolvedValue(tv)
+      const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/9')
+      const hrefs = wrapper.findAll('#links-heading ~ ul a').map((a) => a.attributes('href'))
+      expect(hrefs).toContain('https://www.themoviedb.org/tv/1396')
+      expect(hrefs.join()).not.toContain('/movie/')
+    })
+
+    it('says "Created by" and "Episode runtime" instead of "Directed by" and "Runtime"', async () => {
+      mocked.getFilm.mockResolvedValue(tv)
+      const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/9')
+      const labels = wrapper.findAll('dt').map((dt) => dt.text())
+      expect(labels).toContain('Created by')
+      expect(labels).toContain('Episode runtime')
+      expect(labels).not.toContain('Directed by')
+      expect(labels).not.toContain('Runtime')
+      expect(wrapper.text()).toContain('47 min')
+      expect(wrapper.text()).toContain('Vince Gilligan')
+      await expectNoA11yViolations(wrapper.element)
+    })
+
+    it('keeps the movie wording and the movie link for a movie', async () => {
+      const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/7')
+      const labels = wrapper.findAll('dt').map((dt) => dt.text())
+      expect(labels).toContain('Directed by')
+      expect(labels).toContain('Runtime')
+      expect(wrapper.find('a[href="https://www.themoviedb.org/movie/976893"]').exists()).toBe(true)
+    })
+  })
 })
+

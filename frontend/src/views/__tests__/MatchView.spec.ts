@@ -16,7 +16,7 @@ const ambiguous = makeFilm({
   id: 3,
   title: 'Cléo from 5 to 7',
   releaseYear: 1962,
-  tmdb: { id: null, status: 'ambiguous', syncedAt: null },
+  tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
 })
 
 beforeEach(() => {
@@ -34,7 +34,7 @@ describe('MatchView', () => {
     expect(wrapper.text()).toContain('(1962)')
     expect(wrapper.text()).toContain('TMDB found several films with this title')
     const link = wrapper.get('ol a')
-    expect(link.attributes('href')).toBe('https://www.themoviedb.org/search/movie?query=Cl%C3%A9o%20from%205%20to%207')
+    expect(link.attributes('href')).toBe('https://www.themoviedb.org/search?query=Cl%C3%A9o%20from%205%20to%207')
     expect(link.attributes('rel')).toContain('noopener')
     await expectNoA11yViolations(wrapper.element)
   })
@@ -45,7 +45,7 @@ describe('MatchView', () => {
     ['pending', 'has not been looked up yet'],
     ['matched', 'already matched'],
   ] as const)('explains the %s status', async (status, text) => {
-    mocked.getFilm.mockResolvedValue(makeFilm({ tmdb: { id: null, status, syncedAt: null } }))
+    mocked.getFilm.mockResolvedValue(makeFilm({ tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }))
     const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
     expect(wrapper.text()).toContain(text)
   })
@@ -56,7 +56,7 @@ describe('MatchView', () => {
     await wrapper.get('#tmdb-id').setValue('https://www.themoviedb.org/movie/262543-joy')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 262543 })
+    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 262543, tmdbMediaType: 'movie' })
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/watchlist'))
     expect(useWatchlistStore().notice).toBe('TMDB id saved for Cléo from 5 to 7. Its details load in the background.')
   })
@@ -67,7 +67,25 @@ describe('MatchView', () => {
     await wrapper.get('#tmdb-id').setValue('262543')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 262543 })
+    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 262543, tmdbMediaType: 'movie' })
+  })
+
+  it('saves a TV show from its page address, with the media type', async () => {
+    mocked.updateFilm.mockResolvedValue(ambiguous)
+    const { wrapper, router } = await mountWithApp(MatchView, '/watchlist/3/match')
+    await wrapper.get('#tmdb-id').setValue('https://www.themoviedb.org/tv/1396-breaking-bad')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 1396, tmdbMediaType: 'tv' })
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/watchlist'))
+  })
+
+  it('searches TMDB for movies and shows, and says that a number alone means a movie', async () => {
+    const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
+    expect(wrapper.get('ol a').attributes('href')).toBe('https://www.themoviedb.org/search?query=Cl%C3%A9o%20from%205%20to%207')
+    expect(wrapper.get('ol').text()).toContain('film or TV show')
+    expect(wrapper.get('#tmdb-id-hint').text()).toContain('/tv/1396')
+    expect(wrapper.get('#tmdb-id-hint').text()).toContain('A number alone means a movie')
   })
 
   it('rejects input without an id and does not call the server', async () => {
@@ -143,7 +161,7 @@ describe('MatchView: edge cases', () => {
     expect(wrapper.get('.lead').text()).not.toContain('(')
   })
 
-  it.each(['', '   ', '0', 'abc', 'https://www.themoviedb.org/tv/12'])('rejects %j without calling the server', async (value) => {
+  it.each(['', '   ', '0', 'abc', 'https://www.themoviedb.org/person/12', 'https://www.themoviedb.org/tv/abc'])('rejects %j without calling the server', async (value) => {
     const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
     await submitWith(wrapper, value)
     expect(mocked.updateFilm).not.toHaveBeenCalled()
@@ -157,7 +175,7 @@ describe('MatchView: edge cases', () => {
     expect(wrapper.find('#tmdb-id-error').exists()).toBe(true)
     await submitWith(wrapper, '12')
     expect(wrapper.find('#tmdb-id-error').exists()).toBe(false)
-    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 12 })
+    expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 12, tmdbMediaType: 'movie' })
   })
 
   it('shows "Saving…" and a disabled button while the request runs', async () => {

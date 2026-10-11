@@ -6,8 +6,8 @@ import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FilmFacts from '../components/FilmFacts.vue'
 import PosterImage from '../components/PosterImage.vue'
-import { filmFacts, formatDate, isHttpUrl, joinNames } from '../format'
-import { tmdbMovieUrl } from '../tmdbId'
+import { directorLabel, filmFacts, formatDate, isHttpUrl, joinNames } from '../format'
+import { tmdbTitleUrl } from '../tmdbId'
 import type { Film } from '../types'
 
 const route = useRoute()
@@ -49,7 +49,7 @@ const facts = computed(() => {
   return [
     ...filmFacts(f, true),
     { label: 'Genres', value: joinNames(f.genres) },
-    { label: 'Directed by', value: joinNames(f.directors) },
+    { label: directorLabel(f), value: joinNames(f.directors) },
   ].filter((fact) => fact.value !== '')
 })
 const showOriginalTitle = computed(() => film.value?.originalTitle && film.value.originalTitle !== film.value.title)
@@ -58,7 +58,7 @@ const links = computed(() => {
   if (!f) return []
   return [
     f.letterboxdUrl && isHttpUrl(f.letterboxdUrl) ? { name: 'Letterboxd', href: f.letterboxdUrl } : null,
-    f.tmdb.id !== null ? { name: 'The Movie Database (TMDB)', href: tmdbMovieUrl(f.tmdb.id) } : null,
+    f.tmdb.id !== null ? { name: 'The Movie Database (TMDB)', href: tmdbTitleUrl(f.tmdb.id, f.tmdb.mediaType) } : null,
   ].filter((link) => link !== null)
 })
 </script>

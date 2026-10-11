@@ -1,3 +1,5 @@
+export type TmdbMediaType = 'movie' | 'tv'
+
 export type TmdbStatus = 'pending' | 'matched' | 'ambiguous' | 'not_found' | 'error'
 
 export interface Named {
@@ -12,7 +14,7 @@ export interface Film {
   letterboxdUrl: string | null
   addedAt: string
   watchedAt: string | null
-  tmdb: { id: number | null; status: TmdbStatus; syncedAt: string | null }
+  tmdb: { id: number | null; mediaType: TmdbMediaType; status: TmdbStatus; syncedAt: string | null }
   originalTitle: string | null
   tagline: string | null
   overview: string | null
@@ -62,6 +64,7 @@ export interface FilmInput {
 export interface FilmPatch extends Partial<FilmInput> {
   watched?: boolean
   tmdbId?: number
+  tmdbMediaType?: TmdbMediaType
 }
 
 export interface ImportedFilmRef {

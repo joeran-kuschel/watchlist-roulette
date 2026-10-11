@@ -20,10 +20,10 @@ const films = [
     title: 'Cléo from 5 to 7',
     letterboxdUrl: null,
     releaseYear: null,
-    tmdb: { id: null, status: 'ambiguous', syncedAt: null },
+    tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
   }),
-  makeFilm({ id: 4, title: 'Rare Home Video', tmdb: { id: null, status: 'not_found', syncedAt: null } }),
-  makeFilm({ id: 5, title: 'Broken Lookup', tmdb: { id: null, status: 'error', syncedAt: null } }),
+  makeFilm({ id: 4, title: 'Rare Home Video', tmdb: { id: null, mediaType: 'movie', status: 'not_found', syncedAt: null } }),
+  makeFilm({ id: 5, title: 'Broken Lookup', tmdb: { id: null, mediaType: 'movie', status: 'error', syncedAt: null } }),
 ]
 // A copy, because the store replaces entries in the array it is given
 const listing = (items = films, total = items.length, page = 1) => ({ items: [...items], total, page, pageSize: 50 })
@@ -447,8 +447,8 @@ describe('WatchlistView TMDB status filter', () => {
 })
 
 describe('WatchlistView pending badge', () => {
-  const pending = makeFilm({ id: 6, title: 'Fresh Import', tmdb: { id: null, status: 'pending', syncedAt: null } })
-  const matched = makeFilm({ id: 7, title: 'Done Film', tmdb: { id: 9, status: 'matched', syncedAt: '2026-10-11T12:00:00.000Z' } })
+  const pending = makeFilm({ id: 6, title: 'Fresh Import', tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null } })
+  const matched = makeFilm({ id: 7, title: 'Done Film', tmdb: { id: 9, mediaType: 'movie', status: 'matched', syncedAt: '2026-10-11T12:00:00.000Z' } })
 
   it('shows a neutral badge for a film that is waiting for its TMDB lookup', async () => {
     mocked.listFilms.mockResolvedValue(listing([pending, matched]))
@@ -484,7 +484,7 @@ describe('WatchlistView pending badge', () => {
   })
 
   it('shows the badge once per pending film, as plain text without a live region or alert', async () => {
-    const second = makeFilm({ id: 9, title: 'Also Fresh', tmdb: { id: null, status: 'pending', syncedAt: null } })
+    const second = makeFilm({ id: 9, title: 'Also Fresh', tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null } })
     mocked.listFilms.mockResolvedValue(listing([pending, second]))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     for (const row of wrapper.findAll('tbody tr')) {

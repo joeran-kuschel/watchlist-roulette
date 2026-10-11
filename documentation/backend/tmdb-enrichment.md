@@ -30,7 +30,21 @@ Trouble at TMDB itself (unreachable, rate limit `429`, `5xx`) leaves the film `p
 
 ## Fixing a match
 
-List the films to fix with `GET /api/films?tmdbStatus=ambiguous` (or `not_found`). Find the id in the TMDB URL (`themoviedb.org/movie/<id>`) and send `PATCH /api/films/:id` with `{ "tmdbId": <id> }`. The film loads that movie's data.
+List the films to fix with `GET /api/films?tmdbStatus=ambiguous` (or `not_found`). Find the id in the TMDB URL (`themoviedb.org/movie/<id>`) and send `PATCH /api/films/:id` with `{ "tmdbId": <id> }`. The film loads that movie's data. For a TV show use `themoviedb.org/tv/<id>` and add `"tmdbMediaType": "tv"` (see below).
+
+## TV shows
+
+TMDB treats a TV show as a different kind of title with its own numbers. A show is only matched by hand: send `{ "tmdbId": <id>, "tmdbMediaType": "tv" }` with the id from `themoviedb.org/tv/<id>`. The automatic title search only looks for movies, because a film title could match the wrong show. The media type is stored with the film (`tmdb.mediaType` in the API), and a run loads a film of type `tv` from `/tv/<id>` (`tmdb/client.ts`).
+
+`tmdb/tv.ts` maps a show onto the movie shape the model stores, so the tables are the same:
+
+| Show | Stored as |
+|---|---|
+| `name`, `original_name` | title data, original title |
+| first of `episode_run_time` | `runtime_minutes` (the length of an episode; none if TMDB lists none) |
+| `origin_country` | `countries` |
+| `created_by` | the director role (shown as "Created by" in the UI) |
+| genres, cast, poster, overview, rating | the same as for a movie |
 
 ## Posters
 

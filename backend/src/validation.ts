@@ -35,9 +35,14 @@ export const filmPatchSchema = z
     addedAt: isoDate.optional(),
     watched: z.boolean().optional(),
     tmdbId: z.number().int().positive().max(INT4_MAX).optional(),
+    tmdbMediaType: z.enum(['movie', 'tv']).optional(),
   })
   .strict()
   .refine((patch) => Object.keys(patch).length > 0, 'Send at least one field to change')
+  .refine((patch) => patch.tmdbMediaType === undefined || patch.tmdbId !== undefined, {
+    message: 'tmdbMediaType needs a tmdbId',
+    path: ['tmdbMediaType'],
+  })
 
 const int = z.coerce.number().int()
 
