@@ -17,6 +17,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Added adding, editing and deleting a film from the watchlist.
 - Added choosing the right TMDB match for a film that TMDB could not match on its own, by pasting the movie's address.
 - Added the CSV import screen in two steps: check the file first, then confirm. It shows which films will be added, updated and removed, and every rejected row with its reason.
+- On phones and other narrow screens the roulette filters are collapsed behind a "Filters" button, so the picked film and the spin button are visible right away. The panel opens by itself if a filter is invalid, and short filters share a row.
 - Added the TMDB notice and a logo placeholder at the bottom of every page.
 - Posters now show. They are loaded through your own server, so your browser never contacts TMDB. Films without a poster still show a "No poster" box.
 - The whole app works with a keyboard and screen readers: skip link, labelled icon buttons with tooltips, announced results and errors.

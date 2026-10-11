@@ -340,7 +340,7 @@ describe('ImportSummary', () => {
 })
 
 describe('AppIcon', () => {
-  const names = ['spin', 'eye', 'eye-off', 'pencil', 'match', 'plus', 'left', 'right', 'x', 'alert'] as const
+  const names = ['spin', 'eye', 'eye-off', 'pencil', 'match', 'plus', 'left', 'right', 'chevron-down', 'x', 'alert'] as const
 
   it.each(names)('draws the %s icon, hidden from assistive technology', (name) => {
     const svg = mount(AppIcon, { props: { name } }).get('svg')
