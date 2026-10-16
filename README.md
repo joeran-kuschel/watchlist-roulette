@@ -55,3 +55,7 @@ cd frontend && npm run test:unit -- --run && npm run type-check && npm run lint
 - `frontend/`: Vue 3, Vite, Pinia
 - `backend/`: Express, `pg`, TypeScript; SQL migrations in `backend/migrations/`
 - `documentation/`: feature documentation
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Report security problems privately, as described in [SECURITY.md](SECURITY.md). The project is released under the [MIT License](LICENSE).
