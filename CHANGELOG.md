@@ -4,6 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- Added a security policy, contributing guide, and templates for issues and pull requests, so the project is ready to be shared.
 - Added the app's logo, a ring of film perforations around a dot, in the page header, and as the icon in the browser tab and on iOS home screens (the icon follows your light or dark color-scheme setting).
 - Added the backend and database for the watchlist: add, edit, delete, search, sort and page through films, and mark them watched or unwatched.
 - Added a random film pick that only draws unwatched films and can be limited by release year, genre, country and runtime.

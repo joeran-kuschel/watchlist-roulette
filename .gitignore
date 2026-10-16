@@ -43,3 +43,7 @@ playwright-report/
 
 # Local configuration with secrets
 .env
+
+# AI assistant configuration (local only)
+CLAUDE.md
+.claude/
