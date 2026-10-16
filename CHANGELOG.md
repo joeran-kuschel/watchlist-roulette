@@ -35,3 +35,4 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Going back to the watchlist from a film's page, the edit page or the TMDB match page now keeps your search, filters, sort and page, instead of starting again at page 1. The app forgets this when you reload the page.
 - On a film's details page you can now mark the film as watched or unwatched, and choose its TMDB match when TMDB could not match it on its own.
 - Added automatic checks on GitHub: every pull request runs the tests, type-checks, lint and a Docker build, and dependency updates are proposed weekly.
+- Added a "Look up on TMDB" button to a film's details page. Use it for films you added by hand, or that failed or were not found: the page shows the result right away. Without a TMDB token it tells you that TMDB is not set up.

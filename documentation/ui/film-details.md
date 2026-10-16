@@ -8,6 +8,7 @@ Route `/watchlist/:id`. A page about one film, with a few quick actions (no dele
 - Reads everything the app knows about the film.
 - Uses the buttons next to the title, in this order:
   - **Mark as watched** / **Mark as unwatched** (the text follows the film's state). It sends the same `PATCH /api/films/:id` with `{ watched }` as the list's button. When it succeeds, the "Watched <date>" line and the button update and a visually hidden `role="status"` message says "<Title> is marked as watched." (or "unwatched."). A failure shows an alert (`role="alert"`) and leaves the film as it was. While the request runs the button is marked `aria-disabled` and clicks are ignored; it is deliberately not `disabled`, because a disabled button that has the keyboard focus loses it in Firefox and Safari.
+  - **Look up on TMDB**, for a film whose TMDB status is `pending`, `error` or `not_found` (for example a film added by hand). It sends `POST /api/films/:id/tmdb-lookup` and waits for the answer, so the page shows the new status right away. While the request runs the text is "Looking up…" and the button is `aria-disabled` with clicks ignored (as for Mark as watched). The result is announced in the `role="status"` message ("Look-up finished: <Title> was matched on TMDB." / "was not found on TMDB." / "has several possible matches on TMDB. Choose the match."). When the film is matched the button disappears and the focus moves to the page heading, so it is not lost. A failure shows an alert (`role="alert"`) with the server's sentence for `502` and `503` ("TMDB is not configured. Set TMDB_ACCESS_TOKEN." without a token), and the film stays as it was.
   - **Choose TMDB match**, a link to the [match page](tmdb-match.md), only for a film whose TMDB status needs a fix (`ambiguous`, `not_found` or `error`, the rule `needsMatch()` in `format.ts`, shared with the watchlist row).
   - **Edit**, which opens the [film form](film-form.md).
 - Deleting a film stays in the watchlist.
@@ -40,5 +41,5 @@ Anything TMDB has not delivered yet (a pending, not found or ambiguous film) is 
 ## Accessibility notes
 
 - One `h1` (the title), `h2` for each section, each section labelled by its heading.
-- **Mark as watched** and **Choose TMDB match** are named by their visible text. **Edit** has the accessible name "Edit <title>", which starts with its visible text (WCAG 2.5.3). The buttons wrap onto further lines on narrow screens (320 px).
+- **Mark as watched**, **Look up on TMDB** and **Choose TMDB match** are named by their visible text. **Edit** has the accessible name "Edit <title>", which starts with its visible text (WCAG 2.5.3). The buttons wrap onto further lines on narrow screens (320 px).
 - The page title is "Film details" like the other routes; focus moves on navigation as described in [App shell](app-shell.md).

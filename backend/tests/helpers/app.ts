@@ -4,8 +4,10 @@ import { createApp } from '../../src/app.js'
 import type { Enricher } from '../../src/tmdb/enricher.js'
 import type { PosterFetcher } from '../../src/tmdb/poster.js'
 
-export function fakeEnricher(enabled = true): Enricher & { trigger: ReturnType<typeof vi.fn> } {
-  return { enabled, trigger: vi.fn().mockResolvedValue(undefined) }
+export function fakeEnricher(
+  enabled = true,
+): Enricher & { trigger: ReturnType<typeof vi.fn>; lookup: ReturnType<typeof vi.fn> } {
+  return { enabled, trigger: vi.fn().mockResolvedValue(undefined), lookup: vi.fn().mockResolvedValue('done') }
 }
 
 export function testApp(enricher: Enricher = fakeEnricher(), corsOrigin?: string, fetchPoster?: PosterFetcher) {

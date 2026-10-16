@@ -89,6 +89,8 @@ export const createFilm = (input: FilmInput) => request<Film>('/films', json('PO
 export const updateFilm = (id: number, patch: FilmPatch) =>
   request<Film>(`/films/${id}`, json('PATCH', patch))
 
+export const lookupFilmOnTmdb = (id: number) => request<Film>(`/films/${id}/tmdb-lookup`, { method: 'POST' })
+
 export const deleteFilm = (id: number) => request<void>(`/films/${id}`, { method: 'DELETE' })
 
 function importForm(file: File, options: ApplyImportOptions = {}): FormData {

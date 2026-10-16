@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useWatchlistStore } from '../stores/watchlist'
-import { ApiError, describeError, getFilm, updateFilm } from '../api'
+import { ApiError, describeError, getFilm, lookupFilmOnTmdb, updateFilm } from '../api'
 import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FilmFacts from '../components/FilmFacts.vue'
 import PosterImage from '../components/PosterImage.vue'
-import { directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, needsMatch } from '../format'
+import { canLookUp, directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, needsMatch } from '../format'
 import { tmdbTitleUrl } from '../tmdbId'
 import type { Film } from '../types'
 
@@ -22,6 +22,9 @@ const notice = ref('')
 // The film whose watched state is being saved. Per film, so a slow request for the film the user left
 // does not block the button of the next one
 const savingId = ref<number | null>(null)
+// The film that is being looked up on TMDB (same reasoning as `savingId`)
+const lookingUpId = ref<number | null>(null)
+const heading = useTemplateRef<HTMLHeadingElement>('heading')
 
 // Counts the requests, so a slow answer for an earlier film never overwrites the one that was asked for last
 let latestRequest = 0
@@ -69,6 +72,39 @@ async function setWatched(current: Film, watched: boolean) {
   }
 }
 
+// What the user hears after a look-up, by the film's new TMDB status
+const LOOKUP_RESULTS: Record<Film['tmdb']['status'], string> = {
+  matched: 'was matched on TMDB.',
+  ambiguous: 'has several possible matches on TMDB. Choose the match.',
+  not_found: 'was not found on TMDB.',
+  error: 'could not be looked up on TMDB.',
+  pending: 'is still waiting for TMDB.',
+}
+
+async function lookUp(current: Film) {
+  if (lookingUpId.value === current.id) return // a click while the request runs
+  lookingUpId.value = current.id
+  actionError.value = ''
+  notice.value = ''
+  try {
+    const updated = await lookupFilmOnTmdb(current.id)
+    if (film.value?.id !== current.id) return
+    film.value = updated
+    notice.value = `Look-up finished: ${updated.title} ${LOOKUP_RESULTS[updated.tmdb.status]}`
+    // The button is gone when the film is matched; keep the focus on the page instead of losing it
+    if (!canLookUp(updated)) {
+      await nextTick()
+      heading.value?.focus()
+    }
+  } catch (e) {
+    // The API words TMDB problems (not set up, not reachable, rejected our token) for the user; a bare 502 from a proxy is not
+    const tmdbProblem = e instanceof ApiError && e.code === 'tmdb_unavailable'
+    if (film.value?.id === current.id) actionError.value = tmdbProblem ? e.message : describeError(e)
+  } finally {
+    if (lookingUpId.value === current.id) lookingUpId.value = null
+  }
+}
+
 const facts = computed(() => {
   const f = film.value
   if (!f) return []
@@ -112,7 +148,7 @@ const links = computed(() => {
       <div class="details__body">
         <div class="details__head">
           <div>
-            <h1>{{ film.title }}</h1>
+            <h1 ref="heading" tabindex="-1">{{ film.title }}</h1>
             <p v-if="showOriginalTitle" class="details__original">Original title: {{ film.originalTitle }}</p>
             <p v-if="film.tagline" class="details__tagline">{{ film.tagline }}</p>
           </div>
@@ -125,6 +161,15 @@ const links = computed(() => {
               @click="setWatched(film, !film.watchedAt)"
             >
               {{ film.watchedAt ? 'Mark as unwatched' : 'Mark as watched' }}
+            </button>
+            <button
+              v-if="canLookUp(film)"
+              class="btn"
+              type="button"
+              :aria-disabled="lookingUpId === film.id ? 'true' : undefined"
+              @click="lookUp(film)"
+            >
+              {{ lookingUpId === film.id ? 'Looking up…' : 'Look up on TMDB' }}
             </button>
             <RouterLink v-if="needsMatch(film)" class="btn" :to="`/watchlist/${film.id}/match`">Choose TMDB match</RouterLink>
             <RouterLink class="btn" :to="`/watchlist/${film.id}/edit`" :aria-label="`Edit ${film.title}`">Edit</RouterLink>

@@ -370,3 +370,176 @@ describe('enricher follow-up runs and TMDB trouble', () => {
     expect(search).toHaveBeenCalledTimes(5)
   })
 })
+
+describe('enricher lookup', () => {
+  it('looks up a pending film and stores the match', async () => {
+    const id = await addFilm('Joy')
+    expect(await enricher(client()).lookup(id)).toBe('done')
+    expect(await getFilm(id)).toMatchObject({ tmdb: { id: 100, status: 'matched' }, tagline: 'Based on the true story' })
+  })
+
+  it('looks up a film whatever its status, such as not_found, error or matched', async () => {
+    for (const status of ['not_found', 'error', 'matched']) {
+      const title = `Joy ${status}`
+      const id = await addFilm(title)
+      await pool.query(`UPDATE films SET tmdb_status = $2 WHERE id = $1`, [id, status])
+      const c = client({ searchMovie: vi.fn().mockResolvedValue([{ id: 100 + id, title, original_title: title, release_date: '2015-01-01' }]), getMovie: vi.fn().mockResolvedValue(movie(100 + id)) })
+      expect(await enricher(c).lookup(id)).toBe('done')
+      expect(c.searchMovie).toHaveBeenCalledTimes(1)
+      expect((await getFilm(id)).tmdb).toMatchObject({ id: 100 + id, status: 'matched' })
+    }
+  })
+
+  it('keeps the stored TMDB id and skips the search', async () => {
+    const id = await addFilm('Whatever')
+    await pool.query(`UPDATE films SET tmdb_id = 555, tmdb_status = 'not_found' WHERE id = $1`, [id])
+    const c = client({ getMovie: vi.fn().mockResolvedValue(movie(555)) })
+    expect(await enricher(c).lookup(id)).toBe('done')
+    expect(c.searchMovie).not.toHaveBeenCalled()
+    expect((await getFilm(id)).tmdb).toMatchObject({ id: 555, status: 'matched' })
+  })
+
+  it('answers done and stores not_found when TMDB knows no such film', async () => {
+    const id = await addFilm('Nothing')
+    expect(await enricher(client({ searchMovie: vi.fn().mockResolvedValue([]) })).lookup(id)).toBe('done')
+    expect((await getFilm(id)).tmdb.status).toBe('not_found')
+  })
+
+  it('answers done and stores ambiguous when several films match', async () => {
+    const id = await addFilm('Twice')
+    const two = [
+      { id: 1, title: 'Twice', original_title: 'Twice', release_date: '2015-01-01' },
+      { id: 2, title: 'Twice', original_title: 'Twice', release_date: '2015-02-01' },
+    ]
+    const c = client({ searchMovie: vi.fn().mockResolvedValue(two) })
+    expect(await enricher(c).lookup(id)).toBe('done')
+    expect((await getFilm(id)).tmdb.status).toBe('ambiguous')
+    expect(c.getMovie).not.toHaveBeenCalled()
+  })
+
+  it('answers no_such_film for an unknown id', async () => {
+    const c = client()
+    expect(await enricher(c).lookup(999)).toBe('no_such_film')
+    expect(c.searchMovie).not.toHaveBeenCalled()
+  })
+
+  it('answers token_rejected and leaves the film unchanged when TMDB refuses the token', async () => {
+    const id = await addFilm('Joy')
+    const e = enricher(client({ searchMovie: vi.fn().mockRejectedValue(new TmdbError('TMDB answered 401', 401)) }))
+    expect(await e.lookup(id)).toBe('token_rejected')
+    expect((await getFilm(id)).tmdb.status).toBe('pending')
+  })
+
+  it.each([
+    ['a server error', new TmdbError('TMDB answered 503', 503)],
+    ['a rate limit', new TmdbError('TMDB answered 429', 429)],
+    ['an unreachable TMDB', new TmdbError('TMDB is not reachable: ECONNREFUSED')],
+  ])('answers unreachable and leaves the film unchanged on %s', async (_name, error) => {
+    const id = await addFilm('Joy')
+    await pool.query(`UPDATE films SET tmdb_status = 'error' WHERE id = $1`, [id])
+    const log = vi.fn()
+    const e = createEnricher(client({ searchMovie: vi.fn().mockRejectedValue(error) }), { delayMs: 0, log })
+    expect(await e.lookup(id)).toBe('unreachable')
+    expect((await getFilm(id)).tmdb.status).toBe('error')
+    expect(log).toHaveBeenCalled()
+    await pool.query(`UPDATE films SET tmdb_status = 'pending' WHERE id = $1`, [id])
+    expect(await e.lookup(id)).toBe('unreachable')
+    expect((await getFilm(id)).tmdb.status).toBe('pending')
+  })
+
+  it('sets status error for a failure that is not transient, and still answers done', async () => {
+    const id = await addFilm('Joy')
+    const log = vi.fn()
+    const e = createEnricher(client({ searchMovie: vi.fn().mockRejectedValue(new Error('unexpected')) }), { delayMs: 0, log })
+    expect(await e.lookup(id)).toBe('done')
+    expect((await getFilm(id)).tmdb.status).toBe('error')
+    expect(log).toHaveBeenCalled()
+  })
+
+  it('answers done without a TMDB client and changes nothing', async () => {
+    const id = await addFilm('Joy')
+    const e = enricher(null)
+    expect(await e.lookup(id)).toBe('done')
+    expect((await getFilm(id)).tmdb.status).toBe('pending')
+  })
+
+  it('waits behind a running pass and never runs in parallel with it', async () => {
+    await addFilm('Slow')
+    const wanted = await addFilm('Wanted')
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let running = 0
+    let overlapped = false
+    const search = vi.fn(async (title: string) => {
+      running++
+      if (running > 1) overlapped = true
+      if (title === 'Slow') await gate
+      running--
+      return []
+    })
+    const e = enricher(client({ searchMovie: search }))
+    const pass = e.trigger()
+    await vi.waitFor(() => expect(search).toHaveBeenCalledWith('Slow'))
+    let lookedUp = false
+    const lookup = e.lookup(wanted).then((r) => ((lookedUp = true), r))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(lookedUp).toBe(false)
+    release()
+    expect(await lookup).toBe('done')
+    await pass
+    expect(overlapped).toBe(false)
+  })
+
+  it('goes between two films of a pass instead of waiting for the whole pass', async () => {
+    await addFilm('A')
+    await addFilm('B')
+    await addFilm('C')
+    const wanted = await addFilm('Wanted')
+    await pool.query(`UPDATE films SET tmdb_id = 7, tmdb_status = 'matched' WHERE id = $1`, [wanted])
+    const order: string[] = []
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const search = vi.fn(async (title: string) => {
+      order.push(title)
+      if (title === 'A') await gate
+      return []
+    })
+    const getMovie = vi.fn(async (id: number) => (order.push(`lookup ${id}`), movie(id)))
+    const e = enricher(client({ searchMovie: search, getMovie }))
+    const pass = e.trigger()
+    await vi.waitFor(() => expect(order).toEqual(['A']))
+    const lookup = e.lookup(wanted)
+    release()
+    await Promise.all([lookup, pass])
+    expect(order).toEqual(['A', 'lookup 7', 'B', 'C'])
+  })
+
+  it('runs two lookups one after another', async () => {
+    const a = await addFilm('A')
+    const b = await addFilm('B')
+    let running = 0
+    let overlapped = false
+    const search = vi.fn(async () => {
+      running++
+      if (running > 1) overlapped = true
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      running--
+      return []
+    })
+    const e = enricher(client({ searchMovie: search }))
+    await Promise.all([e.lookup(a), e.lookup(b)])
+    expect(search).toHaveBeenCalledTimes(2)
+    expect(overlapped).toBe(false)
+  })
+
+  it('still runs a lookup after an earlier one failed', async () => {
+    const id = await addFilm('Joy')
+    const search = vi.fn().mockRejectedValueOnce(new Error('boom'))
+    search.mockResolvedValue([{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }])
+    const e = enricher(client({ searchMovie: search }))
+    await e.lookup(id)
+    await pool.query(`UPDATE films SET tmdb_status = 'pending' WHERE id = $1`, [id])
+    await e.lookup(id)
+    expect((await getFilm(id)).tmdb.status).toBe('matched')
+  })
+})

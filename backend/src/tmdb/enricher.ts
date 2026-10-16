@@ -1,12 +1,17 @@
 import { isUniqueViolation } from '../errors.js'
-import { loadPendingFilms, saveMovie, setStatus, type PendingFilm } from '../models/tmdb.js'
+import { loadFilmToEnrich, loadPendingFilms, saveMovie, setStatus, type PendingFilm } from '../models/tmdb.js'
 import { TmdbError, type TmdbClient, type TmdbMovie } from './client.js'
 import { chooseMatch } from './match.js'
 import { tvToMovie } from './tv.js'
 
+/** `unreachable`: TMDB or the network is having trouble, the film is unchanged. `token_rejected`: TMDB refused our token. */
+export type LookupResult = 'done' | 'unreachable' | 'token_rejected' | 'no_such_film'
+
 export interface Enricher {
   /** Starts a run in the background; resolves when it (and any follow-up run) is done. */
   trigger(options?: { retryErrors?: boolean }): Promise<void>
+  /** Looks one film up now, between two films of a running pass; resolves when it is done. Needs `enabled`. */
+  lookup(filmId: number): Promise<LookupResult>
   readonly enabled: boolean
 }
 
@@ -48,11 +53,18 @@ async function enrichFilm(client: TmdbClient, film: PendingFilm): Promise<void> 
  * One pass over the pending films. A rejected token or repeated trouble at TMDB stops the pass and leaves the
  * remaining films pending; any other failure marks only that film as error.
  */
-async function runPass(client: TmdbClient, retryErrors: boolean, delayMs: number, log: Log): Promise<void> {
+async function runPass(
+  client: TmdbClient,
+  retryErrors: boolean,
+  delayMs: number,
+  log: Log,
+  exclusively: Exclusively,
+): Promise<void> {
   let transientInARow = 0
   for (const film of await loadPendingFilms(retryErrors)) {
     try {
-      await enrichFilm(client, film)
+      // The lock is held for one film at a time, so a look-up the user asked for goes next, not after the pass
+      await exclusively(() => enrichFilm(client, film))
       transientInARow = 0
     } catch (error) {
       if (isAuthFailure(error)) throw error
@@ -61,6 +73,33 @@ async function runPass(client: TmdbClient, retryErrors: boolean, delayMs: number
       else if (++transientInARow >= TRANSIENT_FAILURES_BEFORE_STOP) throw error
     }
     if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
+  }
+}
+
+/** Looks up a single film the user asked for. Unlike a pass it reports a failure instead of only logging it. */
+async function lookupFilm(client: TmdbClient, filmId: number, log: Log): Promise<LookupResult> {
+  const film = await loadFilmToEnrich(filmId)
+  if (!film) return 'no_such_film'
+  try {
+    await enrichFilm(client, film)
+  } catch (error) {
+    if (isAuthFailure(error)) return 'token_rejected'
+    log(`TMDB lookup failed for "${film.title}"`, error)
+    if (isTransient(error)) return 'unreachable'
+    await setStatus(film.id, 'error')
+  }
+  return 'done'
+}
+
+/** A lock: tasks run strictly one after another, in the order they were asked for. */
+type Exclusively = <T>(task: () => Promise<T>) => Promise<T>
+
+function serially(): Exclusively {
+  let tail: Promise<unknown> = Promise.resolve()
+  return (task) => {
+    const result = tail.then(task)
+    tail = result.catch(() => undefined)
+    return result
   }
 }
 
@@ -94,11 +133,13 @@ export function createEnricher(
   client: TmdbClient | null,
   { delayMs = 150, log = (message, error) => console.error(message, error) }: { delayMs?: number; log?: Log } = {},
 ): Enricher {
+  const exclusively = serially()
   const schedule = oneAtATime((retryErrors) =>
-    runPass(client!, retryErrors, delayMs, log).catch((error) => log('TMDB enrichment stopped', error)),
+    runPass(client!, retryErrors, delayMs, log, exclusively).catch((error) => log('TMDB enrichment stopped', error)),
   )
   return {
     enabled: client !== null,
     trigger: ({ retryErrors = false } = {}) => (client ? schedule(retryErrors) : Promise.resolve()),
+    lookup: (filmId) => (client ? exclusively(() => lookupFilm(client, filmId, log)) : Promise.resolve('done')),
   }
 }

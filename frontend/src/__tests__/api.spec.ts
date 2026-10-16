@@ -7,6 +7,7 @@ import {
   describeError,
   getFilm,
   listFilms,
+  lookupFilmOnTmdb,
   posterUrl,
   previewImport,
   randomFilm,
@@ -61,6 +62,22 @@ describe('api requests', () => {
     expect(create![1]!.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(patch![0]).toBe('/api/films/1')
     expect(patch![1]).toMatchObject({ method: 'PATCH', body: '{"watched":true}' })
+  })
+
+  it('posts a TMDB look-up without a body and returns the film', async () => {
+    fetchMock.mockReturnValue(respond({ id: 4, title: 'Joy' }))
+    await expect(lookupFilmOnTmdb(4)).resolves.toMatchObject({ id: 4 })
+    expect(fetchMock).toHaveBeenCalledWith('/api/films/4/tmdb-lookup', { method: 'POST' })
+  })
+
+  it.each([502, 503])('keeps the message the server sent with a %s look-up answer', async (status) => {
+    fetchMock.mockReturnValue(respond({ error: 'TMDB could not be reached. Try again later.' }, status))
+    await expect(lookupFilmOnTmdb(4)).rejects.toMatchObject({ status, message: 'TMDB could not be reached. Try again later.' })
+  })
+
+  it('reports an unreachable server on a look-up as status 0', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(lookupFilmOnTmdb(4)).rejects.toMatchObject({ status: 0 })
   })
 
   it('treats 204 as success without a body', async () => {
