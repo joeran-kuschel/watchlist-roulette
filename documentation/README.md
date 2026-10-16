@@ -11,6 +11,7 @@ Every feature is documented here, split into UI and backend.
 - [Docker Compose](backend/docker.md): running the app locally, configuration
 - [Kubernetes](backend/kubernetes.md): running on Docker Desktop's Kubernetes next to the other apps
 - [Testing](backend/testing.md): test layers and the real-PostgreSQL tests
+- [Continuous integration](backend/ci.md): GitHub Actions, CodeQL and Dependabot
 
 ## UI
 
