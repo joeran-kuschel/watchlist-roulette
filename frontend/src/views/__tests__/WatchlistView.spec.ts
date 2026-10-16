@@ -35,6 +35,7 @@ const listing = (items = films, total = items.length, page = 1) => ({ items: [..
 beforeEach(() => {
   vi.resetAllMocks()
   mocked.listFilms.mockResolvedValue(listing())
+  mocked.getTmdbCheck.mockResolvedValue({ enabled: true, running: false, total: 0, done: 0, lastRun: null })
 })
 afterEach(() => (document.body.innerHTML = ''))
 
@@ -635,11 +636,13 @@ describe('WatchlistView table states', () => {
       const button = wrapper.get('button.btn:not([aria-label])')
       expect(button.text()).toBe('Check TMDB again')
       expect(wrapper.get('section[aria-labelledby="tmdb-check-heading"] h2').text()).toBe('TMDB data')
-      expect(mocked.getTmdbCheck).not.toHaveBeenCalled()
+      // Only the store asks, once, whether TMDB is on; the panel waits for the click
+      expect(mocked.getTmdbCheck).toHaveBeenCalledTimes(1)
     })
 
     it('reloads the list with the current view when the check has finished', async () => {
-      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
+      // The first answer is for the store's question whether TMDB is on
+      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
       mocked.startTmdbCheck.mockResolvedValue({ started: true })
       const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?q=days&page=2')
       expect(mocked.listFilms).toHaveBeenCalledTimes(1)
@@ -651,7 +654,8 @@ describe('WatchlistView table states', () => {
     })
 
     it('shows the new statuses after the reload', async () => {
-      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
+      // The first answer is for the store's question whether TMDB is on
+      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
       mocked.startTmdbCheck.mockResolvedValue({ started: true })
       const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
       expect(wrapper.text()).toContain('Not found on TMDB')
@@ -670,5 +674,75 @@ describe('WatchlistView table states', () => {
       expect(mocked.listFilms).toHaveBeenCalledTimes(1)
       expect(wrapper.get('[role="alert"]').text()).toContain('TMDB is not configured.')
     })
+  })
+})
+
+describe('WatchlistView when TMDB is not configured', () => {
+  const pending = makeFilm({ id: 6, title: 'Fresh Import', tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null } })
+  const off = { enabled: false, running: false, total: 0, done: 0, lastRun: null }
+  const OFF_TEXT = 'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
+  const mountList = (items = [pending, ...films]) => {
+    mocked.listFilms.mockResolvedValue(listing(items))
+    return mountWithApp(WatchlistView, '/watchlist')
+  }
+
+  it('shows the hint in a TMDB data section instead of the check panel', async () => {
+    mocked.getTmdbCheck.mockResolvedValue(off)
+    const { wrapper } = await mountList()
+    const section = wrapper.get('section[aria-labelledby="tmdb-off-heading"]')
+    expect(section.get('h2').text()).toBe('TMDB data')
+    expect(section.get('[role="status"]').text()).toBe(OFF_TEXT)
+    expect(wrapper.find('section[aria-labelledby="tmdb-check-heading"]').exists()).toBe(false)
+    expect(wrapper.findAll('button').map((b) => b.text())).not.toContain('Check TMDB again')
+  })
+
+  it('shows "TMDB data is off" instead of "Waiting for TMDB data" on pending films', async () => {
+    mocked.getTmdbCheck.mockResolvedValue(off)
+    const { wrapper } = await mountList()
+    const row = wrapper.findAll('tbody tr').find((r) => r.text().includes('Fresh Import'))!
+    expect(row.text()).toContain('TMDB data is off')
+    expect(wrapper.text()).not.toContain('Waiting for TMDB data')
+  })
+
+  it('hides the Choose TMDB match buttons, but keeps the other row actions', async () => {
+    mocked.getTmdbCheck.mockResolvedValue(off)
+    const { wrapper } = await mountList()
+    expect(wrapper.find('[aria-label^="Choose TMDB match"]').exists()).toBe(false)
+    expect(wrapper.find('a[href$="/match"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Edit film: Cléo from 5 to 7"]').exists()).toBe(true)
+  })
+
+  it('keeps the problem badges for films with a TMDB problem', async () => {
+    mocked.getTmdbCheck.mockResolvedValue(off)
+    const { wrapper } = await mountList()
+    expect(wrapper.text()).toContain('Needs review: several TMDB matches')
+    expect(wrapper.text()).toContain('Not found on TMDB')
+  })
+
+  it('shows the panel, the waiting badge and the match buttons when TMDB is on', async () => {
+    const { wrapper } = await mountList()
+    expect(wrapper.find('section[aria-labelledby="tmdb-off-heading"]').exists()).toBe(false)
+    expect(wrapper.find('section[aria-labelledby="tmdb-check-heading"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Waiting for TMDB data')
+    expect(wrapper.text()).not.toContain('TMDB data is off')
+    expect(wrapper.find('[aria-label^="Choose TMDB match"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('TMDB_ACCESS_TOKEN')
+  })
+
+  it('shows no hint and keeps the normal view while it is unknown, because the request failed', async () => {
+    mocked.getTmdbCheck.mockRejectedValue(new api.ApiError(0, 'unreachable'))
+    const { wrapper } = await mountList()
+    expect(wrapper.text()).not.toContain('TMDB_ACCESS_TOKEN')
+    expect(wrapper.text()).not.toContain('TMDB data is off')
+    expect(wrapper.text()).toContain('Waiting for TMDB data')
+    expect(wrapper.find('section[aria-labelledby="tmdb-check-heading"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label^="Choose TMDB match"]').exists()).toBe(true)
+  })
+
+  it('has no axe violations with the hint', async () => {
+    mocked.getTmdbCheck.mockResolvedValue(off)
+    const { wrapper } = await mountList()
+    expect(wrapper.text()).toContain('TMDB_ACCESS_TOKEN')
+    await expectNoA11yViolations(wrapper.element)
   })
 })

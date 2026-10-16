@@ -76,3 +76,7 @@ TMDB's terms require the notice "This product uses the TMDB API but is not endor
 - A request that arrives while a run is going is answered with one more run, which has the retries of every request that asked for it.
 - `GET /api/tmdb/sync` shows how far the run is. `running` is true while a run or the queued follow-up is going; `total` and `done` count the films of the current run (they start again when a follow-up run starts). `lastRun` is kept in memory only (gone after a restart) and has `matched`, `notFound`, `ambiguous` (needs review), `error`, `unreachable`, `stopped` (`token` if TMDB rejected the access token, `tmdb` after three failures in a row, otherwise `null`) and `finishedAt`, which changes with every run so a caller can tell a new summary from the old one. A film that could not be looked up because of a single TMDB failure stays as it was and is counted as `unreachable`.
 - Films a run does not reach (after `stopped`) keep their status.
+
+## Telling the UI whether TMDB is on
+
+`GET /api/tmdb/sync` answers `enabled: false` without a `TMDB_ACCESS_TOKEN` (and never contains the token). The UI uses it to show [a hint](../ui/watchlist.md#when-tmdb-is-off) and to hide the buttons that need TMDB.

@@ -31,6 +31,10 @@ The section "TMDB data" above the filters (`components/TmdbCheckPanel.vue`) look
 - When the run is done the list reloads, so the new badges show.
 - Failures show an alert (`role="alert"`): the server's sentence for TMDB problems ("TMDB is not configured. Set TMDB_ACCESS_TOKEN."), the usual texts for an unreachable server. Polling stops on leaving the page; the run itself goes on in the backend.
 
+## When TMDB is off
+
+The screen asks the backend once whether TMDB is configured (`stores/tmdb.ts`, `GET /api/tmdb/sync`, field `enabled`; the token itself is never sent). When it is not, the "TMDB data" section shows `components/TmdbOffNotice.vue` instead of the **Check TMDB again** controls: "TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app." The text sits in a `role="status"` region that is filled one tick after it appears, so screen readers announce it, and it does not rely on color. The per-film **Choose match** buttons are hidden, and the pending badge reads "TMDB data is off". The same notice is on the [film details](film-details.md) page. If the question fails or is still open nothing changes: a missing hint is better than a wrong one (so the check controls show for a moment before the notice replaces them). Only "on" is remembered: while TMDB is off the screen asks again each time it is opened, so after setting the token and restarting the app the hint goes away when the user opens the watchlist or a film again. The badges for films that are matched or have a problem do not change. The [match page](tmdb-match.md) is still reachable by its address: with TMDB off a chosen match is saved and the film's data is fetched when TMDB is turned on. With a token set, nothing is different.
+
 ## Backend
 
 - `GET /api/films` with `q`, `watched`, `tmdbStatus`, `sort`, `order`, `page`, `pageSize`.
@@ -39,7 +43,7 @@ The section "TMDB data" above the filters (`components/TmdbCheckPanel.vue`) look
 
 ## Table
 
-A real `<table>` with a hidden caption, column headers and the title as row header. The title links to the film's [details page](film-details.md), in the same tab; the Letterboxd and TMDB links are on that page. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself, except after **Check TMDB again**). Without a `TMDB_ACCESS_TOKEN` every film stays pending, so every film shows it. `matched` films show nothing extra.
+A real `<table>` with a hidden caption, column headers and the title as row header. The title links to the film's [details page](film-details.md), in the same tab; the Letterboxd and TMDB links are on that page. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself, except after **Check TMDB again**). Without a `TMDB_ACCESS_TOKEN` every film stays pending; then the badge reads "TMDB data is off" instead (see [When TMDB is off](#when-tmdb-is-off)). `matched` films show nothing extra.
 
 ### On small screens
 

@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useTmdbStore } from '../stores/tmdb'
 import { useWatchlistStore } from '../stores/watchlist'
 import { ApiError, describeError, getFilm, lookupFilmOnTmdb, updateFilm } from '../api'
 import BackLink from '../components/BackLink.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FilmFacts from '../components/FilmFacts.vue'
 import PosterImage from '../components/PosterImage.vue'
+import TmdbOffNotice from '../components/TmdbOffNotice.vue'
 import { canLookUp, directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, needsMatch } from '../format'
 import { tmdbTitleUrl } from '../tmdbId'
 import type { Film } from '../types'
 
 const route = useRoute()
 const watchlist = useWatchlistStore()
+const tmdb = useTmdbStore()
 
 const film = ref<Film | null>(null)
 const error = ref('')
@@ -44,7 +47,10 @@ async function load() {
     error.value = describeError(e)
   }
 }
-onMounted(load)
+onMounted(() => {
+  void tmdb.load()
+  void load()
+})
 // The router reuses this component when only the id changes
 watch(
   () => route.params.id,
@@ -163,7 +169,7 @@ const links = computed(() => {
               {{ film.watchedAt ? 'Mark as unwatched' : 'Mark as watched' }}
             </button>
             <button
-              v-if="canLookUp(film)"
+              v-if="canLookUp(film) && !tmdb.off"
               class="btn"
               type="button"
               :aria-disabled="lookingUpId === film.id ? 'true' : undefined"
@@ -171,10 +177,11 @@ const links = computed(() => {
             >
               {{ lookingUpId === film.id ? 'Looking up…' : 'Look up on TMDB' }}
             </button>
-            <RouterLink v-if="needsMatch(film)" class="btn" :to="`/watchlist/${film.id}/match`">Choose TMDB match</RouterLink>
+            <RouterLink v-if="needsMatch(film) && !tmdb.off" class="btn" :to="`/watchlist/${film.id}/match`">Choose TMDB match</RouterLink>
             <RouterLink class="btn" :to="`/watchlist/${film.id}/edit`" :aria-label="`Edit ${film.title}`">Edit</RouterLink>
           </div>
         </div>
+        <TmdbOffNotice v-if="tmdb.off" />
         <ErrorAlert v-if="actionError" :message="actionError" />
         <p class="sr-only" role="status">{{ notice }}</p>
 

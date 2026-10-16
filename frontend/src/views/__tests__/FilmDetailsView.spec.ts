@@ -11,6 +11,7 @@ vi.mock('../../api', async (importOriginal) => ({
   getFilm: vi.fn<typeof import('../../api').getFilm>(),
   updateFilm: vi.fn<typeof import('../../api').updateFilm>(),
   lookupFilmOnTmdb: vi.fn<typeof import('../../api').lookupFilmOnTmdb>(),
+  getTmdbCheck: vi.fn<typeof import('../../api').getTmdbCheck>(),
 }))
 const mocked = vi.mocked(api)
 
@@ -52,6 +53,7 @@ const bare = (overrides = {}) =>
 beforeEach(() => {
   vi.resetAllMocks()
   mocked.getFilm.mockResolvedValue(rich)
+  mocked.getTmdbCheck.mockResolvedValue({ enabled: true, running: false, total: 0, done: 0, lastRun: null })
 })
 afterEach(() => (document.body.innerHTML = ''))
 
@@ -744,5 +746,48 @@ describe('FilmDetailsView look-up on TMDB', () => {
     fail(new api.ApiError(502, 'down'))
     await flushPromises()
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+})
+
+describe('FilmDetailsView when TMDB is not configured', () => {
+  const off = { enabled: false, running: false, total: 0, done: 0, lastRun: null }
+  const OFF_TEXT = 'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
+  const actions = (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper']) =>
+    wrapper.findAll('.details__actions .btn').map((a) => a.text())
+  const mountFilm = (status: 'pending' | 'not_found' | 'ambiguous' | 'error') => {
+    mocked.getFilm.mockResolvedValue(makeFilm({ id: 3, tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }))
+    return mountWithApp(FilmDetailsView, '/watchlist/3')
+  }
+
+  it.each(['pending', 'not_found', 'ambiguous', 'error'] as const)(
+    'shows the hint and hides Look up on TMDB and Choose TMDB match for status %s',
+    async (status) => {
+      mocked.getTmdbCheck.mockResolvedValue(off)
+      const { wrapper } = await mountFilm(status)
+      expect(actions(wrapper)).toEqual(['Mark as watched', 'Edit'])
+      expect(wrapper.find('a[href="/watchlist/3/match"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain(OFF_TEXT)
+    },
+  )
+
+  it('shows no hint and the TMDB buttons when TMDB is on', async () => {
+    const { wrapper } = await mountFilm('not_found')
+    expect(actions(wrapper)).toEqual(['Mark as watched', 'Look up on TMDB', 'Choose TMDB match', 'Edit'])
+    expect(wrapper.text()).not.toContain('TMDB_ACCESS_TOKEN')
+  })
+
+  it('shows no hint and the TMDB buttons while it is unknown, because the request failed', async () => {
+    mocked.getTmdbCheck.mockRejectedValue(new api.ApiError(0, 'unreachable'))
+    const { wrapper } = await mountFilm('not_found')
+    expect(actions(wrapper)).toEqual(['Mark as watched', 'Look up on TMDB', 'Choose TMDB match', 'Edit'])
+    expect(wrapper.text()).not.toContain('TMDB_ACCESS_TOKEN')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('has no axe violations with the hint', async () => {
+    mocked.getTmdbCheck.mockResolvedValue(off)
+    const { wrapper } = await mountFilm('pending')
+    expect(wrapper.text()).toContain(OFF_TEXT)
+    await expectNoA11yViolations(wrapper.element)
   })
 })
