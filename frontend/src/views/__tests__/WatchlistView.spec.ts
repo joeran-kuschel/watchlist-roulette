@@ -11,6 +11,8 @@ vi.mock('../../api', async (importOriginal) => ({
   listFilms: vi.fn<typeof import('../../api').listFilms>(),
   updateFilm: vi.fn<typeof import('../../api').updateFilm>(),
   getFilm: vi.fn<typeof import('../../api').getFilm>(),
+  startTmdbCheck: vi.fn<typeof import('../../api').startTmdbCheck>(),
+  getTmdbCheck: vi.fn<typeof import('../../api').getTmdbCheck>(),
 }))
 const mocked = vi.mocked(api)
 
@@ -622,5 +624,51 @@ describe('WatchlistView table states', () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     expect(wrapper.find('table').exists()).toBe(false)
     expect(wrapper.text()).toContain('Your watchlist is empty')
+  })
+
+  describe('TMDB check', () => {
+    const idle = { enabled: true, running: false, total: 0, done: 0, lastRun: null }
+    const summary = { matched: 1, notFound: 0, ambiguous: 0, error: 0, unreachable: 0, stopped: null, finishedAt: '2026-10-16T10:00:00.000Z' }
+
+    it('shows the panel with its button above the filters', async () => {
+      const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+      const button = wrapper.get('button.btn:not([aria-label])')
+      expect(button.text()).toBe('Check TMDB again')
+      expect(wrapper.get('section[aria-labelledby="tmdb-check-heading"] h2').text()).toBe('TMDB data')
+      expect(mocked.getTmdbCheck).not.toHaveBeenCalled()
+    })
+
+    it('reloads the list with the current view when the check has finished', async () => {
+      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
+      mocked.startTmdbCheck.mockResolvedValue({ started: true })
+      const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?q=days&page=2')
+      expect(mocked.listFilms).toHaveBeenCalledTimes(1)
+      await wrapper.get('section[aria-labelledby="tmdb-check-heading"] button').trigger('click')
+      await flushPromises()
+      expect(mocked.listFilms).toHaveBeenCalledTimes(2)
+      expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'days', page: 2 }))
+      expect(wrapper.get('section[aria-labelledby="tmdb-check-heading"] [role="status"]').text()).toContain('TMDB check finished')
+    })
+
+    it('shows the new statuses after the reload', async () => {
+      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
+      mocked.startTmdbCheck.mockResolvedValue({ started: true })
+      const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+      expect(wrapper.text()).toContain('Not found on TMDB')
+      mocked.listFilms.mockResolvedValue(listing(films.filter((f) => f.id !== 4)))
+      await wrapper.get('section[aria-labelledby="tmdb-check-heading"] button').trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('Not found on TMDB')
+    })
+
+    it('does not reload the list when the check could not start', async () => {
+      mocked.getTmdbCheck.mockResolvedValue(idle)
+      mocked.startTmdbCheck.mockRejectedValue(new api.ApiError(503, 'TMDB is not configured.', 'tmdb_unavailable'))
+      const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+      await wrapper.get('section[aria-labelledby="tmdb-check-heading"] button').trigger('click')
+      await flushPromises()
+      expect(mocked.listFilms).toHaveBeenCalledTimes(1)
+      expect(wrapper.get('[role="alert"]').text()).toContain('TMDB is not configured.')
+    })
   })
 })

@@ -59,5 +59,8 @@ export const tmdbBadge = (film: Film): string | undefined =>
     }) as Record<string, string>
   )[film.tmdb.status]
 
+/** Whether a TMDB look-up can be started for this film: it is waiting, failed or was not found. */
+export const canLookUp = (film: Film) => ['pending', 'error', 'not_found'].includes(film.tmdb.status)
+
 /** Whether the user should choose the TMDB match for this film. */
 export const needsMatch = (film: Film) => Boolean(tmdbBadge(film))

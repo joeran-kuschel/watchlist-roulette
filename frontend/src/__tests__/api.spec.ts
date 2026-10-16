@@ -6,10 +6,13 @@ import {
   deleteFilm,
   describeError,
   getFilm,
+  getTmdbCheck,
   listFilms,
+  lookupFilmOnTmdb,
   posterUrl,
   previewImport,
   randomFilm,
+  startTmdbCheck,
   updateFilm,
 } from '../api'
 
@@ -61,6 +64,49 @@ describe('api requests', () => {
     expect(create![1]!.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(patch![0]).toBe('/api/films/1')
     expect(patch![1]).toMatchObject({ method: 'PATCH', body: '{"watched":true}' })
+  })
+
+  it('posts a TMDB look-up without a body and returns the film', async () => {
+    fetchMock.mockReturnValue(respond({ id: 4, title: 'Joy' }))
+    await expect(lookupFilmOnTmdb(4)).resolves.toMatchObject({ id: 4 })
+    expect(fetchMock).toHaveBeenCalledWith('/api/films/4/tmdb-lookup', { method: 'POST' })
+  })
+
+  it.each([502, 503])('keeps the message the server sent with a %s look-up answer', async (status) => {
+    fetchMock.mockReturnValue(respond({ error: 'TMDB could not be reached. Try again later.' }, status))
+    await expect(lookupFilmOnTmdb(4)).rejects.toMatchObject({ status, message: 'TMDB could not be reached. Try again later.' })
+  })
+
+  it('reports an unreachable server on a look-up as status 0', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(lookupFilmOnTmdb(4)).rejects.toMatchObject({ status: 0 })
+  })
+
+  it.each([true, false])('starts a TMDB check with includeUnmatched %s as JSON', async (includeUnmatched) => {
+    fetchMock.mockReturnValue(respond({ started: true }, 202))
+    await expect(startTmdbCheck(includeUnmatched)).resolves.toEqual({ started: true })
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toBe('/api/tmdb/sync')
+    expect(init).toMatchObject({ method: 'POST' })
+    expect(JSON.parse(String(init!.body))).toEqual({ includeUnmatched })
+    expect(new Headers(init!.headers).get('Content-Type')).toBe('application/json')
+  })
+
+  it('keeps the code and message when starting a TMDB check is refused', async () => {
+    fetchMock.mockReturnValue(respond({ error: 'TMDB is not configured.', code: 'tmdb_unavailable' }, 503))
+    await expect(startTmdbCheck(true)).rejects.toMatchObject({ status: 503, code: 'tmdb_unavailable', message: 'TMDB is not configured.' })
+  })
+
+  it('reads the state of the TMDB check with a GET', async () => {
+    const check = { enabled: true, running: false, total: 0, done: 0, lastRun: null }
+    fetchMock.mockReturnValue(respond(check))
+    await expect(getTmdbCheck()).resolves.toEqual(check)
+    expect(fetchMock).toHaveBeenCalledWith('/api/tmdb/sync', undefined)
+  })
+
+  it('reports an unreachable server when reading the TMDB check as status 0', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(getTmdbCheck()).rejects.toMatchObject({ status: 0 })
   })
 
   it('treats 204 as success without a body', async () => {

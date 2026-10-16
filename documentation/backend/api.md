@@ -15,7 +15,9 @@ Errors have the form `{ "error": "message" }`; validation errors (`400`) add `is
 | GET | `/api/films/random` | Pick a random unwatched film |
 | GET | `/api/films/:id/poster` | The film's poster image, see [TMDB enrichment](tmdb-enrichment.md#posters) |
 | POST | `/api/films/import` | Import a CSV, see [CSV import](csv-import.md) |
-| POST | `/api/tmdb/sync` | Start a TMDB run that also retries films in `error` (`202`; `503` without a TMDB token) |
+| POST | `/api/films/:id/tmdb-lookup` | Look one film up on TMDB now and answer with the film (`200`; `404` unknown film; `503` without a TMDB token; `502` if TMDB is unreachable or rejects the token). See [TMDB enrichment](tmdb-enrichment.md#looking-up-one-film) |
+| POST | `/api/tmdb/sync` | Start a TMDB run that also retries films in `error`. Optional JSON body `{ "includeUnmatched": true }` also retries films that were `not_found` or `ambiguous` and have no TMDB id (default `false`). `202 { "started": true }`; `400` for an invalid body; `503` without a TMDB token |
+| GET | `/api/tmdb/sync` | Progress of the run: `{ enabled, running, total, done, lastRun }`. Works without a token (`enabled: false`). See [TMDB enrichment](tmdb-enrichment.md#checking-again) |
 
 ## A film
 

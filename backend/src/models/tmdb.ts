@@ -13,26 +13,49 @@ export type TmdbStatus = 'pending' | 'matched' | 'ambiguous' | 'not_found' | 'er
 
 const MAX_CAST = 10
 
-export async function loadPendingFilms(retryErrors: boolean, db: Db = getPool()): Promise<PendingFilm[]> {
-  const statuses = retryErrors ? `('pending', 'error')` : `('pending')`
-  const rows = await query<{
-    id: string | number
-    title: string
-    release_year: number | null
-    tmdb_id: number | null
-    tmdb_media_type: TmdbMediaType
-  }>(
-    `SELECT id, title, release_year, tmdb_id, tmdb_media_type FROM films WHERE tmdb_status IN ${statuses} ORDER BY id`,
-    [],
+interface PendingRow {
+  id: string | number
+  title: string
+  release_year: number | null
+  tmdb_id: number | null
+  tmdb_media_type: TmdbMediaType
+}
+
+const toPendingFilm = (row: PendingRow): PendingFilm => ({
+  id: Number(row.id),
+  title: row.title,
+  releaseYear: row.release_year,
+  tmdbId: row.tmdb_id,
+  mediaType: row.tmdb_media_type,
+})
+
+const PENDING_COLUMNS = `id, title, release_year, tmdb_id, tmdb_media_type`
+
+/**
+ * The films a run looks up: the pending ones, plus the ones that failed (`retryErrors`) and the ones that were
+ * not found or had several matches (`retryUnmatched`). A film the user matched by hand has a TMDB id and is
+ * never in the last group: re-searching by title must not undo that choice.
+ */
+export async function loadPendingFilms(
+  { retryErrors = false, retryUnmatched = false }: { retryErrors?: boolean; retryUnmatched?: boolean } = {},
+  db: Db = getPool(),
+): Promise<PendingFilm[]> {
+  const rows = await query<PendingRow>(
+    `SELECT ${PENDING_COLUMNS} FROM films
+     WHERE tmdb_status = 'pending'
+        OR ($1 AND tmdb_status = 'error')
+        OR ($2 AND tmdb_status IN ('not_found', 'ambiguous') AND tmdb_id IS NULL)
+     ORDER BY id`,
+    [retryErrors, retryUnmatched],
     db,
   )
-  return rows.map((row) => ({
-    id: Number(row.id),
-    title: row.title,
-    releaseYear: row.release_year,
-    tmdbId: row.tmdb_id,
-    mediaType: row.tmdb_media_type,
-  }))
+  return rows.map(toPendingFilm)
+}
+
+/** One film for a look-up the user asked for, whatever its status; null if there is no such film. */
+export async function loadFilmToEnrich(filmId: number, db: Db = getPool()): Promise<PendingFilm | null> {
+  const rows = await query<PendingRow>(`SELECT ${PENDING_COLUMNS} FROM films WHERE id = $1`, [filmId], db)
+  return rows[0] ? toPendingFilm(rows[0]) : null
 }
 
 export async function setStatus(filmId: number, status: TmdbStatus, db: Db = getPool()): Promise<void> {

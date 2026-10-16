@@ -153,11 +153,138 @@ describe('POST /api/tmdb/sync', () => {
     const enricher = fakeEnricher()
     const res = await testApp(enricher).post('/api/tmdb/sync')
     expect(res.status).toBe(202)
-    expect(enricher.trigger).toHaveBeenCalledWith({ retryErrors: true })
+    expect(enricher.trigger).toHaveBeenCalledWith({ retryErrors: true, retryUnmatched: false })
   })
 
   it('answers 503 when TMDB is not configured', async () => {
     expect((await testApp(fakeEnricher(false)).post('/api/tmdb/sync')).status).toBe(503)
+  })
+
+  it('answers 202 with started: true', async () => {
+    const res = await testApp().post('/api/tmdb/sync')
+    expect(res.body).toEqual({ started: true })
+  })
+
+  it.each([true, false])('retries the unmatched films when includeUnmatched is %s', async (includeUnmatched) => {
+    const enricher = fakeEnricher()
+    const res = await testApp(enricher).post('/api/tmdb/sync').send({ includeUnmatched })
+    expect(res.status).toBe(202)
+    expect(enricher.trigger).toHaveBeenCalledWith({ retryErrors: true, retryUnmatched: includeUnmatched })
+  })
+
+  it('treats an empty JSON object like no body', async () => {
+    const enricher = fakeEnricher()
+    await testApp(enricher).post('/api/tmdb/sync').send({})
+    expect(enricher.trigger).toHaveBeenCalledWith({ retryErrors: true, retryUnmatched: false })
+  })
+
+  it.each([
+    ['a string', { includeUnmatched: 'true' }],
+    ['a number', { includeUnmatched: 1 }],
+    ['null', { includeUnmatched: null }],
+  ])('answers 400 and starts nothing when includeUnmatched is %s', async (_name, body) => {
+    const enricher = fakeEnricher()
+    const res = await testApp(enricher).post('/api/tmdb/sync').send(body)
+    expect(res.status).toBe(400)
+    expect(enricher.trigger).not.toHaveBeenCalled()
+  })
+
+  it('answers 503 with the code tmdb_unavailable and starts nothing without a token', async () => {
+    const enricher = fakeEnricher(false)
+    const res = await testApp(enricher).post('/api/tmdb/sync').send({ includeUnmatched: true })
+    expect(res.status).toBe(503)
+    expect(res.body).toMatchObject({ code: 'tmdb_unavailable', error: expect.stringContaining('TMDB_ACCESS_TOKEN') })
+    expect(enricher.trigger).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /api/tmdb/sync', () => {
+  it('answers with the status of the enricher', async () => {
+    const enricher = fakeEnricher()
+    const status = {
+      enabled: true,
+      running: true,
+      total: 10,
+      done: 4,
+      lastRun: { matched: 1, notFound: 2, ambiguous: 0, error: 0, stopped: null, finishedAt: '2026-10-16T10:00:00.000Z' },
+    }
+    enricher.status.mockReturnValue(status)
+    const res = await testApp(enricher).get('/api/tmdb/sync')
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual(status)
+  })
+
+  it('works without a token and says enabled: false', async () => {
+    const res = await testApp(fakeEnricher(false)).get('/api/tmdb/sync')
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ enabled: false, running: false, total: 0, done: 0, lastRun: null })
+  })
+
+  it('does not start a run', async () => {
+    const enricher = fakeEnricher()
+    await testApp(enricher).get('/api/tmdb/sync')
+    expect(enricher.trigger).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/films/:id/tmdb-lookup', () => {
+  const addOne = async () => (await add('Joy')).body.id as number
+
+  it('looks the film up and answers with the film as it is afterwards', async () => {
+    const id = await addOne()
+    const enricher = fakeEnricher()
+    enricher.lookup.mockImplementation(async (filmId: number) => {
+      await pool.query(`UPDATE films SET tmdb_status = 'matched', tmdb_id = 100 WHERE id = $1`, [filmId])
+      return 'done'
+    })
+    const res = await testApp(enricher).post(`/api/films/${id}/tmdb-lookup`)
+    expect(res.status).toBe(200)
+    expect(enricher.lookup).toHaveBeenCalledWith(id)
+    expect(res.body).toMatchObject({ id, title: 'Joy', tmdb: { id: 100, status: 'matched' } })
+  })
+
+  it('answers 404 for an unknown film without asking TMDB', async () => {
+    const enricher = fakeEnricher()
+    const res = await testApp(enricher).post('/api/films/999/tmdb-lookup')
+    expect(res.status).toBe(404)
+    expect(enricher.lookup).not.toHaveBeenCalled()
+  })
+
+  it('answers 404 when the film is gone by the time the lookup runs', async () => {
+    const id = await addOne()
+    const enricher = fakeEnricher()
+    enricher.lookup.mockResolvedValue('no_such_film')
+    expect((await testApp(enricher).post(`/api/films/${id}/tmdb-lookup`)).status).toBe(404)
+  })
+
+  it('answers 400 for an id that is not a number', async () => {
+    const res = await testApp().post('/api/films/abc/tmdb-lookup')
+    expect(res.status).toBe(400)
+  })
+
+  it('answers 503 with a message when TMDB is not configured', async () => {
+    const id = await addOne()
+    const enricher = fakeEnricher(false)
+    const res = await testApp(enricher).post(`/api/films/${id}/tmdb-lookup`)
+    expect(res.status).toBe(503)
+    expect(res.body).toEqual({ error: 'TMDB is not configured. Set TMDB_ACCESS_TOKEN.', code: 'tmdb_unavailable' })
+    expect(enricher.lookup).not.toHaveBeenCalled()
+  })
+
+  it('answers 404 before 503 for an unknown film without a token', async () => {
+    expect((await testApp(fakeEnricher(false)).post('/api/films/999/tmdb-lookup')).status).toBe(404)
+  })
+
+  it.each([
+    ['unreachable', 'TMDB could not be reached. Try again later.'],
+    ['token_rejected', 'TMDB rejected the access token. Check TMDB_ACCESS_TOKEN.'],
+  ])('answers 502 with a message when the lookup result is %s', async (result, message) => {
+    const id = await addOne()
+    const enricher = fakeEnricher()
+    enricher.lookup.mockResolvedValue(result)
+    const res = await testApp(enricher).post(`/api/films/${id}/tmdb-lookup`)
+    expect(res.status).toBe(502)
+    expect(res.body).toEqual({ error: message, code: 'tmdb_unavailable' })
   })
 })
 

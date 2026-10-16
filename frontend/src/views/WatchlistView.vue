@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
 import IconButton from '../components/IconButton.vue'
+import TmdbCheckPanel from '../components/TmdbCheckPanel.vue'
 import { formatDate, needsMatch, tmdbBadge } from '../format'
 import { useWatchlistStore } from '../stores/watchlist'
 import { fromQuery, SORTS, TMDB_FILTERS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
@@ -25,6 +26,9 @@ watch(
   },
   { immediate: true },
 )
+
+// After a TMDB check the statuses of the films have changed
+const reload = () => void store.load(toListParams(view.value))
 
 const apply = () => router.push({ query: toQuery({ ...form, page: 1 }) })
 const goToPage = (page: number) => ({ query: toQuery({ ...view.value, page }) })
@@ -64,6 +68,8 @@ onBeforeUnmount(() => (store.notice = ''))
       </div>
       <IconButton label="Add film" icon="plus" variant="primary" to="/watchlist/new" />
     </div>
+
+    <TmdbCheckPanel @finished="reload" />
 
     <form role="search" aria-label="Filter watchlist" class="watchlist__filters" @submit.prevent="apply">
       <FormField id="search" label="Search by title" class="watchlist__search" v-slot="{ attrs }">

@@ -10,6 +10,7 @@ vi.mock('../../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api')>()),
   getFilm: vi.fn<typeof import('../../api').getFilm>(),
   updateFilm: vi.fn<typeof import('../../api').updateFilm>(),
+  lookupFilmOnTmdb: vi.fn<typeof import('../../api').lookupFilmOnTmdb>(),
 }))
 const mocked = vi.mocked(api)
 
@@ -294,7 +295,8 @@ describe('FilmDetailsView', () => {
       async (status) => {
         mocked.getFilm.mockResolvedValue(makeFilm({ id: 3, tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }))
         const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/3')
-        expect(actions(wrapper)).toEqual(['Mark as watched', 'Choose TMDB match', 'Edit'])
+        const lookUp = status === 'ambiguous' ? [] : ['Look up on TMDB']
+        expect(actions(wrapper)).toEqual(['Mark as watched', ...lookUp, 'Choose TMDB match', 'Edit'])
         const link = wrapper.get('a[href="/watchlist/3/match"]')
         expect(link.classes()).toContain('btn')
         await expectNoA11yViolations(wrapper.element)
@@ -563,3 +565,184 @@ describe('FilmDetailsView', () => {
   })
 })
 
+
+describe('FilmDetailsView look-up on TMDB', () => {
+  type Status = import('../../types').Film['tmdb']['status']
+  const withStatus = (status: Status, extra = {}) =>
+    makeFilm({ id: 3, title: 'Cléo', tmdb: { id: status === 'matched' ? 5 : null, mediaType: 'movie', status, syncedAt: null }, ...extra })
+  const lookupButton = (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper']) =>
+    wrapper.findAll('button').find((b) => /Look/.test(b.text()))
+  const mountFilm = (film: ReturnType<typeof makeFilm>) => {
+    mocked.getFilm.mockResolvedValue(film)
+    return mountWithApp(FilmDetailsView, `/watchlist/${film.id}`)
+  }
+
+  it.each(['pending', 'error', 'not_found'] as const)('offers the button for a film with status %s, after Mark as watched', async (status) => {
+    const { wrapper } = await mountFilm(withStatus(status))
+    expect(lookupButton(wrapper)!.text()).toBe('Look up on TMDB')
+    const buttons = wrapper.findAll('.details__actions button').map((b) => b.text())
+    expect(buttons).toEqual(['Mark as watched', 'Look up on TMDB'])
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it.each(['matched', 'ambiguous'] as const)('has no button for a film with status %s', async (status) => {
+    const { wrapper } = await mountFilm(withStatus(status))
+    expect(lookupButton(wrapper)).toBeUndefined()
+  })
+
+  it('looks the film up, shows the new data and announces a match', async () => {
+    mocked.lookupFilmOnTmdb.mockResolvedValue(withStatus('matched', { tagline: 'Found it' }))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(mocked.lookupFilmOnTmdb).toHaveBeenCalledWith(3)
+    expect(wrapper.text()).toContain('Found it')
+    expect(wrapper.get('[role="status"]').text()).toBe('Look-up finished: Cléo was matched on TMDB.')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(lookupButton(wrapper)).toBeUndefined()
+  })
+
+  it.each([
+    ['ambiguous', 'Look-up finished: Cléo has several possible matches on TMDB. Choose the match.'],
+    ['not_found', 'Look-up finished: Cléo was not found on TMDB.'],
+    ['error', 'Look-up finished: Cléo could not be looked up on TMDB.'],
+    ['pending', 'Look-up finished: Cléo is still waiting for TMDB.'],
+  ] as const)('announces the result %s', async (status, message) => {
+    mocked.lookupFilmOnTmdb.mockResolvedValue(withStatus(status))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="status"]').text()).toBe(message)
+  })
+
+  it('keeps the button when the film is still unmatched, and offers the match page when ambiguous', async () => {
+    mocked.lookupFilmOnTmdb.mockResolvedValue(withStatus('ambiguous'))
+    const { wrapper } = await mountFilm(withStatus('not_found'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(lookupButton(wrapper)).toBeUndefined()
+    expect(wrapper.find('a[href="/watchlist/3/match"]').exists()).toBe(true)
+  })
+
+  it('shows Looking up… with aria-disabled while it runs, and ignores a second click', async () => {
+    let finish: (film: ReturnType<typeof makeFilm>) => void = () => {}
+    mocked.lookupFilmOnTmdb.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    const button = lookupButton(wrapper)!
+    await button.trigger('click')
+    await button.trigger('click')
+    expect(mocked.lookupFilmOnTmdb).toHaveBeenCalledTimes(1)
+    expect(button.text()).toBe('Looking up…')
+    expect(button.attributes('aria-disabled')).toBe('true')
+    expect(button.attributes('disabled')).toBeUndefined()
+    await expectNoA11yViolations(wrapper.element)
+    finish(withStatus('not_found'))
+    await flushPromises()
+    expect(lookupButton(wrapper)!.text()).toBe('Look up on TMDB')
+    expect(lookupButton(wrapper)!.attributes('aria-disabled')).toBeUndefined()
+  })
+
+  it('moves the focus to the heading when the button disappears', async () => {
+    mocked.lookupFilmOnTmdb.mockResolvedValue(withStatus('matched'))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    const button = lookupButton(wrapper)!
+    ;(button.element as HTMLElement).focus()
+    await button.trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('h1').element)
+  })
+
+  it('does not move the focus when the button stays', async () => {
+    mocked.lookupFilmOnTmdb.mockResolvedValue(withStatus('not_found'))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    ;(lookupButton(wrapper)!.element as HTMLElement).focus()
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(document.activeElement).not.toBe(wrapper.get('h1').element)
+    expect(document.activeElement).toBe(lookupButton(wrapper)!.element)
+  })
+
+  it.each([
+    [503, 'TMDB is not configured. Set TMDB_ACCESS_TOKEN.'],
+    [502, 'TMDB could not be reached. Try again later.'],
+  ])('shows the server message of a %s in an alert and keeps the film', async (status, message) => {
+    mocked.lookupFilmOnTmdb.mockRejectedValue(new api.ApiError(status, message, 'tmdb_unavailable'))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain(message)
+    expect(lookupButton(wrapper)!.text()).toBe('Look up on TMDB')
+    expect(wrapper.get('[role="status"]').text()).toBe('')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('shows the generic text for a 502 from a proxy that has no message of the API', async () => {
+    mocked.lookupFilmOnTmdb.mockRejectedValue(new api.ApiError(502, 'Something went wrong'))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('The server had a problem')
+  })
+
+  it('shows the generic text for other server errors and for an unreachable server', async () => {
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    mocked.lookupFilmOnTmdb.mockRejectedValueOnce(new api.ApiError(500, 'stack trace'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('The server had a problem')
+    expect(wrapper.text()).not.toContain('stack trace')
+    mocked.lookupFilmOnTmdb.mockRejectedValueOnce(new api.ApiError(0, 'x'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toMatch(/Can't reach the server/)
+  })
+
+  it('shows the not-found message of a film that was deleted meanwhile (404)', async () => {
+    mocked.lookupFilmOnTmdb.mockRejectedValue(new api.ApiError(404, 'Film not found'))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Film not found')
+  })
+
+  it('clears the error and the old announcement on the next try', async () => {
+    mocked.lookupFilmOnTmdb.mockRejectedValueOnce(new api.ApiError(502, 'down')).mockResolvedValueOnce(withStatus('matched'))
+    const { wrapper } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await lookupButton(wrapper)!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.get('[role="status"]').text()).toContain('was matched')
+  })
+
+  it('ignores the answer for a film the user has left', async () => {
+    let finish: (film: ReturnType<typeof makeFilm>) => void = () => {}
+    mocked.lookupFilmOnTmdb.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const { wrapper, router } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    mocked.getFilm.mockResolvedValue(bare({ title: 'Other film' }))
+    await router.push('/watchlist/8')
+    await flushPromises()
+    finish(withStatus('matched'))
+    await flushPromises()
+    expect(wrapper.get('h1').text()).toBe('Other film')
+    expect(wrapper.get('[role="status"]').text()).toBe('')
+    expect(lookupButton(wrapper)!.attributes('aria-disabled')).toBeUndefined()
+    expect(document.activeElement).not.toBe(wrapper.get('h1').element)
+  })
+
+  it('ignores a failure for a film the user has left', async () => {
+    let fail: (e: unknown) => void = () => {}
+    mocked.lookupFilmOnTmdb.mockReturnValue(new Promise((_, reject) => (fail = reject)))
+    const { wrapper, router } = await mountFilm(withStatus('pending'))
+    await lookupButton(wrapper)!.trigger('click')
+    mocked.getFilm.mockResolvedValue(bare())
+    await router.push('/watchlist/8')
+    await flushPromises()
+    fail(new api.ApiError(502, 'down'))
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+})
