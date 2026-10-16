@@ -5,11 +5,14 @@ import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
 import IconButton from '../components/IconButton.vue'
 import TmdbCheckPanel from '../components/TmdbCheckPanel.vue'
+import TmdbOffNotice from '../components/TmdbOffNotice.vue'
 import { formatDate, needsMatch, tmdbBadge } from '../format'
+import { useTmdbStore } from '../stores/tmdb'
 import { useWatchlistStore } from '../stores/watchlist'
 import { fromQuery, SORTS, TMDB_FILTERS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
 
 const store = useWatchlistStore()
+const tmdb = useTmdbStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -46,6 +49,7 @@ const isFiltered = computed(() => view.value.q !== '' || view.value.watched !== 
 // A live region that already holds text when it appears is often not read out, so its text is set a tick later
 const announced = ref('')
 onMounted(async () => {
+  void tmdb.load()
   await nextTick()
   announced.value = store.notice
 })
@@ -69,7 +73,11 @@ onBeforeUnmount(() => (store.notice = ''))
       <IconButton label="Add film" icon="plus" variant="primary" to="/watchlist/new" />
     </div>
 
-    <TmdbCheckPanel @finished="reload" />
+    <section v-if="tmdb.off" class="watchlist__tmdb-off" aria-labelledby="tmdb-off-heading">
+      <h2 id="tmdb-off-heading">TMDB data</h2>
+      <TmdbOffNotice />
+    </section>
+    <TmdbCheckPanel v-else @finished="reload" />
 
     <form role="search" aria-label="Filter watchlist" class="watchlist__filters" @submit.prevent="apply">
       <FormField id="search" label="Search by title" class="watchlist__search" v-slot="{ attrs }">
@@ -152,7 +160,9 @@ onBeforeUnmount(() => (store.notice = ''))
                   >
                   <span v-else class="badge">To watch</span>
                   <span v-if="tmdbBadge(film)" class="badge badge--warn">{{ tmdbBadge(film) }}</span>
-                  <span v-else-if="film.tmdb.status === 'pending'" class="badge">Waiting for TMDB data</span>
+                  <span v-else-if="film.tmdb.status === 'pending'" class="badge">{{
+                    tmdb.off ? 'TMDB data is off' : 'Waiting for TMDB data'
+                  }}</span>
                 </div>
               </td>
               <td role="cell" class="watchlist__actions">
@@ -171,7 +181,7 @@ onBeforeUnmount(() => (store.notice = ''))
                   @click="store.setWatched(film, true)"
                 />
                 <IconButton
-                  v-if="needsMatch(film)"
+                  v-if="needsMatch(film) && !tmdb.off"
                   :label="`Choose TMDB match: ${film.title}`"
                   tooltip="Choose TMDB match"
                   icon="match"
@@ -212,6 +222,13 @@ onBeforeUnmount(() => (store.notice = ''))
 }
 .watchlist__head .lead {
   margin-bottom: 0;
+}
+.watchlist__tmdb-off {
+  margin: 24px 0 0;
+}
+.watchlist__tmdb-off h2 {
+  font-size: 1.125rem;
+  margin: 0 0 8px;
 }
 .watchlist__filters {
   display: flex;

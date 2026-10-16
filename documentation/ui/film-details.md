@@ -43,3 +43,7 @@ Anything TMDB has not delivered yet (a pending, not found or ambiguous film) is 
 - One `h1` (the title), `h2` for each section, each section labelled by its heading.
 - **Mark as watched**, **Look up on TMDB** and **Choose TMDB match** are named by their visible text. **Edit** has the accessible name "Edit <title>", which starts with its visible text (WCAG 2.5.3). The buttons wrap onto further lines on narrow screens (320 px).
 - The page title is "Film details" like the other routes; focus moves on navigation as described in [App shell](app-shell.md).
+
+## When TMDB is off
+
+When the backend has no TMDB token (`stores/tmdb.ts`, field `enabled` of `GET /api/tmdb/sync`), the page shows the notice `TmdbOffNotice.vue` below the buttons ("TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.", in a `role="status"` region) and hides **Look up on TMDB** and **Choose TMDB match**, which would fail without TMDB (the notice shows once the film has loaded). See [Watchlist](watchlist.md#when-tmdb-is-off).

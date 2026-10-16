@@ -37,3 +37,4 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 - Added automatic checks on GitHub: every pull request runs the tests, type-checks, lint and a Docker build, and dependency updates are proposed weekly.
 - Added a "Look up on TMDB" button to a film's details page. Use it for films you added by hand, or that failed or were not found: the page shows the result right away. Without a TMDB token it tells you that TMDB is not set up.
 - Added a "Check TMDB again" button to the watchlist. It looks up films again that are still waiting, failed, were not found or need review, shows its progress, tells you what changed and refreshes the list. Films you matched by hand keep their match.
+- The watchlist and a film's details page now tell you when TMDB data is turned off (no TMDB token), and how to turn it on. The buttons that need TMDB are hidden then, and films that are waiting show "TMDB data is off" instead of "Waiting for TMDB data".
