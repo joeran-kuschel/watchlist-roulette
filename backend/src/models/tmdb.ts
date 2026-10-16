@@ -31,11 +31,22 @@ const toPendingFilm = (row: PendingRow): PendingFilm => ({
 
 const PENDING_COLUMNS = `id, title, release_year, tmdb_id, tmdb_media_type`
 
-export async function loadPendingFilms(retryErrors: boolean, db: Db = getPool()): Promise<PendingFilm[]> {
-  const statuses = retryErrors ? `('pending', 'error')` : `('pending')`
+/**
+ * The films a run looks up: the pending ones, plus the ones that failed (`retryErrors`) and the ones that were
+ * not found or had several matches (`retryUnmatched`). A film the user matched by hand has a TMDB id and is
+ * never in the last group: re-searching by title must not undo that choice.
+ */
+export async function loadPendingFilms(
+  { retryErrors = false, retryUnmatched = false }: { retryErrors?: boolean; retryUnmatched?: boolean } = {},
+  db: Db = getPool(),
+): Promise<PendingFilm[]> {
   const rows = await query<PendingRow>(
-    `SELECT ${PENDING_COLUMNS} FROM films WHERE tmdb_status IN ${statuses} ORDER BY id`,
-    [],
+    `SELECT ${PENDING_COLUMNS} FROM films
+     WHERE tmdb_status = 'pending'
+        OR ($1 AND tmdb_status = 'error')
+        OR ($2 AND tmdb_status IN ('not_found', 'ambiguous') AND tmdb_id IS NULL)
+     ORDER BY id`,
+    [retryErrors, retryUnmatched],
     db,
   )
   return rows.map(toPendingFilm)

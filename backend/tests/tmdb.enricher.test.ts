@@ -1,6 +1,7 @@
 import type { Pool } from 'pg'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getFilm } from '../src/models/film.js'
+import { loadPendingFilms } from '../src/models/tmdb.js'
 import { TmdbError, type TmdbClient, type TmdbMovie } from '../src/tmdb/client.js'
 import { createEnricher } from '../src/tmdb/enricher.js'
 import { createTestPool } from './helpers/testDb.js'
@@ -541,5 +542,210 @@ describe('enricher lookup', () => {
     await pool.query(`UPDATE films SET tmdb_status = 'pending' WHERE id = $1`, [id])
     await e.lookup(id)
     expect((await getFilm(id)).tmdb.status).toBe('matched')
+  })
+})
+
+describe('films a run looks up', () => {
+  const addWithStatus = async (title: string, status: string, tmdbId: number | null = null) => {
+    const id = await addFilm(title)
+    await pool.query('UPDATE films SET tmdb_status = $2, tmdb_id = $3 WHERE id = $1', [id, status, tmdbId])
+    return id
+  }
+  const setup = async () => ({
+    pending: await addWithStatus('Pending', 'pending'),
+    error: await addWithStatus('Error', 'error'),
+    notFound: await addWithStatus('NotFound', 'not_found'),
+    ambiguous: await addWithStatus('Ambiguous', 'ambiguous'),
+    byHandNotFound: await addWithStatus('ByHandNotFound', 'not_found', 11),
+    byHandAmbiguous: await addWithStatus('ByHandAmbiguous', 'ambiguous', 12),
+    matched: await addWithStatus('Matched', 'matched', 13),
+  })
+  const ids = async (options?: Parameters<typeof loadPendingFilms>[0]) => (await loadPendingFilms(options)).map((f) => f.id)
+
+  it('selects only pending films by default', async () => {
+    const f = await setup()
+    expect(await ids()).toEqual([f.pending])
+  })
+
+  it('adds failed films with retryErrors', async () => {
+    const f = await setup()
+    expect(await ids({ retryErrors: true })).toEqual([f.pending, f.error])
+  })
+
+  it('adds not found and ambiguous films without a TMDB id with retryUnmatched', async () => {
+    const f = await setup()
+    expect(await ids({ retryUnmatched: true })).toEqual([f.pending, f.notFound, f.ambiguous])
+  })
+
+  it('never selects a film matched by hand or a matched film, whatever the flags', async () => {
+    const f = await setup()
+    const all = await ids({ retryErrors: true, retryUnmatched: true })
+    expect(all).toEqual([f.pending, f.error, f.notFound, f.ambiguous])
+    expect(all).not.toContain(f.byHandNotFound)
+    expect(all).not.toContain(f.byHandAmbiguous)
+    expect(all).not.toContain(f.matched)
+  })
+
+  it('returns an empty list for an empty watchlist', async () => {
+    expect(await ids({ retryErrors: true, retryUnmatched: true })).toEqual([])
+  })
+
+  it('searches a not found film again only with retryUnmatched, and leaves a hand-matched one alone', async () => {
+    const lost = await addWithStatus('Joy', 'not_found')
+    const byHand = await addWithStatus('Other', 'not_found', 11)
+    const c = client()
+    await enricher(c).trigger({ retryErrors: true })
+    expect(c.searchMovie).not.toHaveBeenCalled()
+    await enricher(c).trigger({ retryErrors: true, retryUnmatched: true })
+    expect(c.searchMovie).toHaveBeenCalledTimes(1)
+    expect(c.searchMovie).toHaveBeenCalledWith('Joy')
+    expect((await getFilm(lost)).tmdb.status).toBe('matched')
+    expect((await getFilm(byHand)).tmdb.status).toBe('not_found')
+  })
+})
+
+describe('enricher status', () => {
+  const gated = () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    return { gate, release }
+  }
+
+  it('reports a disabled enricher without a run', () => {
+    expect(enricher(null).status()).toEqual({ enabled: false, running: false, total: 0, done: 0, lastRun: null })
+  })
+
+  it('reports an idle enabled enricher before any run', () => {
+    expect(enricher(client()).status()).toEqual({ enabled: true, running: false, total: 0, done: 0, lastRun: null })
+  })
+
+  it('shows progress during a run and the summary after it', async () => {
+    await addFilm('Joy')
+    await addFilm('Nothing')
+    await addFilm('Boom')
+    await addFilm('Twice')
+    const { gate, release } = gated()
+    const search = vi.fn(async (title: string) => {
+      if (title === 'Joy') {
+        await gate
+        return [{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }]
+      }
+      if (title === 'Boom') throw new Error('unexpected')
+      if (title === 'Twice')
+        return [
+          { id: 1, title: 'Twice', original_title: 'Twice', release_date: '2015-01-01' },
+          { id: 2, title: 'Twice', original_title: 'Twice', release_date: '2015-02-01' },
+        ]
+      return []
+    })
+    const e = enricher(client({ searchMovie: search }))
+    const run = e.trigger()
+    await vi.waitFor(() => expect(search).toHaveBeenCalledTimes(1))
+    expect(e.status()).toMatchObject({ running: true, total: 4, done: 0 })
+    release()
+    await run
+    const status = e.status()
+    expect(status).toMatchObject({ running: false, total: 4, done: 4 })
+    expect(status.lastRun).toMatchObject({ matched: 1, notFound: 1, ambiguous: 1, error: 1, stopped: null })
+    expect(new Date(status.lastRun!.finishedAt).toString()).not.toBe('Invalid Date')
+  })
+
+  it('counts a film that is ambiguous because its TMDB id is taken', async () => {
+    await addFilm('Joy')
+    await addFilm('Joy')
+    const e = enricher(client())
+    await e.trigger()
+    expect(e.status().lastRun).toMatchObject({ matched: 1, ambiguous: 1 })
+  })
+
+  it('gives a run with nothing to look up an all-zero summary', async () => {
+    const e = enricher(client())
+    await e.trigger()
+    expect(e.status()).toMatchObject({ running: false, total: 0, done: 0 })
+    expect(e.status().lastRun).toMatchObject({ matched: 0, notFound: 0, ambiguous: 0, error: 0, stopped: null })
+  })
+
+  it('resets the counts at the start of the next run', async () => {
+    await addFilm('Joy')
+    const e = enricher(client())
+    await e.trigger()
+    expect(e.status().lastRun).toMatchObject({ matched: 1 })
+    await addFilm('Nothing')
+    await e.trigger()
+    expect(e.status()).toMatchObject({ total: 1, done: 1 })
+    expect(e.status().lastRun).toMatchObject({ matched: 0, notFound: 1 })
+  })
+
+  it('stops with "token" when TMDB rejects the token', async () => {
+    await addFilm('A')
+    await addFilm('B')
+    const search = vi.fn().mockRejectedValue(new TmdbError('TMDB answered 401', 401))
+    const e = enricher(client({ searchMovie: search }))
+    await e.trigger()
+    expect(search).toHaveBeenCalledTimes(1)
+    expect(e.status()).toMatchObject({ running: false, total: 2, done: 0 })
+    expect(e.status().lastRun).toMatchObject({ stopped: 'token', matched: 0 })
+  })
+
+  it('stops with "tmdb" after three transient failures, which count as done but in no bucket', async () => {
+    for (const title of ['A', 'B', 'C', 'D']) await addFilm(title)
+    const search = vi.fn().mockRejectedValue(new TmdbError('TMDB answered 503', 503))
+    const e = enricher(client({ searchMovie: search }))
+    await e.trigger()
+    expect(e.status()).toMatchObject({ total: 4, done: 3 })
+    expect(e.status().lastRun).toEqual(
+      expect.objectContaining({ stopped: 'tmdb', matched: 0, notFound: 0, ambiguous: 0, error: 0, unreachable: 3 }),
+    )
+  })
+
+  it('counts a single transient failure as done but in no bucket, and does not stop', async () => {
+    await addFilm('Slow')
+    await addFilm('Joy')
+    const search = vi.fn(async (title: string) => {
+      if (title === 'Slow') throw new TmdbError('TMDB answered 429', 429)
+      return [{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }]
+    })
+    const e = enricher(client({ searchMovie: search }))
+    await e.trigger()
+    expect(e.status()).toMatchObject({ total: 2, done: 2 })
+    expect(e.status().lastRun).toMatchObject({ matched: 1, notFound: 0, ambiguous: 0, error: 0, stopped: null })
+  })
+
+  it('merges the flags of requests that arrive during a run into one follow-up run', async () => {
+    await addFilm('First')
+    const lost = await addFilm('Lost')
+    await pool.query(`UPDATE films SET tmdb_status = 'not_found' WHERE id = $1`, [lost])
+    const broken = await addFilm('Broken')
+    await pool.query(`UPDATE films SET tmdb_status = 'error' WHERE id = $1`, [broken])
+    const { gate, release } = gated()
+    const search = vi.fn(async (title: string) => {
+      if (title === 'First') await gate
+      return []
+    })
+    const e = enricher(client({ searchMovie: search }))
+    const run = e.trigger()
+    await vi.waitFor(() => expect(search).toHaveBeenCalledTimes(1))
+    const more = [e.trigger({ retryErrors: true }), e.trigger({ retryUnmatched: true })]
+    expect(e.status().running).toBe(true)
+    release()
+    await Promise.all([run, ...more])
+    expect(search.mock.calls.map(([title]) => title).sort()).toEqual(['Broken', 'First', 'First', 'Lost']) // First is not found in the first run, so the follow-up retries it
+    expect(e.status().running).toBe(false)
+  })
+
+  it('keeps running true while a follow-up run is queued', async () => {
+    await addFilm('First')
+    const { gate, release } = gated()
+    const search = vi.fn(async () => {
+      await gate
+      return []
+    })
+    const e = enricher(client({ searchMovie: search }))
+    const run = e.trigger()
+    await vi.waitFor(() => expect(search).toHaveBeenCalledTimes(1))
+    const second = e.trigger()
+    release()
+    await Promise.all([run, second])
+    expect(e.status().running).toBe(false)
   })
 })

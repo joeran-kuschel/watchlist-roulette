@@ -89,3 +89,22 @@ export interface ApplyImportOptions {
   removalToken?: string
   confirmLargeRemoval?: boolean
 }
+
+/** What the last finished TMDB check did; `stopped` is set when it ended early. */
+export interface TmdbCheckSummary {
+  matched: number
+  notFound: number
+  ambiguous: number
+  error: number
+  unreachable: number
+  stopped: 'token' | 'tmdb' | null
+  finishedAt: string
+}
+
+export interface TmdbCheck {
+  enabled: boolean
+  running: boolean
+  total: number
+  done: number
+  lastRun: TmdbCheckSummary | null
+}

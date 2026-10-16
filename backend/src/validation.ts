@@ -46,6 +46,8 @@ export const filmPatchSchema = z
 
 const int = z.coerce.number().int()
 
+export const syncBodySchema = z.object({ includeUnmatched: z.boolean().default(false) })
+
 export const idParamSchema = z.object({ id: int.positive().max(Number.MAX_SAFE_INTEGER) })
 
 export const listQuerySchema = z.object({

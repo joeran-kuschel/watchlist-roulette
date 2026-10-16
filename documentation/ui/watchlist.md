@@ -8,6 +8,7 @@ Route `/watchlist`. All films in a table. Code: `views/WatchlistView.vue`, `stor
 - Per film, as icon buttons: mark watched/unwatched, edit ([film form](film-form.md)), and for films with a TMDB problem **Choose match** ([TMDB match](tmdb-match.md)).
 - **Add film** (plus button) opens the [film form](film-form.md).
 - 50 films per page, with Previous/Next.
+- **Check TMDB again** (see below).
 
 ## State in the URL
 
@@ -21,14 +22,24 @@ TMDB status choices (`tmdb`): `pending` (Pending), `ambiguous` (Needs review), `
 
 Sort choices: `added-desc` (default), `added-asc`, `year-desc`, `year-asc`, `title`. They map to the backend's `sort` and `order`.
 
+## Check TMDB again
+
+The section "TMDB data" above the filters (`components/TmdbCheckPanel.vue`) looks up the films again that are waiting for TMDB or failed, and, with the checkbox **Also retry films that were not found or need review** (on by default), films that were not found or have several matches. Films you matched by hand keep their match.
+
+- **Check TMDB again** sends `POST /api/tmdb/sync` with `{ includeUnmatched }`, then asks `GET /api/tmdb/sync` every two seconds while the run goes. While it runs the button reads "Checking… 12 of 40" and is `aria-disabled` (clicks ignored; not `disabled`, so the focus is not lost) and the checkbox is disabled.
+- A `role="status"` line below the button says "Checking TMDB…" at the start and, when the run is done, "TMDB check finished: 31 matched, 6 not found, 1 needs review, 2 failed, 3 could not be reached." (the "failed" and "could not be reached" parts only when there are some). If the backend restarted during the run and no summary exists, it says "The check did not finish. Try again." If the run ended early it adds that TMDB rejected the access token, or that TMDB is having trouble. When no film is waiting it says "Nothing to check: no film is waiting for TMDB." The line is not updated for every film, only at the start and the end, so screen readers are not flooded.
+- When the run is done the list reloads, so the new badges show.
+- Failures show an alert (`role="alert"`): the server's sentence for TMDB problems ("TMDB is not configured. Set TMDB_ACCESS_TOKEN."), the usual texts for an unreachable server. Polling stops on leaving the page; the run itself goes on in the backend.
+
 ## Backend
 
 - `GET /api/films` with `q`, `watched`, `tmdbStatus`, `sort`, `order`, `page`, `pageSize`.
 - `PATCH /api/films/:id` with `{ "watched": true | false }`; the row is replaced by the answer.
+- `POST` and `GET /api/tmdb/sync` for **Check TMDB again**, see [TMDB enrichment](../backend/tmdb-enrichment.md#checking-again).
 
 ## Table
 
-A real `<table>` with a hidden caption, column headers and the title as row header. The title links to the film's [details page](film-details.md), in the same tab; the Letterboxd and TMDB links are on that page. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself). Without a `TMDB_ACCESS_TOKEN` every film stays pending, so every film shows it. `matched` films show nothing extra.
+A real `<table>` with a hidden caption, column headers and the title as row header. The title links to the film's [details page](film-details.md), in the same tab; the Letterboxd and TMDB links are on that page. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself, except after **Check TMDB again**). Without a `TMDB_ACCESS_TOKEN` every film stays pending, so every film shows it. `matched` films show nothing extra.
 
 ### On small screens
 

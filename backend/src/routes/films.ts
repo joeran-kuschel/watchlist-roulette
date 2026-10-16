@@ -20,5 +20,6 @@ export function filmRoutes(enricher: Enricher, fetchPoster: PosterFetcher): Rout
   router.delete('/films/:id', films.remove)
   router.post('/films/:id/tmdb-lookup', films.lookupTmdb(enricher))
   router.post('/tmdb/sync', films.syncTmdb(enricher))
+  router.get('/tmdb/sync', films.tmdbSyncStatus(enricher))
   return router
 }

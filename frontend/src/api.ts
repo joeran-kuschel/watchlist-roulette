@@ -7,6 +7,7 @@ import type {
   ImportReport,
   ListParams,
   RandomParams,
+  TmdbCheck,
 } from './types'
 
 export interface ApiIssue {
@@ -90,6 +91,11 @@ export const updateFilm = (id: number, patch: FilmPatch) =>
   request<Film>(`/films/${id}`, json('PATCH', patch))
 
 export const lookupFilmOnTmdb = (id: number) => request<Film>(`/films/${id}/tmdb-lookup`, { method: 'POST' })
+
+export const startTmdbCheck = (includeUnmatched: boolean) =>
+  request<{ started: boolean }>('/tmdb/sync', json('POST', { includeUnmatched }))
+
+export const getTmdbCheck = () => request<TmdbCheck>('/tmdb/sync')
 
 export const deleteFilm = (id: number) => request<void>(`/films/${id}`, { method: 'DELETE' })
 
