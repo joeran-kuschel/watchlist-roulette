@@ -461,6 +461,53 @@ test('the styled file chooser shows the file name, a focus ring and fits 320 px'
   await expectAccessible(page)
 })
 
+async function dropFiles(page: Page, files: { name: string; type: string }[]) {
+  await page.locator('.filepick').evaluate((zone, list) => {
+    const transfer = new DataTransfer()
+    for (const f of list) transfer.items.add(new File(['Date,Name,Year,Letterboxd URI\n'], f.name, { type: f.type }))
+    zone.dispatchEvent(new DragEvent('dragenter', { dataTransfer: transfer, bubbles: true, cancelable: true }))
+    zone.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }))
+  }, files)
+}
+
+test('dropping a CSV on the import page chooses it, and a refused drop says why', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/import')
+  await expect(page.locator('.filepick')).toContainText('or drop a CSV file here')
+  await dropFiles(page, [{ name: 'a.png', type: 'image/png' }])
+  await expect(page.locator('#csv-error')).toContainText('That is not a CSV file.')
+  await expect(page.locator('#csv-name')).toHaveText('No file chosen')
+  await dropFiles(page, [
+    { name: 'a.csv', type: 'text/csv' },
+    { name: 'b.csv', type: 'text/csv' },
+  ])
+  await expect(page.locator('#csv-error')).toContainText('Drop one CSV file at a time.')
+  await dropFiles(page, [{ name: 'dropped.csv', type: 'text/csv' }])
+  await expect(page.locator('#csv-name')).toHaveText('dropped.csv')
+  await expect(page.locator('.import__chosen')).toHaveText(/Chosen file: dropped\.csv \(\d+ B\)/)
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true)
+  await expectAccessible(page)
+  await page.getByRole('button', { name: 'Check file' }).click()
+  await expect(page.getByRole('heading', { name: 'Check result' })).toBeFocused()
+})
+
+test('the drop zone changes its border and text while a file is dragged over it', async ({ page }) => {
+  await page.goto('/import')
+  const zone = page.locator('.filepick')
+  const border = () => zone.evaluate((el) => getComputedStyle(el).borderTopStyle)
+  expect(await border()).toBe('dashed')
+  await zone.evaluate((el) => {
+    const transfer = new DataTransfer()
+    transfer.items.add(new File(['x'], 'a.csv', { type: 'text/csv' }))
+    el.dispatchEvent(new DragEvent('dragenter', { dataTransfer: transfer, bubbles: true, cancelable: true }))
+  })
+  expect(await border()).toBe('solid')
+  await expect(zone).toContainText('Drop to choose this file')
+  await expectAccessible(page)
+})
+
 test('importing a CSV: check, confirm the removal, import', async ({ page }) => {
   await page.goto('/import')
   await expectAccessible(page)

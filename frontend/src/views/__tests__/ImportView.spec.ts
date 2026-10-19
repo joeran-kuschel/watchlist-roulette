@@ -493,3 +493,243 @@ describe('ImportView: edge cases', () => {
     expect(wrapper.get('label.import__check').text()).not.toContain('1 films')
   })
 })
+
+describe('ImportView: drop zone', () => {
+  const dropOn = (wrapper: VueWrapper, files: File[]) =>
+    wrapper.get('.filepick').trigger('drop', { dataTransfer: { files } })
+  const csv = (name = 'dropped.csv', size = 2048) =>
+    new File([new Uint8Array(size)], name, { type: 'text/csv' })
+
+  it('chooses a dropped CSV and announces its name and size', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await dropOn(wrapper, [csv()])
+    expect(wrapper.get('#csv-name').text()).toBe('dropped.csv')
+    expect(wrapper.get('.import__chosen').text()).toBe('Chosen file: dropped.csv (2 KB)')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('announces a file chosen with the button in the same way', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await pick(wrapper, [csv('picked.csv', 100)])
+    expect(wrapper.get('.import__chosen').text()).toBe('Chosen file: picked.csv (100 B)')
+  })
+
+  it('accepts a CSV by its extension when the browser gives no type', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await dropOn(wrapper, [new File(['x'], 'LIST.CSV')])
+    expect(wrapper.get('#csv-name').text()).toBe('LIST.CSV')
+  })
+
+  it('refuses more than one file and keeps the file chosen before', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await pick(wrapper, [file])
+    await dropOn(wrapper, [csv('a.csv'), csv('b.csv')])
+    expect(wrapper.get('.field__error').text()).toContain('Drop one CSV file at a time.')
+    expect(wrapper.get('.import__chosen').text()).toBe('Drop one CSV file at a time.')
+    expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('refuses a file that is not a CSV and keeps the file chosen before', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await pick(wrapper, [file])
+    await dropOn(wrapper, [new File(['x'], 'poster.png', { type: 'image/png' })])
+    expect(wrapper.get('.field__error').text()).toContain('That is not a CSV file.')
+    expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+  })
+
+  it('clears the refusal when a good file is dropped afterwards', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await dropOn(wrapper, [new File(['x'], 'a.txt')])
+    await dropOn(wrapper, [csv()])
+    expect(wrapper.find('.field__error').exists()).toBe(false)
+    expect(wrapper.get('#csv-name').text()).toBe('dropped.csv')
+  })
+
+  it('ignores a drop without files, such as dragged text', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await dropOn(wrapper, [])
+    expect(wrapper.find('.field__error').exists()).toBe(false)
+    expect(wrapper.get('#csv-name').text()).toBe('No file chosen')
+  })
+
+  it('shows the drag-over state and removes it on leave and on drop', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    const zone = wrapper.get('.filepick')
+    expect(zone.text()).toContain('or drop a CSV file here')
+    await zone.trigger('dragenter')
+    expect(zone.classes()).toContain('filepick--over')
+    expect(zone.text()).toContain('Drop to choose this file')
+    await zone.trigger('dragleave', { relatedTarget: document.body })
+    expect(zone.classes()).not.toContain('filepick--over')
+    await zone.trigger('dragover')
+    expect(zone.classes()).toContain('filepick--over')
+    await dropOn(wrapper, [csv()])
+    expect(zone.classes()).not.toContain('filepick--over')
+  })
+
+  it('stays in the drag-over state when the pointer moves onto a child of the box', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    const zone = wrapper.get('.filepick')
+    await zone.trigger('dragenter')
+    await zone.trigger('dragleave', { relatedTarget: wrapper.get('#csv-name').element })
+    expect(zone.classes()).toContain('filepick--over')
+  })
+
+  it('replaces the result when another file is dropped, and checks the dropped file', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    expect(wrapper.find('#result-heading').exists()).toBe(true)
+    const next = csv('next.csv')
+    await dropOn(wrapper, [next])
+    expect(wrapper.find('#result-heading').exists()).toBe(false)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(mocked.previewImport).toHaveBeenLastCalledWith(next)
+  })
+
+  it('accepts a file by its CSV type when the name has no .csv', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await dropOn(wrapper, [new File(['x'], 'export', { type: 'text/csv' })])
+    expect(wrapper.get('#csv-name').text()).toBe('export')
+  })
+
+  it('refuses a name that only contains .csv in the middle', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await dropOn(wrapper, [new File(['x'], 'list.csv.exe')])
+    expect(wrapper.get('.field__error').text()).toContain('That is not a CSV file.')
+    expect(wrapper.get('#csv-name').text()).toBe('No file chosen')
+  })
+
+  it('keeps the check result when a refused file is dropped', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await dropOn(wrapper, [new File(['x'], 'a.txt')])
+    expect(wrapper.find('#result-heading').exists()).toBe(true)
+    expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+  })
+
+  it('chooses a new file after the import finished and hides the finished result', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    mocked.applyImport.mockResolvedValue(report({ applied: true }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await confirmForm(wrapper).trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('#result-heading').text()).toBe('Import finished')
+    await dropOn(wrapper, [csv('again.csv')])
+    expect(wrapper.find('#result-heading').exists()).toBe(false)
+    expect(wrapper.get('#csv-name').text()).toBe('again.csv')
+  })
+
+  it('clears an earlier error when a file is dropped', async () => {
+    mocked.previewImport.mockRejectedValue(new api.ApiError(500, 'boom'))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await dropOn(wrapper, [csv()])
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('ignores a drop during the check, so the result belongs to the file shown', async () => {
+    let finish: (r: ImportReport) => void = () => {}
+    mocked.previewImport.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await choose(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await dropOn(wrapper, [csv('other.csv')])
+    finish(report())
+    await flushPromises()
+    expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+    expect(wrapper.get('#result-heading').text()).toBe('Check result')
+  })
+
+  it('ignores a drop during the import, so "Import finished" belongs to the file shown', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    let finish: (r: ImportReport) => void = () => {}
+    mocked.applyImport.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await confirmForm(wrapper).trigger('submit')
+    await dropOn(wrapper, [csv('other.csv')])
+    finish(report({ applied: true }))
+    await flushPromises()
+    expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+    expect(wrapper.get('#result-heading').text()).toBe('Import finished')
+  })
+
+  it('does not show the drag-over state for a drag that carries no files', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    const zone = wrapper.get('.filepick')
+    await zone.trigger('dragenter', { dataTransfer: { types: ['text/plain'] } })
+    expect(zone.classes()).not.toContain('filepick--over')
+  })
+
+  it('hides the drop hint text from assistive technology and keeps the input reachable', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    expect(wrapper.get('.filepick__drop').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.get('#csv').attributes('disabled')).toBeUndefined()
+    await wrapper.get('.filepick').trigger('dragenter')
+    await expectNoA11yViolations(wrapper.element)
+  })
+})
+
+describe('ImportView: choosing a file while a request runs', () => {
+  it('keeps the file and says to wait when the button is used during the check', async () => {
+    mocked.previewImport.mockReturnValue(new Promise(() => {}))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await choose(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await pick(wrapper, [new File(['x'], 'other.csv', { type: 'text/csv' })])
+    expect(wrapper.get('#csv-name').text()).toBe('watchlist.csv')
+    expect(wrapper.get('.import__chosen').text()).toContain('Wait until')
+  })
+
+  it('says to wait for a dropped file, but not for a drop without files', async () => {
+    mocked.previewImport.mockReturnValue(new Promise(() => {}))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await choose(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await wrapper.get('.filepick').trigger('drop', { dataTransfer: { files: [], types: ['text/plain'] } })
+    expect(wrapper.get('.import__chosen').text()).not.toContain('Wait until')
+    await wrapper.get('.filepick').trigger('drop', { dataTransfer: { files: [file], types: ['Files'] } })
+    expect(wrapper.get('.import__chosen').text()).toContain('Wait until')
+  })
+})
+
+describe('ImportView: drop and button together', () => {
+  it('empties the native input after a drop, so the earlier file can be chosen again', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    const el = wrapper.get('#csv').element as HTMLInputElement
+    const setValue = vi.fn<(value: string) => void>()
+    Object.defineProperty(el, 'value', { get: () => 'C:\\fakepath\\watchlist.csv', set: setValue, configurable: true })
+    await wrapper.get('.filepick').trigger('drop', { dataTransfer: { files: [new File(['x'], 'b.csv')] } })
+    expect(setValue).toHaveBeenCalledWith('')
+    expect(wrapper.get('#csv-name').text()).toBe('b.csv')
+  })
+
+  it('says the same refusal again when the same file is refused twice', async () => {
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    const bad = { dataTransfer: { files: [new File(['x'], 'a.txt')] } }
+    await wrapper.get('.filepick').trigger('drop', bad)
+    await flushPromises()
+    const region = wrapper.get('.import__chosen')
+    const seen: string[] = []
+    new MutationObserver(() => seen.push(region.text())).observe(region.element, { childList: true, characterData: true, subtree: true })
+    await wrapper.get('.filepick').trigger('drop', bad)
+    await flushPromises()
+    expect(seen).toContain('')
+    expect(region.text()).toBe('That is not a CSV file.')
+  })
+
+  it('does not show the drag-over state while a request runs', async () => {
+    mocked.previewImport.mockReturnValue(new Promise(() => {}))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await choose(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await wrapper.get('.filepick').trigger('dragenter')
+    expect(wrapper.get('.filepick').classes()).not.toContain('filepick--over')
+  })
+})
