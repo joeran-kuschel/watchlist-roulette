@@ -12,6 +12,14 @@ export const formatDate = (iso: string) => dateFormat.format(new Date(iso))
 
 export const formatRuntime = (minutes: number | null) => (minutes === null ? null : `${minutes} min`)
 
+/** 1234 -> "1.2 KB"; whole numbers drop the decimal. */
+export function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  const kb = Number((bytes / 1024).toFixed(1))
+  // Rounding first, so that just below 1 MB is "1 MB" and not "1024 KB"
+  return kb < 1024 ? `${kb} KB` : `${Number((bytes / 1024 / 1024).toFixed(1))} MB`
+}
+
 /** A trimmed string from a form value; `v-model` on a number input yields a number, not text. */
 export const text = (value: unknown) => String(value ?? '').trim()
 

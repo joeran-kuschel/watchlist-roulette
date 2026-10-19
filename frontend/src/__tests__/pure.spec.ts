@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, describeError } from '../api'
-import { directorLabel, filmFacts, formatDate, formatRuntime, joinNames, needsMatch, text, tmdbBadge } from '../format'
+import { directorLabel, filmFacts, formatDate, formatFileSize, formatRuntime, joinNames, needsMatch, text, tmdbBadge } from '../format'
 import { makeFilm } from './helpers'
 import { countActiveFilters, emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
@@ -477,5 +477,28 @@ describe('tmdbBadge and needsMatch', () => {
       expect(tmdbBadge(withStatus(status))).toBeUndefined()
       expect(needsMatch(withStatus(status))).toBe(false)
     }
+  })
+})
+
+describe('formatFileSize', () => {
+  it('uses bytes, KB and MB, and drops a zero decimal', () => {
+    expect([0, 1023, 1024, 1536, 1024 * 1024, 5.25 * 1024 * 1024].map(formatFileSize)).toEqual([
+      '0 B',
+      '1023 B',
+      '1 KB',
+      '1.5 KB',
+      '1 MB',
+      '5.3 MB',
+    ])
+  })
+
+  it('keeps one decimal at most and handles rounding at the unit borders', () => {
+    expect(formatFileSize(1025)).toBe('1 KB')
+    expect(formatFileSize(1127)).toBe('1.1 KB')
+    expect(formatFileSize(1024 * 1024 * 250)).toBe('250 MB')
+  })
+
+  it('never shows 1024 KB', () => {
+    expect(formatFileSize(1024 * 1024 - 1)).toBe('1 MB')
   })
 })
