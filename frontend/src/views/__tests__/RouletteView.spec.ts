@@ -37,7 +37,7 @@ describe('RouletteView', () => {
     expect(mocked.randomFilm).toHaveBeenCalledWith({})
     expect(wrapper.get('h1').text()).toBe("Tonight's film")
     expect(wrapper.get('article h2').text()).toBe('Perfect Days')
-    expect(wrapper.get('[role="status"]').text()).toBe('Picked Perfect Days')
+    expect(wrapper.get('[role="status"]').text()).toBe('Picked Perfect Days from your whole list')
     await expectNoA11yViolations(wrapper.element)
   })
 
@@ -493,5 +493,95 @@ describe('RouletteView: edge cases', () => {
     mocked.randomFilm.mockResolvedValue(makeFilm())
     const { wrapper } = await mountWithApp(RouletteView)
     expect(wrapper.get('details').element.open).toBe(true)
+  })
+})
+
+describe('RouletteView: hints about spinning', () => {
+  it('tells that filters only apply on Spin again', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    expect(wrapper.get('.lead').text()).toBe('Set your filters, then press Spin again. Nothing changes until you do.')
+    await wrapper.get('#year-from').setValue('1990')
+    await flushPromises()
+    expect(mocked.randomFilm).toHaveBeenCalledTimes(1) // changing a filter does not spin
+  })
+
+  it('says that the first pick comes from the whole list, and drops the note on the next spin', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    expect(wrapper.get('.roulette__first').text()).toContain('comes from your whole list, before any filter')
+    await expectNoA11yViolations(wrapper.element)
+    await wrapper.get('button[aria-label="Spin again"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.roulette__first').exists()).toBe(false)
+  })
+
+  it('shows no first-pick note when there is no film or the pick failed', async () => {
+    mocked.randomFilm.mockRejectedValue(new api.ApiError(404, 'none'))
+    const { wrapper } = await mountWithApp(RouletteView)
+    expect(wrapper.find('.roulette__first').exists()).toBe(false)
+  })
+
+  it('keeps the note when the screen is left and opened again with the same first pick', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const first = await mountWithApp(RouletteView)
+    first.wrapper.unmount()
+    mocked.getFilm.mockResolvedValue(makeFilm())
+    const second = mount(RouletteView, {
+      attachTo: document.body,
+      global: { plugins: [first.router, getActivePinia()!] },
+    })
+    await flushPromises()
+    expect(second.find('.roulette__first').exists()).toBe(true)
+  })
+
+  it('drops the note when the user spins with a filter set', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    await wrapper.get('#country').setValue('jp')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.find('.roulette__first').exists()).toBe(false)
+  })
+
+  it('keeps the note after the first pick is marked as watched', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    mocked.updateFilm.mockResolvedValue(makeFilm({ watchedAt: '2026-01-01T00:00:00.000Z' }))
+    const { wrapper } = await mountWithApp(RouletteView)
+    await wrapper.get('button[aria-label="Mark as watched"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.roulette__first').exists()).toBe(true)
+  })
+
+  it('keeps the note when filters are cleared without spinning', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const { wrapper } = await mountWithApp(RouletteView)
+    await wrapper.get('#country').setValue('jp')
+    await wrapper.get('button[aria-label="Clear filters"]').trigger('click')
+    expect(wrapper.find('.roulette__first').exists()).toBe(true)
+  })
+
+  it('shows no note after Try again following a failed first pick', async () => {
+    mocked.randomFilm.mockRejectedValueOnce(new api.ApiError(0, 'down'))
+    const { wrapper } = await mountWithApp(RouletteView)
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm())
+    await wrapper.get('button.btn').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('article h2').text()).toBe('Perfect Days')
+    expect(wrapper.find('.roulette__first').exists()).toBe(false)
+  })
+
+  it('replaces a first pick that was watched elsewhere when the screen is opened again', async () => {
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm())
+    const first = await mountWithApp(RouletteView)
+    first.wrapper.unmount()
+    mocked.getFilm.mockResolvedValue(makeFilm({ watchedAt: '2026-01-01T00:00:00.000Z' }))
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm({ id: 2, title: 'Next' }))
+    const second = mount(RouletteView, {
+      attachTo: document.body,
+      global: { plugins: [first.router, getActivePinia()!] },
+    })
+    await flushPromises()
+    expect(second.get('article h2').text()).toBe('Next')
   })
 })
