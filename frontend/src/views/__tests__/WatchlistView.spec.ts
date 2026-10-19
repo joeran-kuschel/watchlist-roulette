@@ -37,7 +37,14 @@ beforeEach(() => {
   mocked.listFilms.mockResolvedValue(listing())
   mocked.getTmdbCheck.mockResolvedValue({ enabled: true, running: false, total: 0, done: 0, lastRun: null })
 })
-afterEach(() => (document.body.innerHTML = ''))
+afterEach(() => {
+  document.body.innerHTML = ''
+  vi.unstubAllGlobals()
+})
+
+/** jsdom has no matchMedia; this one reports a wide screen, where the table has visible column headers. */
+const stubWideScreen = () =>
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
 
 describe('WatchlistView', () => {
   it('loads with the default view and lists the films in an accessible table', async () => {
@@ -167,7 +174,7 @@ describe('WatchlistView', () => {
   it('pages with links and disables the unavailable direction', async () => {
     mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=2&sort=title')
-    expect(wrapper.get('nav[aria-label="Pagination"] p').text()).toBe('Showing 51–100 of 120')
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 51–100 of 120')
     expect(wrapper.get('a[aria-label="Previous page"]').attributes('href')).toBe('/watchlist?sort=title')
     expect(wrapper.get('a[aria-label="Next page"]').attributes('href')).toBe('/watchlist?sort=title&page=3')
   })
@@ -177,7 +184,7 @@ describe('WatchlistView', () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     expect(wrapper.get('button[aria-label="Previous page"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('button[aria-label="Next page"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('nav[aria-label="Pagination"] p').text()).toBe('Showing 1–5 of 5')
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 1–5 of 5')
   })
 
   it('shows the empty state of an empty list', async () => {
@@ -230,7 +237,7 @@ describe('WatchlistView: edge cases', () => {
     mocked.listFilms.mockResolvedValue(listing([films[0]!], 1))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     expect(wrapper.get('.lead').text()).toBe('1 films')
-    expect(wrapper.get('nav[aria-label="Pagination"] p').text()).toBe('Showing 1–1 of 1')
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 1–1 of 1')
   })
 
   it('shows "Loading…" instead of a count until the list is there', async () => {
@@ -298,7 +305,7 @@ describe('WatchlistView: edge cases', () => {
     expect(router.currentRoute.value.query).toEqual({ sort: 'title' })
   })
 
-  it('offers the five sort choices and the three watched filters with labels', async () => {
+  it('offers the six sort choices and the three watched filters with labels', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     expect(wrapper.findAll('#sort option').map((o) => o.text())).toEqual([
       'Date added, newest first',
@@ -306,6 +313,7 @@ describe('WatchlistView: edge cases', () => {
       'Release year, newest first',
       'Release year, oldest first',
       'Title, A to Z',
+      'Title, Z to A',
     ])
     expect(wrapper.findAll('#watched option').map((o) => o.text())).toEqual(['All films', 'Unwatched', 'Watched'])
   })
@@ -383,7 +391,7 @@ describe('WatchlistView: edge cases', () => {
   it('has no axe violations in the paged table with disabled buttons', async () => {
     mocked.listFilms.mockResolvedValue(listing(films, 120, 3))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=3')
-    expect(wrapper.get('nav[aria-label="Pagination"] p').text()).toBe('Showing 101–120 of 120')
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 101–120 of 120')
     await expectNoA11yViolations(wrapper.element)
   })
 
@@ -424,7 +432,7 @@ describe('WatchlistView: edge cases', () => {
   it('does not show a backwards range when the page is past the end', async () => {
     mocked.listFilms.mockResolvedValue(listing([], 120, 100))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=100')
-    expect(wrapper.get('nav[aria-label="Pagination"] p').text()).not.toMatch(/Showing 4951/)
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).not.toMatch(/Showing 4951/)
   })
 })
 
@@ -744,5 +752,251 @@ describe('WatchlistView when TMDB is not configured', () => {
     const { wrapper } = await mountList()
     expect(wrapper.text()).toContain('TMDB_ACCESS_TOKEN')
     await expectNoA11yViolations(wrapper.element)
+  })
+})
+
+describe('WatchlistView: sorting by the column headers', () => {
+  const headerButtons = (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper']) =>
+    wrapper.findAll('thead th button').map((b) => b.text())
+  const sortOf = (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper'], column: string) =>
+    wrapper.get(`#sort-${column}`).element.closest('th')!.getAttribute('aria-sort')
+
+  it('shows header buttons for Title, Year and Added, and no sort list, on a wide screen', async () => {
+    stubWideScreen()
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.find('#sort').exists()).toBe(false)
+    expect(headerButtons(wrapper)).toEqual(['Title', 'Year', 'Added'])
+    expect(wrapper.findAll('thead th').map((th) => th.text())).toEqual(['Title', 'Year', 'Added', 'Status', 'Actions'])
+    expect(wrapper.findAll('thead th')[3]!.find('button').exists()).toBe(false)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('marks only the sorted column with aria-sort, and shows the direction by an arrow', async () => {
+    stubWideScreen()
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?sort=year-asc')
+    expect(sortOf(wrapper, 'year')).toBe('ascending')
+    expect(sortOf(wrapper, 'title')).toBeNull()
+    expect(sortOf(wrapper, 'added')).toBeNull()
+    expect(wrapper.get('#sort-year svg path').attributes('d')).toBe('M12 19V5M5 12l7-7 7 7')
+    expect(wrapper.get('#sort-title svg path').attributes('d')).not.toBe('M12 19V5M5 12l7-7 7 7')
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('sorts newest first by default, and a second click reverses it', async () => {
+    stubWideScreen()
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(sortOf(wrapper, 'added')).toBe('descending')
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ sort: 'year-desc' })
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: 'release_year', order: 'desc', page: 1 }),
+    )
+    expect(sortOf(wrapper, 'year')).toBe('descending')
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ sort: 'year-asc' })
+    expect(sortOf(wrapper, 'year')).toBe('ascending')
+  })
+
+  it('sorts titles A to Z first, then Z to A', async () => {
+    stubWideScreen()
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist')
+    await wrapper.get('#sort-title').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ sort: 'title' })
+    await wrapper.get('#sort-title').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ sort: 'title-desc' })
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'title', order: 'desc' }))
+    expect(sortOf(wrapper, 'title')).toBe('descending')
+  })
+
+  it('goes from the default to the oldest first when Added is clicked', async () => {
+    stubWideScreen()
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist')
+    await wrapper.get('#sort-added').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ sort: 'added-asc' })
+  })
+
+  it('keeps the search and filters, goes back to page 1, and ignores unsent text in the search field', async () => {
+    stubWideScreen()
+    mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist?q=days&watched=false&page=2')
+    await wrapper.get('#search').setValue('something else, not submitted')
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ q: 'days', watched: 'false', sort: 'year-desc' })
+  })
+
+  it('announces the new order', async () => {
+    stubWideScreen()
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.watchlist__notice').text()).toBe('Sorted by release year, newest first')
+  })
+
+  it('forgets the sort message when the search or a filter changes', async () => {
+    stubWideScreen()
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    await wrapper.get('#watched').setValue('false')
+    await flushPromises()
+    expect(wrapper.get('.watchlist__notice').text()).toBe('')
+  })
+
+  it('puts the focus back on the header button once the reloaded list is shown', async () => {
+    stubWideScreen()
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('#sort-year').element)
+  })
+
+  it('does not take the focus on a later reload that no header click caused', async () => {
+    stubWideScreen()
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    ;(document.activeElement as HTMLElement).blur()
+    await useWatchlistStore().load({ watched: 'all', sort: 'added_at', order: 'desc', page: 1, pageSize: 50 })
+    await flushPromises()
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('keeps the sort list and plain column titles on a narrow screen, with the same sorts', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?sort=title-desc')
+    expect(wrapper.find('thead th button').exists()).toBe(false)
+    expect((wrapper.get('#sort').element as HTMLSelectElement).value).toBe('title-desc')
+    await wrapper.get('#sort').setValue('year-asc')
+    await flushPromises()
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'release_year', order: 'asc' }))
+  })
+})
+
+describe('WatchlistView: sorting by the column headers, edge cases', () => {
+  /** A matchMedia stub whose result can be switched, like resizing the window across the 800px breakpoint. */
+  const stubResizableScreen = (narrow: boolean) => {
+    const listeners = new Set<(e: { matches: boolean }) => void>()
+    vi.stubGlobal('matchMedia', () => ({
+      matches: narrow,
+      addEventListener: (_: string, fn: (e: { matches: boolean }) => void) => listeners.add(fn),
+      removeEventListener: (_: string, fn: (e: { matches: boolean }) => void) => listeners.delete(fn),
+    }))
+    return (matches: boolean) => listeners.forEach((fn) => fn({ matches }))
+  }
+
+  it('switches between header buttons and the sort list when the window is resized, keeping the sort', async () => {
+    const resize = stubResizableScreen(false)
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?sort=year-asc')
+    expect(wrapper.find('#sort').exists()).toBe(false)
+    resize(true)
+    await flushPromises()
+    expect(wrapper.find('thead th button').exists()).toBe(false)
+    expect((wrapper.get('#sort').element as HTMLSelectElement).value).toBe('year-asc')
+    expect(wrapper.findAll('thead th')[1]!.attributes('aria-sort')).toBe('ascending')
+    resize(false)
+    await flushPromises()
+    expect(wrapper.find('#sort').exists()).toBe(false)
+    expect(wrapper.get('#sort-year').element.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
+  })
+
+  it('shows the default sort (Added, newest first) when the URL has an unknown sort', async () => {
+    stubWideScreen()
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?sort=bogus')
+    expect(wrapper.get('#sort-added').element.closest('th')!.getAttribute('aria-sort')).toBe('descending')
+    expect(wrapper.findAll('thead th[aria-sort]')).toHaveLength(1)
+    await wrapper.get('#sort-added').trigger('click')
+    await flushPromises()
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'added_at', order: 'asc' }))
+  })
+
+  it('uses a focusable native button in the header, so Enter and Space work (jsdom cannot press keys)', async () => {
+    stubWideScreen()
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist')
+    const button = wrapper.get('#sort-title').element as HTMLButtonElement
+    expect(button.tagName).toBe('BUTTON')
+    expect(button.type).toBe('button')
+    button.focus()
+    expect(document.activeElement).toBe(button)
+    await wrapper.get('#sort-title').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ sort: 'title' })
+  })
+
+  it('treats a double click before the list reloads as one sort, not as a reversal', async () => {
+    stubWideScreen()
+    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist')
+    const button = wrapper.get('#sort-year')
+    await button.trigger('click')
+    await button.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ sort: 'year-desc' })
+  })
+
+  it('shows an alert and no header buttons when the reload after a click fails', async () => {
+    stubWideScreen()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    mocked.listFilms.mockRejectedValueOnce(new api.ApiError(500, 'Server error'))
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    expect(wrapper.find('thead').exists()).toBe(false)
+  })
+
+  it('does not take the focus on a later reload after a failed reload that followed a header click', async () => {
+    stubWideScreen()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    mocked.listFilms.mockRejectedValueOnce(new api.ApiError(0, 'unreachable'))
+    await wrapper.get('#sort-year').trigger('click')
+    await flushPromises()
+    ;(document.activeElement as HTMLElement).blur()
+    await useWatchlistStore().load({ watched: 'all', sort: 'added_at', order: 'desc', page: 1, pageSize: 50 })
+    await flushPromises()
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('removes its media query listener when the view is unmounted', async () => {
+    const remove = vi.fn<(type: string, listener: unknown) => void>()
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: remove }))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    wrapper.unmount()
+    expect(remove).toHaveBeenCalledWith('change', expect.any(Function))
+  })
+})
+
+describe('WatchlistView: pagination at the top', () => {
+  it('repeats a compact pager above the table when there is more than one page', async () => {
+    mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=2&sort=title')
+    const top = wrapper.get('nav[aria-label="Pagination, top"]')
+    expect(top.get('p').text()).toBe('Page 2 of 3')
+    expect(top.get('a[aria-label="Previous page"]').attributes('href')).toBe('/watchlist?sort=title')
+    expect(top.get('a[aria-label="Next page"]').attributes('href')).toBe('/watchlist?sort=title&page=3')
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 51–100 of 120')
+    expect(wrapper.findAll('nav').map((n) => n.attributes('aria-label'))).toContain('Pagination, top')
+    const html = wrapper.html()
+    expect(html.indexOf('Pagination, top')).toBeLessThan(html.indexOf('<table'))
+    expect(html.indexOf('<table')).toBeLessThan(html.indexOf('Pagination, bottom'))
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('has no top pager when everything fits on one page', async () => {
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    expect(wrapper.find('nav[aria-label="Pagination, top"]').exists()).toBe(false)
+    expect(wrapper.find('nav[aria-label="Pagination, bottom"]').exists()).toBe(true)
+  })
+
+  it('disables Previous at the top on the first page', async () => {
+    mocked.listFilms.mockResolvedValue(listing(films, 120, 1))
+    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
+    const top = wrapper.get('nav[aria-label="Pagination, top"]')
+    expect(top.get('button[aria-label="Previous page"]').attributes('disabled')).toBeDefined()
+    expect(top.get('a[aria-label="Next page"]').attributes('href')).toBe('/watchlist?page=2')
   })
 })

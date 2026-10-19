@@ -4,10 +4,10 @@ Route `/watchlist`. All films in a table. Code: `views/WatchlistView.vue`, `stor
 
 ## What the user does
 
-- **Search** by title (Enter or the Search button), **Show** all/unwatched/watched, **TMDB status**, **Sort by** date added, release year or title. Changing a select applies at once.
+- **Search** by title (Enter or the Search button), **Show** all/unwatched/watched, **TMDB status**, sort by date added, release year or title. Changing a select applies at once. Sorting is done with the column headers on wide screens and with the **Sort by** list on narrow ones (see [Sorting](#sorting)).
 - Per film, as icon buttons: mark watched/unwatched, edit ([film form](film-form.md)), and for films with a TMDB problem **Choose match** ([TMDB match](tmdb-match.md)).
 - **Add film** (plus button) opens the [film form](film-form.md).
-- 50 films per page, with Previous/Next.
+- 50 films per page, with Previous/Next below the table, and above it too when there is more than one page (see [Pagination](#pagination)).
 - **Check TMDB again** (see below).
 
 ## State in the URL
@@ -20,7 +20,19 @@ Whenever the watchlist's query changes, `WatchlistView.vue` hands it to the watc
 
 TMDB status choices (`tmdb`): `pending` (Pending), `ambiguous` (Needs review), `not_found` (Not found), `error` (Lookup failed), `matched` (Matched); the default is any status. One status at a time. The names are short versions of the badge texts in the table (the badges are defined in `WatchlistView.vue`, the filter names in `watchlistQuery.ts`), and the value is sent as the backend's `tmdbStatus`. An unknown value in the URL is ignored. Use it to find films that need attention, for example **Needs review**, then **Choose match**.
 
-Sort choices: `added-desc` (default), `added-asc`, `year-desc`, `year-asc`, `title`. They map to the backend's `sort` and `order`.
+Sort choices: `added-desc` (default), `added-asc`, `year-desc`, `year-asc`, `title` (A to Z), `title-desc` (Z to A). They map to the backend's `sort` and `order`.
+
+## Sorting
+
+One sort state (`sort` in the URL) with two controls; only one of them exists at a time, at the same 800 px breakpoint as the card layout (`useMediaQuery('(max-width: 800px)')`, which falls back to the list without `matchMedia`):
+
+- **Wide screens:** the **Title**, **Year** and **Added** headers are buttons inside the `<th>` (the pattern from the WAI-ARIA Authoring Practices). **Status** and **Actions** are not sortable. The sorted column's `<th>` has `aria-sort="ascending"` or `"descending"` (the others have none) and an arrow icon (`aria-hidden`) shows the direction; the other sortable columns show a neutral up-down icon. The button's accessible name is just the column name (WCAG 2.5.3).
+- **A click** sorts by the column's natural order first (Title A to Z, Year newest first, Added newest first) and reverses it on the next click (`SORT_COLUMNS`, `nextSort` in `watchlistQuery.ts`). It keeps the search and filters of the URL, ignores text typed in the search field but not yet sent, and goes back to page 1. The status line says "Sorted by release year, newest first". Because the list is replaced by a loading message while it reloads, focus is put back on the header button once the list is shown again.
+- **Narrow screens:** the column headers are not visible in the card layout, so the **Sort by** list is shown there instead, with the six choices above. On wide screens the list is not in the page at all.
+
+## Pagination
+
+Below the table: `nav` "Pagination, bottom" with "Showing 1–50 of 120" and Previous/Next. Above the table, only when there is more than one page: `nav` "Pagination, top", compact, with "Page 2 of 3" and the same buttons, so a long list can be paged without scrolling down. Both are the `components/PageNav.vue` component with different names, because two navigation landmarks need different names for screen readers.
 
 ## Check TMDB again
 
@@ -43,7 +55,7 @@ The screen asks the backend once whether TMDB is configured (`stores/tmdb.ts`, `
 
 ## Table
 
-A real `<table>` with a hidden caption, column headers and the title as row header. The title links to the film's [details page](film-details.md), in the same tab; the Letterboxd and TMDB links are on that page. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself, except after **Check TMDB again**). Without a `TMDB_ACCESS_TOKEN` every film stays pending; then the badge reads "TMDB data is off" instead (see [When TMDB is off](#when-tmdb-is-off)). `matched` films show nothing extra.
+A real `<table>` with a hidden caption, column headers (sortable ones are buttons, see [Sorting](#sorting)) and the title as row header. The title links to the film's [details page](film-details.md), in the same tab; the Letterboxd and TMDB links are on that page. The status column shows "To watch" or "Watched <date>", and a warning badge for `ambiguous` ("Needs review: several TMDB matches"), `not_found` and `error` lookups. A film that is still `pending` shows a neutral badge "Waiting for TMDB data" (no warning color and no **Choose match** button, because nothing is wrong yet); it goes away once the lookup has run and the list is loaded again (the screen does not refresh by itself, except after **Check TMDB again**). Without a `TMDB_ACCESS_TOKEN` every film stays pending; then the badge reads "TMDB data is off" instead (see [When TMDB is off](#when-tmdb-is-off)). `matched` films show nothing extra.
 
 ### On small screens
 

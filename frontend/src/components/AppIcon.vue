@@ -9,6 +9,9 @@ export type IconName =
   | 'left'
   | 'right'
   | 'chevron-down'
+  | 'arrow-up'
+  | 'arrow-down'
+  | 'sort'
   | 'x'
   | 'alert'
 
@@ -25,6 +28,9 @@ const PATHS: Record<IconName, string> = {
   left: 'M15 5l-7 7 7 7',
   right: 'M9 5l7 7-7 7',
   'chevron-down': 'M5 9l7 7 7-7',
+  'arrow-up': 'M12 19V5M5 12l7-7 7 7',
+  'arrow-down': 'M12 5v14M5 12l7 7 7-7',
+  sort: 'M8 5v14M4 9l4-4 4 4M16 19V5M12 15l4 4 4-4',
   x: 'M6 6l12 12M18 6L6 18',
   alert: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7.5v5M12 16v.5',
 }

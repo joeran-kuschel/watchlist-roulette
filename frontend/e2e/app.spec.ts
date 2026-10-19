@@ -143,7 +143,7 @@ test('going back from a film keeps the search, filters and page of the watchlist
   await expect(page).toHaveURL(listUrl)
   await expect(page.getByLabel('Search by title')).toHaveValue('a')
   await expect(page.getByLabel('Show')).toHaveValue('false')
-  await expect(page.getByLabel('Sort by')).toHaveValue('title')
+  await expect(page.getByRole('columnheader', { name: 'Title' })).toHaveAttribute('aria-sort', 'ascending')
 
   // Cancel on the edit page leads back to the same list
   await page.getByRole('link', { name: 'Perfect Days', exact: true }).click()
@@ -326,11 +326,11 @@ test('a card with a very long title, no year and two badges stays inside the scr
 test('the pagination and the empty watchlist fit a 320 px screen', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await page.goto('/watchlist')
-  await expect(page.getByRole('navigation', { name: 'Pagination' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Pagination, bottom' })).toBeVisible()
   const fitsNow = () =>
     page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
   expect(await fitsNow()).toBe(true)
-  for (const button of await page.locator('nav[aria-label="Pagination"] .icon-button').all()) {
+  for (const button of await page.locator('nav[aria-label="Pagination, bottom"] .icon-button').all()) {
     const box = (await button.boundingBox())!
     expect(box.x).toBeGreaterThanOrEqual(0)
     expect(box.x + box.width).toBeLessThanOrEqual(320)
@@ -398,6 +398,47 @@ test('a tooltip stays while the pointer moves onto it, Esc closes it without foc
   await page.mouse.click(target.x, target.y)
   await expect(page).toHaveURL(/\/watchlist$/)
   await expect(tip).toBeVisible()
+})
+
+test('wide screens sort by the column headers, narrow screens by the list', async ({ page }) => {
+  await page.goto('/watchlist')
+  await expect(page.getByLabel('Sort by')).toHaveCount(0)
+  const year = page.getByRole('button', { name: 'Year', exact: true })
+  const yearHeader = page.getByRole('columnheader', { name: 'Year' })
+  await expect(page.getByRole('columnheader', { name: 'Added' })).toHaveAttribute('aria-sort', 'descending')
+  await year.click()
+  await expect(page).toHaveURL(/sort=year-desc$/)
+  await expect(yearHeader).toHaveAttribute('aria-sort', 'descending')
+  await expect(year).toBeFocused()
+  await expect(page.getByRole('status').filter({ hasText: 'Sorted by release year, newest first' })).toBeAttached()
+  await year.click()
+  await expect(page).toHaveURL(/sort=year-asc$/)
+  await expect(yearHeader).toHaveAttribute('aria-sort', 'ascending')
+  await expectAccessible(page)
+
+  await page.setViewportSize({ width: 375, height: 800 })
+  await expect(page.getByLabel('Sort by')).toHaveValue('year-asc')
+  await expect(page.locator('thead th button')).toHaveCount(0)
+  await page.getByLabel('Sort by').selectOption('title-desc')
+  await expect(page).toHaveURL(/sort=title-desc$/)
+})
+
+test('a long watchlist has a compact pager above the table and the full one below', async ({ page }) => {
+  await page.route('**/api/films?*', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [film(1, 'Perfect Days')], total: 120, page: 1, pageSize: 50 }),
+    }),
+  )
+  await page.goto('/watchlist')
+  const top = page.getByRole('navigation', { name: 'Pagination, top' })
+  await expect(top).toContainText('Page 1 of 3')
+  await expect(page.getByRole('navigation', { name: 'Pagination, bottom' })).toContainText('Showing 1–50 of 120')
+  await top.getByRole('link', { name: 'Next page' }).click()
+  await expect(page).toHaveURL(/page=2$/)
+  await page.setViewportSize({ width: 320, height: 800 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await expectAccessible(page)
 })
 
 test('a disabled icon button shows no tooltip but keeps its name', async ({ page }) => {
