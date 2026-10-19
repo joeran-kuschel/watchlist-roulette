@@ -14,12 +14,15 @@ export const useRouletteStore = defineStore('roulette', () => {
   // Kept here, not in the screen, so they survive leaving and coming back
   const filters = reactive(emptyFilters())
   const lastParams = ref<RandomParams>({})
+  // True while the pick on screen is the one made on arrival, before the user pressed Spin
+  const automatic = ref(false)
 
   // Answers that arrive after a newer request was made are dropped, so the last press wins
   let latest = 0
 
-  async function spin(params: RandomParams = {}) {
+  async function spin(params: RandomParams = {}, onArrival = false) {
     const mine = ++latest
+    automatic.value = onArrival
     status.value = 'loading'
     error.value = ''
     notice.value = ''
@@ -64,12 +67,12 @@ export const useRouletteStore = defineStore('roulette', () => {
       const current = await getFilm(film.value.id)
       if (mine !== latest) return
       film.value = current
-      if (current.watchedAt) await spin(lastParams.value)
+      if (current.watchedAt) await spin(lastParams.value, automatic.value)
     } catch (e) {
       if (mine !== latest) return
-      if (e instanceof ApiError && e.status === 404) await spin(lastParams.value)
+      if (e instanceof ApiError && e.status === 404) await spin(lastParams.value, automatic.value)
     }
   }
 
-  return { film, status, error, notice, filters, lastParams, spin, markWatched, refresh }
+  return { film, status, error, notice, filters, lastParams, automatic, spin, markWatched, refresh }
 })

@@ -32,7 +32,7 @@ function syncPanel(event: Event) {
   if (!sideBySide.value) panelOpen.value = (event.target as HTMLDetailsElement).open
 }
 
-async function spin() {
+async function spin(onArrival = false) {
   const parsed = parseRouletteFilters(filters)
   errors.value = parsed.errors
   if (Object.keys(parsed.errors).length > 0) {
@@ -45,7 +45,7 @@ async function spin() {
     }
     return
   }
-  await store.spin(parsed.params)
+  await store.spin(parsed.params, onArrival)
 }
 
 function clearFilters() {
@@ -54,14 +54,15 @@ function clearFilters() {
 }
 
 onMounted(() => {
-  if (store.status === 'idle') void spin()
+  if (store.status === 'idle') void spin(true)
   else void store.refresh()
 })
 
 const announcement = computed(() => {
   if (store.notice) return store.notice
   if (store.status === 'loading') return 'Picking a film…'
-  if (store.status === 'ready' && store.film) return `Picked ${store.film.title}`
+  if (store.status === 'ready' && store.film)
+    return `Picked ${store.film.title}${store.automatic ? ' from your whole list' : ''}`
   if (store.status === 'empty') return 'No film to pick.'
   return ''
 })
@@ -72,7 +73,7 @@ const isWatched = computed(() => store.film?.watchedAt != null)
   <div class="page roulette">
     <section class="roulette__filters" aria-labelledby="filters-heading">
       <h1>Tonight's film</h1>
-      <p class="lead">Narrow the pool, or just spin.</p>
+      <p class="lead">Set your filters, then press Spin again. Nothing changes until you do.</p>
       <details class="roulette__panel" :open="filtersShown" @toggle="syncPanel">
         <summary class="roulette__summary">
           <span
@@ -80,7 +81,7 @@ const isWatched = computed(() => store.film?.watchedAt != null)
           >
           <AppIcon class="roulette__chevron" name="chevron-down" />
         </summary>
-        <form id="filter-form" ref="form" novalidate @submit.prevent="spin">
+        <form id="filter-form" ref="form" novalidate @submit.prevent="spin()">
           <h2
             id="filters-heading"
             class="roulette__filters-title"
@@ -158,7 +159,7 @@ const isWatched = computed(() => store.film?.watchedAt != null)
       <p class="sr-only" role="status">{{ announcement }}</p>
 
       <ErrorAlert v-if="store.error" :message="store.error">
-        <button v-if="store.status === 'error'" class="btn" type="button" @click="spin">
+        <button v-if="store.status === 'error'" class="btn" type="button" @click="spin()">
           Try again
         </button>
       </ErrorAlert>
@@ -166,7 +167,13 @@ const isWatched = computed(() => store.film?.watchedAt != null)
       <p v-if="store.status === 'loading'" class="card roulette__loading" aria-busy="true">
         Picking a film…
       </p>
-      <FilmCard v-else-if="store.status === 'ready' && store.film" :film="store.film" />
+      <template v-else-if="store.status === 'ready' && store.film">
+        <p v-if="store.automatic" class="roulette__first">
+          This first pick comes from your whole list, before any filter. Set filters and press Spin again to
+          narrow it.
+        </p>
+        <FilmCard :film="store.film" />
+      </template>
       <div v-else-if="store.status === 'empty'" class="card">
         <template v-if="hasFilters(store.lastParams)">
           <h2>No film fits these filters</h2>
@@ -225,6 +232,10 @@ const isWatched = computed(() => store.film?.watchedAt != null)
 .roulette__result {
   flex: 999 1 560px;
   min-width: 0;
+}
+.roulette__first {
+  margin: 0 0 12px;
+  color: var(--text-soft);
 }
 form {
   display: flex;

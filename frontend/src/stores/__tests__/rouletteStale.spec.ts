@@ -150,3 +150,65 @@ describe('roulette store: refresh', () => {
     expect(mocked.randomFilm).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('roulette store: automatic first pick', () => {
+  it('is automatic only for a spin made on arrival', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const store = useRouletteStore()
+    expect(store.automatic).toBe(false)
+    await store.spin({}, true)
+    expect(store.automatic).toBe(true)
+    await store.spin()
+    expect(store.automatic).toBe(false)
+  })
+
+  it('stays automatic when the first pick is marked as watched', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    mocked.updateFilm.mockResolvedValue(makeFilm({ watchedAt: '2026-01-01T00:00:00.000Z' }))
+    const store = useRouletteStore()
+    await store.spin({}, true)
+    await store.markWatched()
+    expect(store.automatic).toBe(true)
+  })
+
+  it('stays automatic when refresh only reloads the same film', async () => {
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    const store = useRouletteStore()
+    await store.spin({}, true)
+    mocked.getFilm.mockResolvedValue(makeFilm({ title: 'Edited' }))
+    await store.refresh()
+    expect(store.automatic).toBe(true)
+  })
+
+  it('is not automatic when a retry follows a failed first pick', async () => {
+    mocked.randomFilm.mockRejectedValueOnce(new api.ApiError(0, 'x'))
+    const store = useRouletteStore()
+    await store.spin({}, true)
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm())
+    await store.spin({})
+    expect(store.status).toBe('ready')
+    expect(store.automatic).toBe(false)
+  })
+
+  it('keeps the first-pick note when refresh replaces a watched first pick', async () => {
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm())
+    const store = useRouletteStore()
+    await store.spin({}, true)
+    mocked.getFilm.mockResolvedValue(makeFilm({ watchedAt: '2026-01-01T00:00:00.000Z' }))
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm({ id: 2, title: 'Next' }))
+    await store.refresh()
+    expect(store.film?.title).toBe('Next')
+    expect(store.automatic).toBe(true)
+  })
+
+  it('does not make a replacement a first pick when the user had pressed Spin', async () => {
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm())
+    const store = useRouletteStore()
+    await store.spin({})
+    mocked.getFilm.mockResolvedValue(makeFilm({ watchedAt: '2026-01-01T00:00:00.000Z' }))
+    mocked.randomFilm.mockResolvedValueOnce(makeFilm({ id: 2, title: 'Next' }))
+    await store.refresh()
+    expect(store.film?.title).toBe('Next')
+    expect(store.automatic).toBe(false)
+  })
+})

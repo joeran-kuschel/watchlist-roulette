@@ -98,10 +98,13 @@ test('roulette picks a film, spins again and marks it as watched', async ({ page
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 2, name: 'Perfect Days' })).toBeVisible()
   await expect(page).toHaveTitle('Roulette · Watchlist Roulette')
+  await expect(page.getByText('Set your filters, then press Spin again.')).toBeVisible()
+  await expect(page.getByText('This first pick comes from your whole list')).toBeVisible()
   await expectAccessible(page)
 
   await page.getByRole('button', { name: 'Spin again' }).click()
   await expect(page.getByRole('heading', { level: 2, name: 'Perfect Days' })).toBeVisible()
+  await expect(page.getByText('This first pick comes from your whole list')).toBeHidden()
 
   await page.getByRole('button', { name: 'Mark as watched' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'marked as watched' })).toBeAttached()
