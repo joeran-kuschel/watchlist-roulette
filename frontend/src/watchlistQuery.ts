@@ -8,9 +8,33 @@ export const SORTS = {
   'year-desc': { label: 'Release year, newest first', sort: 'release_year', order: 'desc' },
   'year-asc': { label: 'Release year, oldest first', sort: 'release_year', order: 'asc' },
   title: { label: 'Title, A to Z', sort: 'title', order: 'asc' },
+  'title-desc': { label: 'Title, Z to A', sort: 'title', order: 'desc' },
 } as const
 
 export type SortKey = keyof typeof SORTS
+
+/** The sortable columns of the table: the sort a first click gives, then the one a second click gives. */
+export const SORT_COLUMNS = {
+  title: ['title', 'title-desc'],
+  year: ['year-desc', 'year-asc'],
+  added: ['added-desc', 'added-asc'],
+} as const satisfies Record<string, readonly [SortKey, SortKey]>
+export type SortColumn = keyof typeof SORT_COLUMNS
+
+const columnOf = (sort: SortKey) =>
+  (Object.keys(SORT_COLUMNS) as SortColumn[]).find((column) =>
+    (SORT_COLUMNS[column] as readonly SortKey[]).includes(sort),
+  )!
+
+/** What a click on the header of `column` sorts by: its first sort, or the reverse when it is already sorted. */
+export const nextSort = (column: SortColumn, current: SortKey): SortKey =>
+  current === SORT_COLUMNS[column][0] ? SORT_COLUMNS[column][1] : SORT_COLUMNS[column][0]
+
+/** The `aria-sort` value of a column header; only the sorted column has one. */
+export function ariaSort(column: SortColumn, current: SortKey): 'ascending' | 'descending' | undefined {
+  if (columnOf(current) !== column) return undefined
+  return SORTS[current].order === 'asc' ? 'ascending' : 'descending'
+}
 export type WatchedFilter = 'all' | 'false' | 'true'
 
 /** The TMDB status choices of the watchlist screen; the labels match the badges in the table. */

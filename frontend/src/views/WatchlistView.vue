@@ -3,13 +3,26 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import FormField from '../components/FormField.vue'
+import AppIcon from '../components/AppIcon.vue'
 import IconButton from '../components/IconButton.vue'
+import PageNav from '../components/PageNav.vue'
 import TmdbCheckPanel from '../components/TmdbCheckPanel.vue'
 import TmdbOffNotice from '../components/TmdbOffNotice.vue'
 import { formatDate, needsMatch, tmdbBadge } from '../format'
+import { useMediaQuery } from '../media'
 import { useTmdbStore } from '../stores/tmdb'
 import { useWatchlistStore } from '../stores/watchlist'
-import { fromQuery, SORTS, TMDB_FILTERS, toListParams, toQuery, type SortKey } from '../watchlistQuery'
+import {
+  ariaSort,
+  fromQuery,
+  nextSort,
+  SORTS,
+  TMDB_FILTERS,
+  toListParams,
+  toQuery,
+  type SortColumn,
+  type SortKey,
+} from '../watchlistQuery'
 
 const store = useWatchlistStore()
 const tmdb = useTmdbStore()
@@ -33,7 +46,42 @@ watch(
 // After a TMDB check the statuses of the films have changed
 const reload = () => void store.load(toListParams(view.value))
 
-const apply = () => router.push({ query: toQuery({ ...form, page: 1 }) })
+// Below this width the table is shown as cards without visible column headers (same breakpoint as the CSS below),
+// so the sort list is shown there instead. Without `matchMedia` the list is used, which works everywhere.
+const cards = useMediaQuery('(max-width: 800px)')
+const SORT_HEADERS: { column: SortColumn; label: string }[] = [
+  { column: 'title', label: 'Title' },
+  { column: 'year', label: 'Year' },
+  { column: 'added', label: 'Added' },
+]
+// The list is replaced by a loading message while it reloads, which removes the header button that was used
+let refocus: SortColumn | null = null
+function sortBy(column: SortColumn) {
+  const sort = nextSort(column, view.value.sort)
+  refocus = column
+  announced.value = `Sorted by ${SORTS[sort].label.toLowerCase()}`
+  void router.push({ query: toQuery({ ...view.value, sort, page: 1 }) })
+}
+const sortIcon = (column: SortColumn) => {
+  const state = ariaSort(column, view.value.sort)
+  return state === 'ascending' ? 'arrow-up' : state === 'descending' ? 'arrow-down' : 'sort'
+}
+watch(
+  () => store.status,
+  async (status) => {
+    if (!refocus || status === 'loading') return
+    const column = refocus
+    refocus = null // also after a failed reload, so a later load that no click caused does not take the focus
+    if (status !== 'ready') return
+    await nextTick()
+    document.getElementById(`sort-${column}`)?.focus()
+  },
+)
+
+const apply = () => {
+  announced.value = '' // an earlier "Sorted by" message no longer applies
+  return router.push({ query: toQuery({ ...form, page: 1 }) })
+}
 const goToPage = (page: number) => ({ query: toQuery({ ...view.value, page }) })
 
 const pageCount = computed(() => Math.max(1, Math.ceil(store.total / store.pageSize)))
@@ -96,7 +144,7 @@ onBeforeUnmount(() => (store.notice = ''))
           <option v-for="(label, status) in TMDB_FILTERS" :key="status" :value="status">{{ label }}</option>
         </select>
       </FormField>
-      <FormField id="sort" label="Sort by" v-slot="{ attrs }">
+      <FormField v-if="cards" id="sort" label="Sort by" v-slot="{ attrs }">
         <select v-bind="attrs" v-model="form.sort" class="input" @change="apply">
           <option v-for="(option, key) in SORTS" :key="key" :value="key as SortKey">
             {{ option.label }}
@@ -130,6 +178,15 @@ onBeforeUnmount(() => (store.notice = ''))
     </div>
 
     <template v-else-if="store.status === 'ready'">
+      <PageNav
+        v-if="pageCount > 1"
+        class="watchlist__pages watchlist__pages--top"
+        label="Pagination, top"
+        :text="`Page ${store.page} of ${pageCount}`"
+        :page="store.page"
+        :page-count="pageCount"
+        :to="goToPage"
+      />
       <div class="table-wrap">
         <!-- The roles repeat what the elements already mean. On small screens CSS turns the rows into cards, and
              some screen readers (VoiceOver) then drop the table meaning unless it is stated -->
@@ -139,9 +196,24 @@ onBeforeUnmount(() => (store.notice = ''))
           </caption>
           <thead role="rowgroup">
             <tr role="row">
-              <th scope="col" role="columnheader">Title</th>
-              <th scope="col" role="columnheader">Year</th>
-              <th scope="col" role="columnheader">Added</th>
+              <th
+                v-for="header in SORT_HEADERS"
+                :key="header.column"
+                scope="col"
+                role="columnheader"
+                :aria-sort="ariaSort(header.column, view.sort)"
+              >
+                <template v-if="cards">{{ header.label }}</template>
+                <button
+                  v-else
+                  :id="`sort-${header.column}`"
+                  class="watchlist__sort"
+                  type="button"
+                  @click="sortBy(header.column)"
+                >
+                  {{ header.label }}<AppIcon :name="sortIcon(header.column)" :size="16" />
+                </button>
+              </th>
               <th scope="col" role="columnheader">Status</th>
               <th scope="col" role="columnheader"><span class="sr-only">Actions</span></th>
             </tr>
@@ -199,15 +271,14 @@ onBeforeUnmount(() => (store.notice = ''))
         </table>
       </div>
 
-      <nav class="watchlist__pages" aria-label="Pagination">
-        <p>{{ rangeText }}</p>
-        <div class="btn-row">
-          <IconButton v-if="store.page > 1" label="Previous page" icon="left" :to="goToPage(store.page - 1)" />
-          <IconButton v-else label="Previous page" icon="left" disabled />
-          <IconButton v-if="store.page < pageCount" label="Next page" icon="right" :to="goToPage(store.page + 1)" />
-          <IconButton v-else label="Next page" icon="right" disabled />
-        </div>
-      </nav>
+      <PageNav
+        class="watchlist__pages"
+        label="Pagination, bottom"
+        :text="rangeText"
+        :page="store.page"
+        :page-count="pageCount"
+        :to="goToPage"
+      />
     </template>
   </div>
 </template>
@@ -346,15 +417,26 @@ onBeforeUnmount(() => (store.notice = ''))
   }
 }
 .watchlist__pages {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   margin-top: 20px;
-  color: var(--muted);
 }
-.watchlist__pages p {
-  margin: 0;
+.watchlist__pages--top {
+  margin: 0 0 12px;
+}
+/* A header button looks like the header text, with an arrow for the sort state */
+.watchlist__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--target);
+  padding: 0 4px;
+  margin: 0 -4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.watchlist__sort:hover {
+  text-decoration: underline;
 }
 </style>

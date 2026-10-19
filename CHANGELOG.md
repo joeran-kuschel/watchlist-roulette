@@ -4,6 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- On wide screens you can now sort the watchlist by clicking the Title, Year and Added headers; click again to reverse the order. Titles can also be sorted Z to A. On phones the Sort by list stays. A long watchlist also has a page control above the table now.
 - The roulette now says that its filters only apply when you press Spin again. The pick made when the page opens is marked as a first pick from your whole list, before any filter.
 - You can now drop a CSV file onto the import page instead of choosing it with the button. The box highlights while you drag. Only one CSV file is accepted; anything else gets a clear message. Screen readers read out the chosen file's name and size.
 - The API now protects itself against floods of requests: above 600 requests a minute it answers "Too many requests". Normal use stays far below that.

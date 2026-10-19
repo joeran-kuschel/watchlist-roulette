@@ -5,7 +5,7 @@ import { makeFilm } from './helpers'
 import { countActiveFilters, emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
 import { parseTmdbTitle, tmdbSearchUrl, tmdbTitleUrl } from '../tmdbId'
-import { fromQuery, toListParams, toQuery } from '../watchlistQuery'
+import { ariaSort, fromQuery, nextSort, SORT_COLUMNS, SORTS, toListParams, toQuery } from '../watchlistQuery'
 
 describe('format', () => {
   it('formats dates and timestamps in UTC', () => {
@@ -500,5 +500,37 @@ describe('formatFileSize', () => {
 
   it('never shows 1024 KB', () => {
     expect(formatFileSize(1024 * 1024 - 1)).toBe('1 MB')
+  })
+})
+
+describe('sorting by column', () => {
+  it('knows Title Z to A, and puts it in the URL only when chosen', () => {
+    expect(fromQuery({ sort: 'title-desc' }).sort).toBe('title-desc')
+    expect(toListParams(fromQuery({ sort: 'title-desc' }))).toMatchObject({ sort: 'title', order: 'desc' })
+    expect(toQuery(fromQuery({ sort: 'title-desc' })).sort).toBe('title-desc')
+  })
+
+  it('gives a column its natural order first, then the reverse, and back', () => {
+    expect(nextSort('title', 'added-desc')).toBe('title')
+    expect(nextSort('title', 'title')).toBe('title-desc')
+    expect(nextSort('title', 'title-desc')).toBe('title')
+    expect(nextSort('year', 'title')).toBe('year-desc')
+    expect(nextSort('year', 'year-desc')).toBe('year-asc')
+    expect(nextSort('year', 'year-asc')).toBe('year-desc')
+    expect(nextSort('added', 'added-desc')).toBe('added-asc')
+    expect(nextSort('added', 'added-asc')).toBe('added-desc')
+  })
+
+  it('has aria-sort only for the sorted column, in its direction', () => {
+    expect(ariaSort('year', 'year-asc')).toBe('ascending')
+    expect(ariaSort('year', 'year-desc')).toBe('descending')
+    expect(ariaSort('title', 'title-desc')).toBe('descending')
+    expect(ariaSort('title', 'year-asc')).toBeUndefined()
+    expect(ariaSort('added', 'title')).toBeUndefined()
+  })
+
+  it('lists every sort under exactly one column', () => {
+    const columnSorts = Object.values(SORT_COLUMNS).flat().sort()
+    expect(columnSorts).toEqual(Object.keys(SORTS).sort())
   })
 })
