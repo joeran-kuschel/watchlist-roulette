@@ -12,8 +12,8 @@ export function fakeEnricher(
   }
 }
 
-export function testApp(enricher: Enricher = fakeEnricher(), corsOrigin?: string, fetchPoster?: PosterFetcher) {
-  return request(createApp({ enricher, corsOrigin, fetchPoster }))
+export function testApp(enricher: Enricher = fakeEnricher(), corsOrigin?: string, fetchPoster?: PosterFetcher, rateLimitPerMinute?: number) {
+  return request(createApp({ enricher, corsOrigin, fetchPoster, rateLimitPerMinute }))
 }
 
 export const HEADER = 'Date,Name,Year,Letterboxd URI\n'

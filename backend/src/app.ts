@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express, { type ErrorRequestHandler, type RequestHandler } from 'express'
+import { rateLimit } from 'express-rate-limit'
 import multer from 'multer'
 import { ZodError } from 'zod'
 import { getPool } from './config/database.js'
@@ -49,13 +50,26 @@ export interface AppOptions {
   fetchPoster?: PosterFetcher
   /** Comma-separated origins allowed to call the API from a browser. Without it, none are. */
   corsOrigin?: string
+  /** Requests per minute and client for `/health` and `/api`; 600 by default. */
+  rateLimitPerMinute?: number
 }
 
-export function createApp({ enricher, corsOrigin, fetchPoster = createPosterFetcher() }: AppOptions) {
+export function createApp({ enricher, corsOrigin, fetchPoster = createPosterFetcher(), rateLimitPerMinute = 600 }: AppOptions) {
   const app = express()
   app.disable('x-powered-by')
   const origins = corsOrigin?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? []
   if (origins.length > 0) app.use(cors({ origin: origins }))
+  // Behind nginx every request comes from the proxy, so this is one shared budget, which is fine for one user.
+  // The X-Forwarded-For check is off because the app does not trust that header to tell clients apart.
+  const limiter = rateLimit({
+    windowMs: 60_000,
+    limit: rateLimitPerMinute,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
+    message: { error: 'Too many requests, try again in a minute' },
+  })
+  app.use(['/health', '/api'], limiter)
   app.use('/api', sameOriginWrites(origins))
   app.use(express.json({ limit: '100kb' }))
 

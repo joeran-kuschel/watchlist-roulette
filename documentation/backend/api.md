@@ -58,3 +58,5 @@ Query parameters, all optional: `yearFrom`, `yearTo`, `genre`, `country` (ISO co
 JSON bodies up to 100 kB (`413` above); CSV uploads up to 5 MB and 20,000 rows (`413` above). CORS: only the origins in `CORS_ORIGIN` may call the API from a browser.
 
 A web page on another site can submit a form to `localhost` without any CORS check, so every write (POST, PATCH, DELETE) that carries an `Origin` header must come from an origin in `CORS_ORIGIN`; otherwise the answer is `403` and nothing changes. Requests without an `Origin` header (curl, scripts) are not affected. Reads are not restricted.
+
+Rate limit: `/health` and every `/api` route share a budget of 600 requests per minute. Above it the answer is `429` with `{ "error": ... }`; the `Retry-After` header says how many seconds to wait. The limit is checked before the origin check, so writes from a foreign origin also use up the budget and get `429` instead of `403` once it is gone. Behind nginx all requests come from the proxy, so the budget is shared by everyone; that suits a single user. A page of up to 200 films loads at most 200 posters, and the Kubernetes probes use a few requests per minute.
