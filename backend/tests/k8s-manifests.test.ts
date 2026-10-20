@@ -157,7 +157,7 @@ describe('network policy', () => {
     }
   })
 
-  it('does not select the database pods, so the backup and the backend keep their access', () => {
+  it('does not select the database pods, and restricts nothing that goes out', () => {
     expect(find('Deployment', 'postgres').spec.template.metadata.labels.app).not.toBe('backend')
     expect(policy.spec.egress).toBeUndefined()
   })
@@ -171,6 +171,89 @@ describe('network policy', () => {
 
   it('leaves the frontend open, which is the way in for the ingress', () => {
     const targets = all.filter(({ doc }) => doc.kind === 'NetworkPolicy').map(({ doc }) => doc.spec.podSelector)
-    expect(targets).toEqual([{ matchLabels: { app: 'backend' } }])
+    expect(targets).toHaveLength(2)
+    expect(targets).toEqual(expect.arrayContaining([{ matchLabels: { app: 'backend' } }, { matchLabels: { app: 'postgres' } }]))
+  })
+})
+
+describe('network policy for the database', () => {
+  const policy = find('NetworkPolicy', 'postgres-from-backend')
+
+  it('protects the database pods and only restricts what comes in', () => {
+    expect(policy.spec.podSelector).toEqual({ matchLabels: { app: 'postgres' } })
+    expect(policy.spec.policyTypes).toEqual(['Ingress'])
+    expect(policy.spec.egress).toBeUndefined()
+    expect(find('Deployment', 'postgres').spec.selector.matchLabels).toEqual({ app: 'postgres' })
+    expect(find('Deployment', 'postgres').spec.template.metadata.labels.app).toBe('postgres')
+  })
+
+  it('lets only the backend pods in, on the PostgreSQL port', () => {
+    expect(policy.spec.ingress).toEqual([
+      { from: [{ podSelector: { matchLabels: { app: 'backend' } } }], ports: [{ port: 5432, protocol: 'TCP' }] },
+    ])
+    expect(find('Service', 'postgres').spec.ports[0].targetPort).toBe(5432)
+    expect(find('Deployment', 'backend').spec.template.metadata.labels.app).toBe('backend')
+  })
+
+  it('has no namespace or address rule that would let other callers in', () => {
+    for (const peer of policy.spec.ingress[0].from) {
+      expect(peer.namespaceSelector).toBeUndefined()
+      expect(peer.ipBlock).toBeUndefined()
+    }
+  })
+
+  it('keeps every script off the network: the database is only reached through kubectl exec', () => {
+    const scripts = readdirSync(k8sDir).filter((f) => f.endsWith('.sh'))
+    expect(scripts).toEqual(expect.arrayContaining(['backup-db.sh', 'restore-db.sh', 'db-common.sh']))
+    for (const file of scripts) {
+      const code = read(file)
+        .split('\n')
+        .filter((line) => !line.trim().startsWith('#'))
+        .join('\n')
+      // no way for a pod of ours or the Mac to open a connection to the database over the network
+      expect(code, file).not.toMatch(/port-forward|\bkubectl\b(\s+-{1,2}[A-Za-z][\w-]*(=\S+)?(\s+[^\s-]\S*)?)*\s+(run|debug|attach)\b/)
+      expect(code, file).not.toMatch(/\b(psql|pg_dump|pg_isready)\b[^\n|]*(\s-h[\s=]|--host|postgres(ql)?:\/\/)/)
+    }
+    expect(read('db-common.sh')).toMatch(/kubectl[^\n]* exec -i deploy\/postgres /)
+  })
+
+  it('has the backend as the only pod template that gets the database URL, so no other pod needs access', () => {
+    const workloads = all.filter(({ doc }) => ['Deployment', 'Job', 'CronJob', 'StatefulSet', 'DaemonSet'].includes(doc.kind))
+    const usesUrl = workloads
+      .filter(({ doc }) => JSON.stringify(doc.spec).includes('DATABASE_URL'))
+      .map(({ doc }) => doc.metadata.name)
+    expect(usesUrl).toEqual(['backend'])
+    // taking the whole Secret (envFrom) or one key of it would hand over the URL too
+    const usesSecret = workloads
+      .filter(({ doc }) => /"name":"watchlist-db"/.test(JSON.stringify(doc.spec)))
+      .map(({ doc }) => doc.metadata.name)
+    expect(usesSecret.sort()).toEqual(['backend', 'postgres'])
+  })
+
+  it('has the database wait in the backend pod (init container), where the policy lets it in', () => {
+    const pod = find('Deployment', 'backend').spec.template.spec
+    expect(pod.initContainers.map((c: any) => c.name)).toContain('wait-for-db')
+  })
+
+  it('has no pod other than the backend and the database labelled so that the two policies select it', () => {
+    const labelled = (app: string) =>
+      all
+        .filter(({ doc }) => doc.spec?.template?.metadata?.labels?.app === app)
+        .map(({ doc }) => doc.metadata.name)
+    expect(labelled('postgres')).toEqual(['postgres'])
+    expect(labelled('backend')).toEqual(['backend'])
+  })
+
+  it('points the database Service and the policy at the same pods and port as the connection string', () => {
+    const service = find('Service', 'postgres')
+    expect(service.spec.selector).toEqual(policy.spec.podSelector.matchLabels)
+    expect(service.spec.ports[0].port).toBe(5432)
+    expect(find('Deployment', 'postgres').spec.template.spec.containers[0].ports[0].containerPort).toBe(5432)
+    expect(read('deploy.sh')).toContain('@postgres:5432/')
+  })
+
+  it('has both policies in network-policy.yaml, which the kustomization lists', () => {
+    const names = docs('network-policy.yaml').map((d) => d.metadata.name)
+    expect(names).toEqual(expect.arrayContaining(['backend-from-frontend', 'postgres-from-backend']))
   })
 })
