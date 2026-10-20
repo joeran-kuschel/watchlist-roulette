@@ -1,6 +1,7 @@
-# The API has no login, so only the frontend pods (whose nginx forwards /api and /health) may reach the backend:
-# other pods in the cluster are refused. The kubelet's health probes are not affected. Needs a network plugin that
-# enforces policies; Docker Desktop's (kindnet) does. Nothing here limits who can reach the frontend itself.
+# The API has no login, so only the frontend pods (whose nginx forwards /api and /health) may reach the backend, and
+# only the backend pods may reach the database: other pods in the cluster are refused. The kubelet's health probes
+# and kubectl exec (backups, restore) are not affected. Needs a network plugin that enforces policies; Docker
+# Desktop's (kindnet) does. Nothing here limits who can reach the frontend itself.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -18,4 +19,23 @@ spec:
               app: frontend
       ports:
         - port: 3000
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-from-backend
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+      ports:
+        - port: 5432
           protocol: TCP
