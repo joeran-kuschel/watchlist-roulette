@@ -13,8 +13,7 @@ cp .env.example .env        # optional; add your TMDB token here
 docker compose up --build
 ```
 
-- App: http://localhost:8080
-- API: http://localhost:3000
+- App: http://localhost:8080 (the API is behind it at `/api`; the backend itself is not published)
 
 Import your watchlist with the API for now (the UI is still to be built):
 
@@ -41,6 +40,8 @@ One-time setup (hosts entries, backups, updates): [k8s/README.md](k8s/README.md)
 ```sh
 cd backend  && npm install && npm run dev      # API on :3000, needs a database (DATABASE_URL)
 cd frontend && npm install && npm run dev      # Vite on :5173, forwards /api to :3000
+# or run the backend and the database in Compose, with the backend published on 127.0.0.1:3000:
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build backend
 ```
 
 Tests and checks:

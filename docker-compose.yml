@@ -29,9 +29,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # the API has no login: only this computer may reach it
-    ports:
-      - '127.0.0.1:3000:3000'
+    # No published port: the API has no login, so only the frontend container reaches it (over the Compose network).
+    # docker-compose.dev.yml publishes it on 127.0.0.1:3000 for the Vite dev server and curl.
 
   frontend:
     build: ./frontend

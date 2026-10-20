@@ -1,0 +1,21 @@
+# The API has no login, so only the frontend pods (whose nginx forwards /api and /health) may reach the backend:
+# other pods in the cluster are refused. The kubelet's health probes are not affected. Needs a network plugin that
+# enforces policies; Docker Desktop's (kindnet) does. Nothing here limits who can reach the frontend itself.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-from-frontend
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - port: 3000
+          protocol: TCP

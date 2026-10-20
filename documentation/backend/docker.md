@@ -8,10 +8,10 @@ docker compose up --build
 | Service | Address | Notes |
 |---|---|---|
 | frontend | http://localhost:8080 | nginx; forwards `/api` and `/health` to the backend |
-| backend | http://localhost:3000 | Express API |
+| backend | not published | Express API, reached only by the frontend container over the Compose network |
 | postgres | not published | named volume `pgdata` |
 
-Ports are bound to `127.0.0.1` because the API has no login. The containers restart automatically (`restart: unless-stopped`), and the backend closes the database pool cleanly on `docker compose down`.
+Only the frontend is published, and only on `127.0.0.1`, because the API has no login: a program on this computer cannot call the backend directly. It can still call it through the frontend's address (`http://localhost:8080/api`), which is the same path the app uses. The containers restart automatically (`restart: unless-stopped`), and the backend closes the database pool cleanly on `docker compose down`.
 
 ```bash
 docker compose down        # stops; the database volume stays
@@ -24,9 +24,15 @@ All settings are environment variables, listed in `.env.example`: `POSTGRES_USER
 
 `DATABASE_URL` overrides the built-in Postgres connection, which makes a remote database possible (apply `backend/migrations/` by hand, see [Database](database.md)). `DB_SSL=true` turns SSL on for the connection.
 
-## Development without Docker
+## Development
 
-Run the database with Compose (`docker compose up postgres`, then publish its port yourself if needed), `cd backend && npm run dev`, and `cd frontend && npm run dev`. The Vite dev server forwards `/api` to `http://localhost:3000`.
+Tools that talk to the backend directly (the Vite dev server, curl) need it on `127.0.0.1:3000`. `docker-compose.dev.yml` adds that port mapping (bound to `127.0.0.1` only) and nothing else:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Without Docker for the app: run the database with Compose (`docker compose up postgres`, then publish its port yourself if needed), `cd backend && npm run dev`, and `cd frontend && npm run dev`. The Vite dev server forwards `/api` to `http://localhost:3000` (`API_PROXY_TARGET` changes that). Note that `localhost` may resolve to another program that listens on port 3000 on IPv6; use `127.0.0.1` if you see unexpected answers.
 
 ## Kubernetes
 

@@ -121,12 +121,56 @@ describe('ingress', () => {
     expect(ingress.metadata.annotations!['nginx.ingress.kubernetes.io/proxy-body-size']).toBe('6m')
   })
 
-  it('sends /api and /health to the backend and everything else to the frontend', () => {
+  it('sends everything to the frontend, so the backend has no route of its own and is reached through nginx', () => {
     const routes = Object.fromEntries(rule.http.paths.map((p: any) => [p.path, p.backend.service.name]))
-    expect(routes).toEqual({ '/api': 'backend', '/health': 'backend', '/': 'frontend' })
+    expect(routes).toEqual({ '/': 'frontend' })
   })
 
   it('matches the CORS origin the backend allows writes from', () => {
     expect(find('ConfigMap', 'watchlist-config').data!.CORS_ORIGIN).toBe(`http://${rule.host}`)
+  })
+})
+
+describe('network policy', () => {
+  const policy = find('NetworkPolicy', 'backend-from-frontend')
+
+  it('protects the backend pods and only restricts what comes in', () => {
+    expect(policy.spec.podSelector).toEqual({ matchLabels: { app: 'backend' } })
+    expect(policy.spec.policyTypes).toEqual(['Ingress'])
+    expect(find('Deployment', 'backend').spec.template.metadata.labels.app).toBe('backend')
+  })
+
+  it('lets only the frontend pods in, on the backend port', () => {
+    expect(policy.spec.ingress).toEqual([
+      { from: [{ podSelector: { matchLabels: { app: 'frontend' } } }], ports: [{ port: 3000, protocol: 'TCP' }] },
+    ])
+    expect(find('Deployment', 'frontend').spec.template.metadata.labels.app).toBe('frontend')
+    const port = find('Service', 'backend').spec.ports[0].targetPort
+    expect(port).toBe(3000)
+  })
+
+  it('has no namespace or address rule that would let other callers in', () => {
+    const [rule] = policy.spec.ingress
+    for (const peer of rule.from) {
+      expect(peer.namespaceSelector).toBeUndefined()
+      expect(peer.ipBlock).toBeUndefined()
+    }
+  })
+
+  it('does not select the database pods, so the backup and the backend keep their access', () => {
+    expect(find('Deployment', 'postgres').spec.template.metadata.labels.app).not.toBe('backend')
+    expect(policy.spec.egress).toBeUndefined()
+  })
+
+  it('selects by labels that the kustomization does not change', () => {
+    const [kustomization] = docs('kustomization.yaml') as unknown as { labels: { includeSelectors: boolean }[] }[]
+    expect(kustomization!.labels.every((l) => l.includeSelectors === false)).toBe(true)
+    expect(find('Deployment', 'backend').spec.selector.matchLabels).toEqual({ app: 'backend' })
+    expect(find('Service', 'backend').spec.selector).toEqual({ app: 'backend' })
+  })
+
+  it('leaves the frontend open, which is the way in for the ingress', () => {
+    const targets = all.filter(({ doc }) => doc.kind === 'NetworkPolicy').map(({ doc }) => doc.spec.podSelector)
+    expect(targets).toEqual([{ matchLabels: { app: 'backend' } }])
   })
 })

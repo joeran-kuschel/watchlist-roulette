@@ -57,7 +57,7 @@ kind: Service
 metadata:
   name: backend
 spec:
-  # reached through the Ingress, not published on the host
+  # reached only through the frontend's nginx (the Ingress has no route here; see network-policy.yaml), not published on the host
   type: ClusterIP
   ports:
     - port: 3000
