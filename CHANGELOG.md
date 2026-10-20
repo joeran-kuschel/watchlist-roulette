@@ -4,6 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- The roulette filters take less room on medium-width windows: country and maximum runtime share a row next to the result, and windows narrower than 990 pixels now get the collapsible Filters panel instead of a tall open form above the result.
 - On wide screens you can now sort the watchlist by clicking the Title, Year and Added headers; click again to reverse the order. Titles can also be sorted Z to A. On phones the Sort by list stays. A long watchlist also has a page control above the table now.
 - The roulette now says that its filters only apply when you press Spin again. The pick made when the page opens is marked as a first pick from your whole list, before any filter.
 - You can now drop a CSV file onto the import page instead of choosing it with the button. The box highlights while you drag. Only one CSV file is accepted; anything else gets a clear message. Screen readers read out the chosen file's name and size.

@@ -111,6 +111,93 @@ test('roulette picks a film, spins again and marks it as watched', async ({ page
   await expect(page.getByRole('button', { name: 'Mark as watched' })).toBeDisabled()
 })
 
+test('the roulette filters stay compact next to the result at medium widths', async ({ page }) => {
+  for (const width of [990, 1100, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 2, name: 'Perfect Days' })).toBeVisible()
+    // Wide enough for the filters to sit next to the result: not collapsed, and the result is to the right
+    await expect(page.getByRole('group', { name: 'Release year' })).toBeVisible()
+    const box = async (selector: string) => (await page.locator(selector).boundingBox())!
+    const form = await box('#filter-form')
+    const result = await box('article')
+    expect(result.x).toBeGreaterThanOrEqual(form.x + form.width)
+    const country = await box('#country')
+    const runtime = await box('#max-runtime')
+    expect(Math.abs(country.y - runtime.y)).toBeLessThan(2) // the short fields share a row
+    expect(country.x + country.width).toBeLessThanOrEqual(runtime.x)
+    const from = await box('#year-from')
+    const to = await box('#year-to')
+    expect(Math.abs(from.y - to.y)).toBeLessThan(2)
+    for (const field of [country, runtime, from, to]) expect(field.width).toBeGreaterThan(60)
+    expect(form.x + form.width).toBeLessThanOrEqual(width)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  }
+  await expectAccessible(page)
+})
+
+// Below this the filters and the result cannot sit side by side (280 + 40 + 560 + 2 × 48 px of page padding), so the
+// filters are a collapsed panel above the result
+for (const width of [900, 989]) {
+  test(`the roulette filters are a collapsed panel above the result at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 2, name: 'Perfect Days' })).toBeVisible()
+    await expect(page.getByText('Filters', { exact: true })).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Release year' })).toBeHidden()
+    const summary = (await page.locator('summary').boundingBox())!
+    const result = (await page.locator('article').boundingBox())!
+    expect(result.y).toBeGreaterThan(summary.y)
+    expect(result.y).toBeLessThan(500) // the pick is on screen without scrolling past a tall form
+    await page.locator('summary').click()
+    await expect(page.getByRole('group', { name: 'Release year' })).toBeVisible()
+    const country = (await page.locator('#country').boundingBox())!
+    const runtime = (await page.locator('#max-runtime').boundingBox())!
+    expect(Math.abs(country.y - runtime.y)).toBeLessThan(2)
+  })
+}
+
+test('the roulette layout switches exactly at 990 px', async ({ page }) => {
+  await page.setViewportSize({ width: 989, height: 900 })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 2, name: 'Perfect Days' })).toBeVisible()
+  await expect(page.locator('summary')).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Release year' })).toBeHidden()
+  await page.setViewportSize({ width: 990, height: 900 })
+  await expect(page.locator('summary')).toBeHidden()
+  await expect(page.getByRole('group', { name: 'Release year' })).toBeVisible()
+})
+
+for (const width of [320, 375, 989]) {
+  test(`the roulette filter errors fit the two-column form at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 2, name: 'Perfect Days' })).toBeVisible()
+    await page.locator('summary').click()
+    await page.getByLabel('Country code').fill('J1')
+    await page.getByLabel('Max runtime (minutes)').fill('-5')
+    await page.getByLabel('From').fill('1500')
+    await page.getByRole('button', { name: 'Spin again' }).click()
+    await expect(page.getByText('Use a two-letter country code')).toBeVisible()
+    await expect(page.getByLabel('Country code')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('From')).toHaveAttribute('aria-invalid', 'true')
+    // Errors make a field taller, but nothing overlaps or leaves the screen
+    for (const id of ['#country', '#max-runtime', '#year-from', '#year-to']) {
+      const box = (await page.locator(id).boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(width)
+      expect(box.width).toBeGreaterThan(60)
+    }
+    const country = (await page.locator('#country').boundingBox())!
+    const runtime = (await page.locator('#max-runtime').boundingBox())!
+    expect(country.x + country.width).toBeLessThanOrEqual(runtime.x)
+    // Error messages of different length under the two inputs can push one a little lower than the other
+    expect(Math.abs(country.y - runtime.y)).toBeLessThan(40)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await expectAccessible(page)
+  })
+}
+
 test('the roulette form shows errors for invalid filters', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Country code').fill('J1')

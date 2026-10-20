@@ -23,7 +23,7 @@ const form = ref<HTMLFormElement | null>(null)
 
 // Side by side with the result, the filters are always shown. Stacked above it (same breakpoint
 // as the CSS below), they sit in a collapsible panel so the pick is not pushed off screen.
-const sideBySide = useMediaQuery('(min-width: 900px)')
+const sideBySide = useMediaQuery('(min-width: 990px)')
 const panelOpen = ref(false)
 const filtersShown = computed(() => sideBySide.value || panelOpen.value)
 const activeFilters = computed(() => countActiveFilters(filters))
@@ -217,7 +217,7 @@ const isWatched = computed(() => store.film?.watchedAt != null)
 </template>
 
 <style scoped>
-/* 900px = filters (280) + result (560) + gap (40) + page padding; keep in sync with `sideBySide` */
+/* 990px = filters (280) + result (560) + gap (40) + page padding (2 × 48) = 976, rounded up for some room; keep in sync with `sideBySide` */
 .roulette {
   display: flex;
   flex-wrap: wrap;
@@ -237,10 +237,21 @@ const isWatched = computed(() => store.film?.watchedAt != null)
   margin: 0 0 12px;
   color: var(--text-soft);
 }
+/* Short fields share a row (country code and max runtime); the years and the genre list take the full width.
+   The same grid is used next to the result and stacked above it, so the form stays short at medium widths too. */
 form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+/* A hint makes one field taller: keep the inputs of a row level */
+.roulette__filters :deep(.field > .input) {
+  margin-top: auto;
+}
+.roulette__wide,
+.roulette__filters form > :deep(.icon-button),
+.roulette__filters-title {
+  grid-column: 1 / -1;
 }
 .roulette__filters-title {
   font-family: var(--font-body);
@@ -273,7 +284,7 @@ form {
 .roulette__summary {
   display: none;
 }
-@media (max-width: 899.98px) {
+@media (max-width: 989.98px) {
   .roulette__filters {
     flex-basis: 100%;
     max-width: none;
@@ -301,20 +312,6 @@ form {
   }
   .roulette__panel[open] .roulette__summary {
     margin-bottom: 16px;
-  }
-  /* Short fields share a row; the years and the genre list take the full width */
-  form {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px 12px;
-  }
-  /* A hint makes one field taller: keep the inputs of a row level */
-  .roulette__filters :deep(.field > .input) {
-    margin-top: auto;
-  }
-  .roulette__wide,
-  .roulette__filters form > :deep(.icon-button) {
-    grid-column: 1 / -1;
   }
 }
 .roulette__loading {

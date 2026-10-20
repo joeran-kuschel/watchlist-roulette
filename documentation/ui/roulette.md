@@ -12,12 +12,14 @@ Route `/`. Picks a random unwatched film. Code: `views/RouletteView.vue`, `store
 - Optional filters: release year from/to, genre, country code, max runtime. **Clear filters** empties them.
 - The fields have no placeholders, because example values such as 1970 or 120 look like entered values. Examples are visible hints instead, linked with `aria-describedby`: "Optional. For example 1970 to 2026." on the release-year group (the `fieldset`, so it covers both years) and "Optional. For example 120." on max runtime, like the country code hint.
 
-## Narrow screens
+## Layout and narrow screens
 
-Side by side with the result (viewport 900px or wider) the filters are always shown. Below that they are stacked above the result, so they sit in a collapsible `<details>` panel whose summary reads "Filters" or "Filters (2 active)". It starts closed, so the pick and the **Spin again** button are on screen without scrolling. The breakpoint is the same in `RouletteView.vue` (CSS) and in `useMediaQuery('(min-width: 900px)')` (`media.ts`).
+Side by side with the result (viewport 990px or wider) the filters are always shown. Below that they are stacked above the result, so they sit in a collapsible `<details>` panel whose summary reads "Filters" or "Filters (2 active)". It starts closed, so the pick and the **Spin again** button are on screen without scrolling. The breakpoint is the same in `RouletteView.vue` (CSS) and in `useMediaQuery('(min-width: 990px)')` (`media.ts`). 990px is a little above the width (976px) at which the filters (280px), the result (560px), the gap (40px) and the page padding (2 × 48px) fit next to each other.
 
 - If **Spin again** finds an invalid filter, the panel opens (if it was closed) and focus moves to the first wrong field, so the error is never out of sight. The "Filters (optional)" heading stays for screen readers (visually hidden). Closed or open, the filters stay in the DOM, so the form keeps working.
 - Where possible, fields share a row: country code and max runtime sit side by side, and so do the two years. The genre list and **Clear filters** take their own row. Inputs in a row stay level even if one field has a hint.
+- This two-column grid is used at every width, also next to the result, so the form stays short at medium widths (about 990 to 1100px) where the filter column is only 280 to 340px wide.
+- Known and cosmetic: when two fields in a row both show an error message and the messages wrap to different lengths, one input can sit slightly lower than the other.
 - Without `matchMedia` the panel stays open.
 
 ## Backend
