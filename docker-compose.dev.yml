@@ -1,0 +1,8 @@
+# Development extras. Use it together with the main file:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# The API has no login, so it is published on this computer only (127.0.0.1), and only for development: the Vite
+# dev server (npm run dev in frontend/) and curl call it there.
+services:
+  backend:
+    ports:
+      - '127.0.0.1:3000:3000'

@@ -8,9 +8,9 @@ GitHub Actions checks every pull request and every push to `main`. The workflows
 |---|---|
 | Backend (Node 22 and 24) | `npm ci`, type-check, `npm test`, build. A throwaway PostgreSQL 17 service is started and passed as `TEST_DATABASE_URL`, so the real-PostgreSQL tests run instead of being skipped. |
 | Frontend (Node 22 and 24) | `npm ci`, type-check, `oxlint` and `eslint` (check only, without `--fix`), unit tests, build |
-| Docker images | builds the backend and frontend images and validates `docker-compose.yml` |
+| Docker images | builds the backend and frontend images and validates `docker-compose.yml` on its own and merged with `docker-compose.dev.yml` |
 
-The end-to-end tests (Playwright) are not part of CI: they need the full Compose stack. Run them locally (see [Testing the UI](../ui/testing.md)).
+The end-to-end tests (Playwright) are not part of CI. They stub the API in the browser, so they need no database, only the Vite dev server. Run them locally (see [Testing the UI](../ui/testing.md)).
 
 The workflow runs without secrets. Never put the TMDB token or other real credentials into a workflow; the tests use a fake TMDB client.
 

@@ -12,6 +12,7 @@ resources:
   - postgres.yaml
   - backend.yaml
   - frontend.yaml
+  - network-policy.yaml
   - ingress.yaml
 
 # `labels` without selectors: a Deployment's selector is immutable, so extra labels in it would break later applies.

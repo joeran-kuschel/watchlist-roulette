@@ -83,3 +83,4 @@ jobs:
       - run: docker build ./backend
       - run: docker build ./frontend
       - run: docker compose config --quiet
+      - run: docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet

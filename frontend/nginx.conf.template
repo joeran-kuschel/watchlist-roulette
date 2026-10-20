@@ -20,6 +20,14 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   }
 
+  # The backend's health check, so a probe of the frontend's address (deploy.sh does this) tests the whole chain.
+  # Deliberately minimal: a plain GET with no forwarded client address.
+  location = /health {
+    set $backend ${BACKEND_URL};
+    proxy_pass $backend/health;
+    proxy_set_header Host $host;
+  }
+
   location / {
     try_files $uri $uri/ /index.html;
   }

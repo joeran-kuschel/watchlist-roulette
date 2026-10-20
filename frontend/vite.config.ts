@@ -18,7 +18,8 @@ export default defineConfig({
     },
   },
   server: {
-    // The backend runs on port 3000 (docker compose up backend, or npm run dev in backend/).
+    // The backend runs on port 3000 (npm run dev in backend/, or docker compose with docker-compose.dev.yml, which
+    // publishes it; the main file does not).
     // In Docker Compose nginx forwards /api the same way. API_PROXY_TARGET overrides the target.
     proxy: {
       '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:3000',
