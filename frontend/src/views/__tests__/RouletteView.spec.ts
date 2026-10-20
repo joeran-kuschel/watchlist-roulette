@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { getActivePinia } from 'pinia'
@@ -361,6 +363,20 @@ describe('RouletteView: edge cases', () => {
     })
     await flushPromises()
     expect(second.text()).not.toContain('Nothing to spin')
+  })
+
+  it('asks for the side-by-side layout from 990 px, the same width as the CSS breakpoint', async () => {
+    const queries: string[] = []
+    vi.stubGlobal('matchMedia', (query: string) => {
+      queries.push(query)
+      return { matches: true, addEventListener: () => {}, removeEventListener: () => {} }
+    })
+    mocked.randomFilm.mockResolvedValue(makeFilm())
+    await mountWithApp(RouletteView)
+    expect(queries).toEqual(['(min-width: 990px)'])
+    // jsdom applies no CSS, so keep the stylesheet's collapse breakpoint in step by reading the source
+    const source = readFileSync(resolve(import.meta.dirname, '../RouletteView.vue'), 'utf8')
+    expect(source).toMatch(/@media \(max-width: 989\.98px\) \{\s*\.roulette__filters \{/)
   })
 
   describe('on a narrow screen', () => {
