@@ -13,6 +13,7 @@ vi.mock('../../api', async (importOriginal) => ({
 const mocked = vi.mocked(api)
 
 const report = (patch: Partial<ImportReport> = {}): ImportReport => ({
+  source: 'letterboxd',
   applied: false,
   inserted: 2,
   updated: 1,
@@ -50,7 +51,7 @@ describe('ImportView', () => {
   it('starts with the upload form and the expected columns', async () => {
     const { wrapper } = await mountWithApp(ImportView, '/import')
     expect(wrapper.get('h1').text()).toBe('Import from CSV')
-    expect(wrapper.text()).toContain('Columns: Date, Name, Year, Letterboxd URI')
+    expect(wrapper.text()).toContain('Letterboxd: Date, Name, Year, Letterboxd URI. IMDb: Const, Title, Year, Created, URL')
     expect(wrapper.get('#csv').attributes('accept')).toBe('.csv,text/csv')
     expect(wrapper.find('#result-heading').exists()).toBe(false)
     await expectNoA11yViolations(wrapper.element)
@@ -179,6 +180,14 @@ describe('ImportView', () => {
     // nothing to remove: no confirmation needed
     expect(confirmForm(wrapper).findAll('input[type="checkbox"]')).toHaveLength(0)
     expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeUndefined()
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('shows the detected IMDb format after checking the file', async () => {
+    mocked.previewImport.mockResolvedValue(report({ source: 'imdb' }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    expect(wrapper.text()).toContain('Detected: IMDb export.')
     await expectNoA11yViolations(wrapper.element)
   })
 

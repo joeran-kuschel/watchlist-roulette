@@ -1,11 +1,11 @@
 # CSV import
 
-Route `/import`. Imports a Letterboxd export in two steps, like the backend ([CSV import](../backend/csv-import.md)). Code: `views/ImportView.vue`, `components/ImportSummary.vue`.
+Route `/import`. Imports a Letterboxd or an IMDb export in two steps, like the backend ([CSV import](../backend/csv-import.md)). Code: `views/ImportView.vue`, `components/ImportSummary.vue`.
 
 ## Steps
 
-1. **Choose a file** (`.csv`) with the **Choose CSV file** button; the chosen file name (or "No file chosen") is shown next to it. The file needs the columns `Date`, `Name`, `Year`, `Letterboxd URI`. Then press **Check file**. This calls `POST /api/films/import?dryRun=true`, which writes nothing.
-2. The **Check result** shows what would happen: films added, updated, unchanged, **removed** and **rejected rows** (line number and reason), plus films kept because they are watched. Focus moves to the result heading and a status message says nothing has been changed yet.
+1. **Choose a file** (`.csv`) with the **Choose CSV file** button; the chosen file name (or "No file chosen") is shown next to it. The file needs the columns of a Letterboxd export (`Date`, `Name`, `Year`, `Letterboxd URI`) or of an IMDb export (`Const`, `Title`, `Year`, `Created`, `URL`); the hint under the field names both. Then press **Check file**. This calls `POST /api/films/import?dryRun=true`, which writes nothing.
+2. The **Check result** starts with the detected format ("Detected: IMDb export.") and, for an IMDb file, a note that it only removes films that came from IMDb (a Letterboxd file leaves those alone too, without saying so). Then it shows what would happen: films added, updated, unchanged, **removed** and **rejected rows** (line number and reason), plus films kept because they are watched. Focus moves to the result heading and a status message says nothing has been changed yet.
 3. **Import films** applies the import (`POST /api/films/import`, same file).
 4. **Import finished** shows the same report in past tense, with a link to the watchlist.
 

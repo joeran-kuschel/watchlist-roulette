@@ -169,7 +169,7 @@ onBeforeUnmount(() => (store.notice = ''))
       </template>
       <template v-else>
         <h2>Your watchlist is empty</h2>
-        <p class="lead">Import your Letterboxd export or add a first film.</p>
+        <p class="lead">Import a Letterboxd or IMDb export or add a first film.</p>
         <div class="btn-row">
           <RouterLink class="btn btn--primary" to="/import">Import from CSV</RouterLink>
           <RouterLink class="btn" to="/watchlist/new">Add a film</RouterLink>

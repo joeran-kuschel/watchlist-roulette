@@ -103,6 +103,12 @@ describe('FilmDetailsView', () => {
     ])
   })
 
+  it('names the link IMDb for a film that came from an IMDb export', async () => {
+    mocked.getFilm.mockResolvedValue(bare({ letterboxdUrl: 'https://www.imdb.com/title/tt0113277/' }))
+    const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/8')
+    expect(wrapper.findAll('#links-heading ~ ul a').map((a) => a.text())).toEqual(['IMDb (opens in a new tab)'])
+  })
+
   it('leaves out the TMDB link without a TMDB id and the Letterboxd link without an address', async () => {
     mocked.getFilm.mockResolvedValue(bare({ letterboxdUrl: 'https://boxd.it/x' }))
     const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/8')

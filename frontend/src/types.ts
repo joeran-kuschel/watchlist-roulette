@@ -73,7 +73,10 @@ export interface ImportedFilmRef {
   releaseYear: number | null
 }
 
+export type ImportSource = 'letterboxd' | 'imdb'
+
 export interface ImportReport {
+  source: ImportSource
   applied: boolean
   inserted: number
   updated: number

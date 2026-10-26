@@ -33,14 +33,14 @@ export async function loadLinkedFilms(db: Db = getPool()): Promise<ExistingFilm[
 export async function applyPlan(plan: ImportPlan, db: Db): Promise<void> {
   for (const row of plan.toInsert) {
     await query(
-      `INSERT INTO films (title, release_year, letterboxd_url, added_at) VALUES ($1, $2, $3, $4::date)`,
+      `INSERT INTO films (title, release_year, letterboxd_url, added_at) VALUES ($1, $2, $3, COALESCE($4::date, CURRENT_DATE))`,
       [row.title, row.releaseYear, row.letterboxdUrl, row.addedAt],
       db,
     )
   }
   for (const { id, row } of plan.toUpdate) {
     await query(
-      `UPDATE films SET title = $1, release_year = $2, added_at = $3::date, updated_at = now() WHERE id = $4`,
+      `UPDATE films SET title = $1, release_year = $2, added_at = COALESCE($3::date, added_at), updated_at = now() WHERE id = $4`,
       [row.title, row.releaseYear, row.addedAt, id],
       db,
     )

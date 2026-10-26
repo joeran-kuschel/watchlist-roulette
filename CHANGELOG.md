@@ -4,6 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- You can now import an IMDb watchlist or list export as well as a Letterboxd one. The import page works out which one you chose and says so. TV series are imported, TV episodes are not, and a missing date added becomes the day of the import. Importing one kind of file never removes the films that came from the other. A film that is in both lists is added twice.
 - On Kubernetes, the database now accepts connections only from the app's own backend. Other pods in the cluster can no longer connect to it. The backups and the restore work as before.
 - The API can no longer be called on its own port (3000). In Docker Compose only the app on port 8080 is published, and on Kubernetes other pods in the cluster can no longer reach the API. The app works as before. For development, `docker-compose.dev.yml` publishes the API on `127.0.0.1:3000`.
 - The roulette filters take less room on medium-width windows: country and maximum runtime share a row next to the result, and windows narrower than 990 pixels now get the collapsible Filters panel instead of a tall open form above the result.

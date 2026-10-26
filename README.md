@@ -1,6 +1,6 @@
 # Watchlist Roulette
 
-Keep a movie watchlist in a PostgreSQL database and let the app pick a random film to watch next. Films come from a Letterboxd watchlist export (CSV) and are enriched with data from [TMDB](https://www.themoviedb.org).
+Keep a movie watchlist in a PostgreSQL database and let the app pick a random film to watch next. Films come from a Letterboxd or IMDb watchlist export (CSV) and are enriched with data from [TMDB](https://www.themoviedb.org).
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 

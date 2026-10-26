@@ -3,11 +3,18 @@ import type { ImportedFilmRef, ImportReport } from '../types'
 
 defineProps<{ report: ImportReport }>()
 
+const formats = { letterboxd: 'Letterboxd export', imdb: 'IMDb export' } as const
+
 const label = (film: ImportedFilmRef) => (film.releaseYear ? `${film.title} (${film.releaseYear})` : film.title)
 </script>
 
 <template>
   <div class="summary">
+    <p class="summary__note">
+      Detected: {{ formats[report.source] }}.
+      <template v-if="report.source === 'imdb'">Only films that came from IMDb can be removed by this file.</template>
+    </p>
+
     <dl class="summary__counts card">
       <div>
         <dt>{{ report.applied ? 'Added' : 'Will be added' }}</dt>

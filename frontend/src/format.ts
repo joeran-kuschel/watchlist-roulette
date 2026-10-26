@@ -32,6 +32,9 @@ export function isHttpUrl(text: string) {
   }
 }
 
+/** Names the site a film's link points to; only IMDb gets its own name, every other link is a Letterboxd one. */
+export const linkSite = (url: string) => (/^https?:\/\/([\w-]+\.)*imdb\.com(\/|$)/i.test(url) ? 'IMDb' : 'Letterboxd')
+
 export const joinNames = (people: { name: string }[]) => people.map((p) => p.name).join(', ')
 
 export interface Fact {

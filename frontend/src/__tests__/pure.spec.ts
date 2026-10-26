@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, describeError } from '../api'
-import { directorLabel, filmFacts, formatDate, formatFileSize, formatRuntime, joinNames, needsMatch, text, tmdbBadge } from '../format'
+import { directorLabel, filmFacts, formatDate, formatFileSize, formatRuntime, joinNames, linkSite, needsMatch, text, tmdbBadge } from '../format'
 import { makeFilm } from './helpers'
 import { countActiveFilters, emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
@@ -532,5 +532,21 @@ describe('sorting by column', () => {
   it('lists every sort under exactly one column', () => {
     const columnSorts = Object.values(SORT_COLUMNS).flat().sort()
     expect(columnSorts).toEqual(Object.keys(SORTS).sort())
+  })
+})
+
+describe('linkSite', () => {
+  it('names IMDb links and calls every other link Letterboxd', () => {
+    expect(['https://www.imdb.com/title/tt0113277/', 'http://IMDB.com/title/tt1/', 'https://m.imdb.com/title/tt1/?x=1'].map(linkSite)).toEqual([
+      'IMDb',
+      'IMDb',
+      'IMDb',
+    ])
+    expect(['https://boxd.it/8kEU', 'https://letterboxd.com/film/heat/', 'https://notimdb.com/', 'https://imdb.com.evil.test/'].map(linkSite)).toEqual([
+      'Letterboxd',
+      'Letterboxd',
+      'Letterboxd',
+      'Letterboxd',
+    ])
   })
 })

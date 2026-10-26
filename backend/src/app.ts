@@ -17,7 +17,7 @@ const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   } else if (error instanceof multer.MulterError) {
     res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: error.message })
   } else if (isUniqueViolation(error)) {
-    res.status(409).json({ error: 'A film with this Letterboxd link or TMDB id already exists' })
+    res.status(409).json({ error: 'A film with this link or TMDB id already exists' })
   } else if (error?.type === 'entity.too.large') {
     res.status(413).json({ error: 'The request body is too large' })
   } else if (error?.type === 'entity.parse.failed') {
