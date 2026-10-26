@@ -10,14 +10,14 @@ It is a page, not a dialog: no focus trap is needed and the back button works. *
 |---|---|
 | Title | required, at most 500 characters |
 | Release year | optional, 1888 to 2100 |
-| Letterboxd link | optional, must start with `http://` or `https://` |
+| Link (Letterboxd or IMDb) | optional, must start with `http://` or `https://` |
 | Date added | optional (today if empty on a new film), a real date |
 
 ## Saving
 
 - New: `POST /api/films`. Edit: `GET /api/films/:id` to fill the form, `PATCH /api/films/:id` to save. Emptied optional fields are sent as `null`.
 - After saving the screen goes to the watchlist, which announces "X was added." or "X was saved."
-- Backend `409` (the Letterboxd link exists) is shown under the link field. Backend `400` validation issues are mapped to their fields. Other errors appear in an alert above the form.
+- Backend `409` (the link exists) is shown under the link field. Backend `400` validation issues are mapped to their fields. Other errors appear in an alert above the form.
 
 ## Errors
 

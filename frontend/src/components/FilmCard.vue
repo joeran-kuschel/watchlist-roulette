@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { directorLabel, filmFacts, formatDate, isHttpUrl, joinNames } from '../format'
+import { directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, linkSite } from '../format'
 import type { Film } from '../types'
 import FilmFacts from './FilmFacts.vue'
 import PosterImage from './PosterImage.vue'
@@ -33,7 +33,7 @@ const credits = computed(() =>
         <template v-if="film.letterboxdUrl && isHttpUrl(film.letterboxdUrl)">
           ·
           <a :href="film.letterboxdUrl" target="_blank" rel="noopener noreferrer"
-            >Open on Letterboxd<span class="sr-only"> (opens in a new tab)</span></a
+            >Open on {{ linkSite(film.letterboxdUrl) }}<span class="sr-only"> (opens in a new tab)</span></a
           >
         </template>
       </p>

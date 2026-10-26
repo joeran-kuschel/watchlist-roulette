@@ -154,7 +154,7 @@ async function apply() {
   <div class="page page--narrow">
     <h1>Import from CSV</h1>
     <p class="lead">
-      Upload your Letterboxd export. Check the file first: nothing changes until you confirm. Rows that cannot be
+      Upload a Letterboxd or IMDb export. Check the file first: nothing changes until you confirm. Rows that cannot be
       imported are listed, never skipped silently.
     </p>
 
@@ -162,7 +162,7 @@ async function apply() {
       <FormField
         id="csv"
         label="CSV file"
-        hint="Columns: Date, Name, Year, Letterboxd URI"
+        hint="Letterboxd: Date, Name, Year, Letterboxd URI. IMDb: Const, Title, Year, Created, URL"
         :error="fileError"
         v-slot="{ attrs }"
       >

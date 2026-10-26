@@ -9,7 +9,7 @@ import ErrorAlert from '../components/ErrorAlert.vue'
 import FilmFacts from '../components/FilmFacts.vue'
 import PosterImage from '../components/PosterImage.vue'
 import TmdbOffNotice from '../components/TmdbOffNotice.vue'
-import { canLookUp, directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, needsMatch } from '../format'
+import { canLookUp, directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, linkSite, needsMatch } from '../format'
 import { tmdbTitleUrl } from '../tmdbId'
 import type { Film } from '../types'
 
@@ -125,7 +125,7 @@ const links = computed(() => {
   const f = film.value
   if (!f) return []
   return [
-    f.letterboxdUrl && isHttpUrl(f.letterboxdUrl) ? { name: 'Letterboxd', href: f.letterboxdUrl } : null,
+    f.letterboxdUrl && isHttpUrl(f.letterboxdUrl) ? { name: linkSite(f.letterboxdUrl), href: f.letterboxdUrl } : null,
     f.tmdb.id !== null ? { name: 'The Movie Database (TMDB)', href: tmdbTitleUrl(f.tmdb.id, f.tmdb.mediaType) } : null,
   ].filter((link) => link !== null)
 })

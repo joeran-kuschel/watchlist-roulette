@@ -1,7 +1,7 @@
 import { withTransaction } from '../config/database.js'
 import { HttpError } from '../errors.js'
 import { applyPlan, loadLinkedFilms } from '../models/filmImport.js'
-import { parseWatchlistCsv, type RejectedRow } from './csv.js'
+import { parseWatchlistCsv, type ImportSource, type RejectedRow } from './csv.js'
 import { buildPlan, isLargeRemoval, removalToken, type ImportPlan } from './plan.js'
 
 export interface ImportOptions {
@@ -10,6 +10,7 @@ export interface ImportOptions {
 }
 
 export interface ImportReport {
+  source: ImportSource
   applied: boolean
   inserted: number
   updated: number
@@ -27,8 +28,9 @@ const summary = (film: { id: number; title: string; releaseYear: number | null }
   releaseYear: film.releaseYear,
 })
 
-function report(plan: ImportPlan, rejected: RejectedRow[], applied: boolean): ImportReport {
+function report(source: ImportSource, plan: ImportPlan, rejected: RejectedRow[], applied: boolean): ImportReport {
   return {
+    source,
     applied,
     inserted: plan.toInsert.length,
     updated: plan.toUpdate.length,
@@ -43,15 +45,15 @@ function report(plan: ImportPlan, rejected: RejectedRow[], applied: boolean): Im
 
 /** Shows what an import would do, without writing anything. */
 export async function previewImport(file: Buffer): Promise<ImportReport> {
-  const { rows, rejected } = parseWatchlistCsv(file)
-  return report(buildPlan(rows, rejected, await loadLinkedFilms()), rejected, false)
+  const { source, rows, rejected } = parseWatchlistCsv(file)
+  return report(source, buildPlan(rows, rejected, await loadLinkedFilms(), source), rejected, false)
 }
 
 /** Applies an import. Removals only happen for the exact list a preview showed (matched by its token). */
 export async function applyImport(file: Buffer, options: ImportOptions): Promise<ImportReport> {
-  const { rows, rejected } = parseWatchlistCsv(file)
+  const { source, rows, rejected } = parseWatchlistCsv(file)
   return withTransaction(async (db) => {
-    const plan = buildPlan(rows, rejected, await loadLinkedFilms(db))
+    const plan = buildPlan(rows, rejected, await loadLinkedFilms(db), source)
     if (plan.toRemove.length > 0 && options.removalToken !== removalToken(plan.toRemove)) {
       throw new HttpError(
         409,
@@ -66,6 +68,6 @@ export async function applyImport(file: Buffer, options: ImportOptions): Promise
       })
     }
     await applyPlan(plan, db)
-    return report(plan, rejected, true)
+    return report(source, plan, rejected, true)
   })
 }

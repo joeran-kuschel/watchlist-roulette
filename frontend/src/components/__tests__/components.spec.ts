@@ -262,6 +262,7 @@ describe('AppLayout', () => {
 
 describe('ImportSummary', () => {
   const report = (patch: Partial<ImportReport> = {}): ImportReport => ({
+    source: 'letterboxd',
     applied: false,
     inserted: 12,
     updated: 3,
@@ -288,6 +289,16 @@ describe('ImportSummary', () => {
     expect(wrapper.get('tbody th').text()).toBe('5')
     expect(wrapper.get('tbody td').text()).toBe('Name is empty')
     await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('says which format was detected and what that means for removals', async () => {
+    const letterboxd = mount(ImportSummary, { props: { report: report() } })
+    expect(letterboxd.text()).toContain('Detected: Letterboxd export.')
+    expect(letterboxd.text()).not.toContain('IMDb')
+    const imdb = mount(ImportSummary, { props: { report: report({ source: 'imdb' }) }, attachTo: document.body })
+    expect(imdb.text()).toContain('Detected: IMDb export.')
+    expect(imdb.text()).toContain('Only films that came from IMDb can be removed by this file.')
+    await expectNoA11yViolations(imdb.element)
   })
 
   it('uses past tense after the import', () => {

@@ -85,7 +85,7 @@ describe('FilmFormView: add', () => {
     await wrapper.get('#film-title').setValue('Joy')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(errorsOf(wrapper)).toEqual(['Another film already uses this Letterboxd link.'])
+    expect(errorsOf(wrapper)).toEqual(['Another film already uses this link.'])
     expect(wrapper.get('#film-url').attributes('aria-invalid')).toBe('true')
   })
 
@@ -402,7 +402,7 @@ describe('FilmFormView: more cases', () => {
     mocked.updateFilm.mockRejectedValue(new api.ApiError(409, 'exists'))
     const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
     await submit(wrapper)
-    expect(errorsOf(wrapper)).toEqual(['Another film already uses this Letterboxd link.'])
+    expect(errorsOf(wrapper)).toEqual(['Another film already uses this link.'])
   })
 
   it('says so when the film was deleted elsewhere before saving', async () => {

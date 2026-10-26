@@ -82,7 +82,7 @@ async function submit() {
     await router.push(watchlist.listLocation)
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
-      await showProblems({ letterboxdUrl: 'Another film already uses this Letterboxd link.' })
+      await showProblems({ letterboxdUrl: 'Another film already uses this link.' })
     } else if (e instanceof ApiError && e.status === 400 && Object.keys(issuesToErrors(e.issues)).length) {
       await showProblems(issuesToErrors(e.issues))
     } else {
@@ -166,7 +166,7 @@ async function remove() {
       </FormField>
       <FormField
         id="film-url"
-        label="Letterboxd link"
+        label="Link (Letterboxd or IMDb)"
         hint="Optional. Must start with https://"
         :error="errors.letterboxdUrl"
         v-slot="{ attrs }"

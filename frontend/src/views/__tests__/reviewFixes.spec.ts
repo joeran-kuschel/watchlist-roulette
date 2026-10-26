@@ -76,6 +76,12 @@ describe('Letterboxd links only for web addresses', () => {
     expect(wrapper.find('a').exists()).toBe(false)
   })
 
+  it('names the film card link after its site', () => {
+    const card = (url: string) => mount(FilmCard, { props: { film: makeFilm({ letterboxdUrl: url }) } }).get('a').text()
+    expect(card('https://boxd.it/x')).toContain('Open on Letterboxd')
+    expect(card('https://www.imdb.com/title/tt0113277/')).toContain('Open on IMDb')
+  })
+
   it('never links a javascript: address from the watchlist; the title goes to the details page', async () => {
     mocked.listFilms.mockResolvedValue({
       items: [makeFilm({ letterboxdUrl: 'javascript:alert(1)' })],

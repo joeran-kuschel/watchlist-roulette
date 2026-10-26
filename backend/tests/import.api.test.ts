@@ -1,5 +1,6 @@
 import type { Pool } from 'pg'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { dateOnly } from '../src/dates.js'
 import { createTestPool } from './helpers/testDb.js'
 import { HEADER, fakeEnricher, testApp } from './helpers/app.js'
 
@@ -358,5 +359,94 @@ describe('film marked watched while an import is applied', () => {
     }
     await applyPlan(plan, getPool())
     expect(await titles()).toEqual(['Film 1', 'Film 2'])
+  })
+})
+
+describe('POST /api/films/import with an IMDb export', () => {
+  const IMDB_HEADER = 'Position,Const,Created,Modified,Description,Title,URL,Title Type,Year\n'
+  const imdbLine = (n: number, created = '2022-03-1' + n) =>
+    `${n},tt000000${n},${created},${created},,IMDb ${n},https://www.imdb.com/title/tt000000${n}/,movie,199${n}\n`
+  const dates = async () =>
+    (await pool.query('SELECT title, added_at FROM films ORDER BY id')).rows.map((r) => ({ title: r.title, d: dateOnly(r.added_at) }))
+
+  it('previews and imports it, and reports the detected format', async () => {
+    const preview = await upload(IMDB_HEADER + imdbLine(1) + imdbLine(2), { dryRun: true })
+    expect(preview.body).toMatchObject({ source: 'imdb', applied: false, inserted: 2 })
+    expect(await titles()).toEqual([])
+    const res = await upload(IMDB_HEADER + imdbLine(1) + imdbLine(2))
+    expect(res.body).toMatchObject({ source: 'imdb', applied: true, inserted: 2 })
+    expect(await dates()).toEqual([
+      { title: 'IMDb 1', d: '2022-03-11' },
+      { title: 'IMDb 2', d: '2022-03-12' },
+    ])
+  })
+
+  it('gives a film without a date the import day, and keeps its date on the next import', async () => {
+    await upload(IMDB_HEADER + imdbLine(1, ''))
+    const today = dateOnly((await pool.query('SELECT CURRENT_DATE AS d')).rows[0].d)
+    expect(await dates()).toEqual([{ title: 'IMDb 1', d: today }])
+    await pool.query(`UPDATE films SET added_at = '2020-05-05'`)
+    const res = await upload(IMDB_HEADER + imdbLine(1, ''))
+    expect(res.body).toMatchObject({ inserted: 0, updated: 0, unchanged: 1 })
+    expect(await dates()).toEqual([{ title: 'IMDb 1', d: '2020-05-05' }])
+  })
+
+  it('importing it twice changes nothing, and a Letterboxd import keeps the IMDb films', async () => {
+    await upload(IMDB_HEADER + imdbLine(1))
+    expect((await upload(IMDB_HEADER + imdbLine(1))).body).toMatchObject({ inserted: 0, unchanged: 1, removed: [] })
+    const res = await upload(HEADER + line(1), { dryRun: true })
+    expect(res.body).toMatchObject({ source: 'letterboxd', inserted: 1, removed: [] })
+  })
+
+  it('an IMDb import does not remove Letterboxd films', async () => {
+    await upload(HEADER + line(1) + line(2))
+    const res = await upload(IMDB_HEADER + imdbLine(3), { dryRun: true })
+    expect(res.body).toMatchObject({ inserted: 1, removed: [], requiresLargeRemovalConfirmation: false })
+  })
+
+  it('reports tvEpisode rows and keeps the film of a rejected row', async () => {
+    await upload(IMDB_HEADER + imdbLine(1) + imdbLine(2))
+    const episode = imdbLine(1).replace(',movie,', ',tvEpisode,')
+    const res = await upload(IMDB_HEADER + episode + imdbLine(2), { dryRun: true })
+    expect(res.body.rejected).toEqual([
+      { line: 2, reason: 'TV episodes are not imported' },
+    ])
+    expect(res.body.removed).toEqual([])
+  })
+
+  it('removes only IMDb films with the preview token, and updates a title but keeps the date', async () => {
+    await upload(HEADER + line(1))
+    await upload(IMDB_HEADER + imdbLine(1) + imdbLine(2))
+    const csv = IMDB_HEADER + imdbLine(1, '').replace('IMDb 1', 'Renamed')
+    const preview = await upload(csv, { dryRun: true })
+    expect(preview.body).toMatchObject({ updated: 1, removed: [{ title: 'IMDb 2' }] })
+    const res = await upload(csv, { fields: { removalToken: preview.body.removalToken, confirmLargeRemoval: 'true' } })
+    expect(res.status).toBe(200)
+    expect(await dates()).toEqual([
+      { title: 'Film 1', d: '2020-01-01' },
+      { title: 'Renamed', d: '2022-03-11' },
+    ])
+  })
+
+  it('takes the title id from the URL when Const is empty and does not duplicate on re-import', async () => {
+    const csv = 'Const,Title,URL\n,Heat,https://m.imdb.com/title/tt0113277/?ref_=wl\n'
+    await upload(csv)
+    const res = await upload(csv)
+    expect(res.body).toMatchObject({ source: 'imdb', inserted: 0, unchanged: 1 })
+    expect((await pool.query('SELECT letterboxd_url FROM films')).rows).toEqual([
+      { letterboxd_url: 'https://www.imdb.com/title/tt0113277/' },
+    ])
+  })
+
+  it('does not remove a manually added film with an IMDb link when a Letterboxd file is imported', async () => {
+    await pool.query(`INSERT INTO films (title, letterboxd_url) VALUES ('Manual', 'https://www.imdb.com/title/tt0113277/')`)
+    const res = await upload(HEADER + line(1), { dryRun: true })
+    expect(res.body.removed).toEqual([])
+  })
+
+  it('rejects a file that is neither format with a 400 naming both', async () => {
+    const res = await upload('Foo,Bar\n1,2\n')
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/IMDb export/)
   })
 })

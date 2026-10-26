@@ -45,6 +45,7 @@ async function stubApi(page: Page) {
     if (path === '/films/random') return json(films.find((f) => !f.watchedAt))
     if (path === '/films/import') {
       return json({
+        source: 'letterboxd',
         applied: url.searchParams.get('dryRun') !== 'true',
         inserted: 2,
         updated: 1,

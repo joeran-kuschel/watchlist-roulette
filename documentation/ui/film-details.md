@@ -21,7 +21,7 @@ The poster (the [poster proxy](posters.md), or the "No poster" box), then:
 - year, runtime, TMDB rating with the number of votes, countries, genres and director (for a TV show: "Episode runtime" and "Created by"),
 - when the film was added and whether it was watched,
 - the **Overview** and the **Cast** (the first ten names TMDB lists),
-- a **Links** section with **Letterboxd** and **The Movie Database (TMDB)**.
+- a **Links** section with **Letterboxd** (**IMDb** for a film imported from an IMDb export) and **The Movie Database (TMDB)**.
 
 Anything TMDB has not delivered yet (a pending, not found or ambiguous film) is left out instead of shown empty. The Letterboxd link only appears when the film has a web address, and the TMDB link only when the film has a TMDB id (`https://www.themoviedb.org/movie/<id>`, or `/tv/<id>` for a TV show, from the stored media type). A film with neither has no Links section. Both links open in a new tab, with `rel="noopener noreferrer"` and a hidden "(opens in a new tab)" in their names. The Letterboxd address is only rendered as a link when it starts with `http:` or `https:`.
 
