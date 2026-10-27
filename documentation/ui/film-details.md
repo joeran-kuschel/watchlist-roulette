@@ -2,6 +2,8 @@
 
 Route `/watchlist/:id`. A page about one film, with a few quick actions (no delete). Code: `views/FilmDetailsView.vue`, `tmdbTitleUrl()` in `tmdbId.ts`. The facts (year, runtime, rating, country) are built by `filmFacts()` in `format.ts` and shown by `components/FilmFacts.vue`; the [roulette](roulette.md) card uses the same two, in a compact inline layout, and this page in a grid with genres and director added.
 
+![The details page of Big Buck Bunny: poster on the left, then the title, the Mark as watched and Edit buttons, year, runtime, genres, director, overview and a link to The Movie Database.](images/film-details.png)
+
 ## What the user does
 
 - Opens it by clicking a film's title in the [watchlist](watchlist.md). The link opens in the same tab. **← Back to watchlist** returns to the list with the search, filters, sort and page the user left (see [Coming back from a film](watchlist.md#coming-back-from-a-film)); after a reload it leads to the plain list.

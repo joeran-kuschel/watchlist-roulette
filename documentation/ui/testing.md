@@ -25,3 +25,7 @@ npm run test:e2e
 ## Contrast
 
 The text colors were also checked in a real browser (all text at least 4.5:1, large text 3:1). Re-check after changing `src/styles/base.css`.
+
+## Screenshots
+
+The images in `documentation/ui/images/` are made by `npm run screenshots`, a separate Playwright script, not by the tests (see [Screenshots](screenshots.md)). `src/__tests__/screenshot-samples.spec.ts` checks its sample films, and `backend/tests/docs-images.test.ts` checks the images and their alt text in the Markdown files.

@@ -2,6 +2,8 @@
 
 Route `/import`. Imports a Letterboxd or an IMDb export in two steps, like the backend ([CSV import](../backend/csv-import.md)). Code: `views/ImportView.vue`, `components/ImportSummary.vue`.
 
+![The import page after checking a file: the chosen file name, then the check result with the counts of films to add, update, keep and reject, a film kept because it was watched, one rejected row with its reason, and the Import films button.](images/import.png)
+
 ## Steps
 
 1. **Choose a file** (`.csv`) with the **Choose CSV file** button; the chosen file name (or "No file chosen") is shown next to it. The file needs the columns of a Letterboxd export (`Date`, `Name`, `Year`, `Letterboxd URI`) or of an IMDb export (`Const`, `Title`, `Year`, `Created`, `URL`); the hint under the field names both. Then press **Check file**. This calls `POST /api/films/import?dryRun=true`, which writes nothing.

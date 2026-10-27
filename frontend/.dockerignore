@@ -1,5 +1,7 @@
 node_modules
 dist
 e2e
+screenshots
+playwright.screenshots.config.ts
 test-results
 playwright-report

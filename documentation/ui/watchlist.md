@@ -2,6 +2,8 @@
 
 Route `/watchlist`. All films in a table. Code: `views/WatchlistView.vue`, `stores/watchlist.ts`, `watchlistQuery.ts`.
 
+![The watchlist page: a search field and two dropdowns above a table of four films with title, year, date added and a To watch or Watched status, each row with a mark-as-watched and an edit button.](images/watchlist.png)
+
 ## What the user does
 
 - **Search** by title (Enter or the Search button), **Show** all/unwatched/watched, **TMDB status**, sort by date added, release year or title. Changing a select applies at once. Sorting is done with the column headers on wide screens and with the **Sort by** list on narrow ones (see [Sorting](#sorting)).

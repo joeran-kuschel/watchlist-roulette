@@ -2,6 +2,8 @@
 
 Keep a movie watchlist in a PostgreSQL database and let the app pick a random film to watch next. Films come from a Letterboxd or IMDb watchlist export (CSV) and are enriched with data from [TMDB](https://www.themoviedb.org).
 
+![The roulette page showing Big Buck Bunny as tonight's film, with the filters on the left.](documentation/ui/images/roulette.png)
+
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## Run it

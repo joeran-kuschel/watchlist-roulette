@@ -6,6 +6,8 @@
     "vitest.config.*",
     "cypress.config.*",
     "playwright.config.*",
+    "playwright.screenshots.config.*",
+    "screenshots/**/*.ts",
     "eslint.config.*"
   ],
   "compilerOptions": {
