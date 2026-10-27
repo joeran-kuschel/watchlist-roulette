@@ -56,6 +56,7 @@ The endpoints are those of the backend API (`documentation/backend/api.md` on th
 - Dark ground `#12141A`, surface `#1C1F27`, border `#3A3F4B`, text `#F2EFE8`, muted text `#B4B8C2`.
 - Accent `#FF6B47` (buttons use dark text `#12141A`), focus ring `#FFD166`.
 - Fonts: Bricolage Grotesque (headings), Hanken Grotesk (body).
+- Dropdowns (`select.input` in `styles/base.css`) draw their own chevron instead of the browser's arrow, which sits on the edge and cannot be moved: 16 px wide, 14 px from the right edge, with 12 px between it and the text (`padding-right: 42px`, so long option text never runs under it). The stroke is `#F2EFE8` (the text color); a background image cannot use CSS variables, so if `--text` changes (for example for a light theme), update the stroke in the data URI in `base.css` by hand; a test fails when the two differ. In forced-colors mode (Windows high contrast) background images are removed, so the select goes back to the native look.
 
 ## Accessibility (WCAG 2.2 AA)
 
