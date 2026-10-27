@@ -354,7 +354,7 @@ describe('film marked watched while an import is applied', () => {
     const film = (await pool.query(`SELECT id FROM films WHERE title = 'Film 2'`)).rows[0]
     await pool.query('UPDATE films SET watched_at = now() WHERE id = $1', [film.id])
     const plan = {
-      toInsert: [], toUpdate: [], unchanged: 0, keptWatched: [], unwatchedCount: 2,
+      toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], unwatchedCount: 2,
       toRemove: [{ id: Number(film.id), title: 'Film 2', releaseYear: 2002, letterboxdUrl: 'https://boxd.it/2', addedAt: '2020-01-02', watched: false }],
     }
     await applyPlan(plan, getPool())
@@ -448,5 +448,97 @@ describe('POST /api/films/import with an IMDb export', () => {
     const res = await upload('Foo,Bar\n1,2\n')
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/IMDb export/)
+  })
+})
+
+describe('POST /api/films/import skips a film that is in both exports', () => {
+  const IMDB_HEADER = 'Position,Const,Created,Title,URL,Title Type,Year\n'
+  const heat = '1,tt0113277,2022-03-14,HEAT,https://www.imdb.com/title/tt0113277/,movie,2000\n'
+  const other = '2,tt0000002,2022-03-15,Other,https://www.imdb.com/title/tt0000002/,movie,2005\n'
+  const letterboxdHeat = '2020-01-01,Heat,2000,https://boxd.it/heat\n'
+
+  it('reports the skipped row with the film it matches, adds nothing for it, and does so on every import', async () => {
+    await upload(HEADER + letterboxdHeat)
+    const check = await upload(IMDB_HEADER + heat + other, { dryRun: true })
+    expect(check.body).toMatchObject({ source: 'imdb', inserted: 1, removed: [] })
+    expect(check.body.skipped).toEqual([
+      { line: 2, title: 'HEAT', releaseYear: 2000, existing: { id: expect.any(Number), title: 'Heat', releaseYear: 2000 } },
+    ])
+    expect((await upload(IMDB_HEADER + heat + other)).body).toMatchObject({ applied: true, inserted: 1 })
+    expect(await titles()).toEqual(['Heat', 'Other'])
+    const again = await upload(IMDB_HEADER + heat + other)
+    expect(again.body).toMatchObject({ inserted: 0, updated: 0, unchanged: 1 })
+    expect(again.body.skipped).toHaveLength(1)
+    expect(await titles()).toEqual(['Heat', 'Other'])
+  })
+
+  it('also skips a Letterboxd row for a film that came from IMDb', async () => {
+    await upload(IMDB_HEADER + heat)
+    const res = await upload(HEADER + letterboxdHeat)
+    expect(res.body).toMatchObject({ source: 'letterboxd', inserted: 0 })
+    expect(res.body.skipped).toHaveLength(1)
+    expect(await titles()).toEqual(['HEAT'])
+  })
+
+  it('has an empty skipped list when nothing matches', async () => {
+    expect((await upload(HEADER + line(1), { dryRun: true })).body.skipped).toEqual([])
+  })
+})
+
+describe('skipping a film that is in both exports: more cases', () => {
+  const IMDB_HEADER = 'Position,Const,Created,Title,URL,Title Type,Year\n'
+  const imdb = (n: number, title: string, year: number) =>
+    `${n},tt000000${n},2022-03-14,${title},https://www.imdb.com/title/tt000000${n}/,movie,${year}\n`
+
+  it('skips both rows of a file that match the same film and lists the film for each', async () => {
+    await upload(HEADER + '2020-01-01,Heat,2000,https://boxd.it/heat\n')
+    const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000) + imdb(2, 'HEAT', 2000), { dryRun: true })
+    expect(res.body).toMatchObject({ inserted: 0 })
+    expect(res.body.skipped.map((s: { line: number; existing: { title: string } }) => [s.line, s.existing.title])).toEqual([
+      [2, 'Heat'],
+      [3, 'Heat'],
+    ])
+  })
+
+  it('skips a row that matches a watched film and leaves that film as it is', async () => {
+    await upload(HEADER + '2020-01-01,Heat,2000,https://boxd.it/heat\n')
+    await pool.query(`UPDATE films SET watched_at = now()`)
+    const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000))
+    expect(res.body).toMatchObject({ applied: true, inserted: 0, removed: [], keptWatched: [] })
+    expect(res.body.skipped).toHaveLength(1)
+    expect((await pool.query('SELECT watched_at FROM films')).rows).toHaveLength(1)
+  })
+
+  it('applies against the films stored at apply time, not those of the preview', async () => {
+    const file = IMDB_HEADER + imdb(1, 'Heat', 2000)
+    expect((await upload(file, { dryRun: true })).body).toMatchObject({ inserted: 1, skipped: [] })
+    await upload(HEADER + '2020-01-01,Heat,2000,https://boxd.it/heat\n')
+    const res = await upload(file)
+    expect(res.body).toMatchObject({ applied: true, inserted: 0 })
+    expect(res.body.skipped).toHaveLength(1)
+    expect(await titles()).toEqual(['Heat'])
+  })
+
+  it('does not change the removal token or the removals of the other source', async () => {
+    await upload(HEADER + '2020-01-01,Heat,2000,https://boxd.it/heat\n' + line(1))
+    const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000), { dryRun: true })
+    expect(res.body.removed).toEqual([])
+    expect(res.body.skipped).toHaveLength(1)
+    expect(res.body.requiresLargeRemovalConfirmation).toBe(false)
+  })
+
+  it('does not skip a film without a year', async () => {
+    await upload(HEADER + '2020-01-01,Heat,,https://boxd.it/heat\n')
+    const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000))
+    expect(res.body).toMatchObject({ inserted: 1, skipped: [] })
+  })
+
+  it('has the skipped list in both the preview and the applied report', async () => {
+    await upload(HEADER + '2020-01-01,Heat,2000,https://boxd.it/heat\n')
+    for (const dryRun of [true, false]) {
+      const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000), { dryRun })
+      expect(res.body.skipped[0]).toEqual({ line: 2, title: 'Heat', releaseYear: 2000, existing: expect.objectContaining({ title: 'Heat', releaseYear: 2000 }) })
+      expect(typeof res.body.skipped[0].releaseYear).toBe('number')
+    }
   })
 })

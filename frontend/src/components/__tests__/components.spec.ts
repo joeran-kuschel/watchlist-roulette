@@ -267,6 +267,7 @@ describe('ImportSummary', () => {
     inserted: 12,
     updated: 3,
     unchanged: 480,
+    skipped: [],
     removed: [{ id: 7, title: 'Metropolis', releaseYear: 1927 }],
     keptWatched: [{ id: 8, title: 'Stalker', releaseYear: null }],
     rejected: [{ line: 5, reason: 'Name is empty' }],
@@ -299,6 +300,27 @@ describe('ImportSummary', () => {
     expect(imdb.text()).toContain('Detected: IMDb export.')
     expect(imdb.text()).toContain('Only films that came from IMDb can be removed by this file.')
     await expectNoA11yViolations(imdb.element)
+  })
+
+  it('lists the rows that were skipped because the film is already on the list, and shows nothing without any', async () => {
+    expect(mount(ImportSummary, { props: { report: report() } }).text()).not.toContain('already on your list')
+    const skipped = [
+      { line: 7, title: 'HEAT', releaseYear: 1995, existing: { id: 3, title: 'Heat', releaseYear: 1995 } },
+    ]
+    const one = mount(ImportSummary, { props: { report: report({ skipped }) }, attachTo: document.body })
+    expect(one.get('#skipped-heading').text()).toBe('1 film is already on your list')
+    expect(one.text()).toContain('HEAT (1995) (line 7) is already on your list as Heat (1995)')
+    expect(one.text()).toContain('a film with the same title and year came from the other export')
+    await expectNoA11yViolations(one.element)
+    const two = mount(ImportSummary, { props: { report: report({ skipped: [...skipped, { ...skipped[0]!, line: 9 }] }) } })
+    expect(two.get('#skipped-heading').text()).toBe('2 films are already on your list')
+  })
+
+  it('shows a skipped row and its existing film without a year as a plain title', () => {
+    const skipped = [{ line: 4, title: 'Heat', releaseYear: null, existing: { id: 3, title: 'Heat', releaseYear: null } }]
+    const text = mount(ImportSummary, { props: { report: report({ skipped }) } }).text()
+    expect(text).toContain('Heat (line 4) is already on your list as Heat')
+    expect(text).not.toContain('null')
   })
 
   it('uses past tense after the import', () => {

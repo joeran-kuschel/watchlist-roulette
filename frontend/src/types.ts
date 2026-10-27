@@ -81,6 +81,7 @@ export interface ImportReport {
   inserted: number
   updated: number
   unchanged: number
+  skipped: { line: number; title: string; releaseYear: number | null; existing: ImportedFilmRef }[]
   removed: ImportedFilmRef[]
   keptWatched: ImportedFilmRef[]
   rejected: { line: number; reason: string }[]

@@ -38,6 +38,7 @@ A UTF-8 BOM, CRLF line endings, quoted fields with commas, quotes or line breaks
 - A row whose link exists is **updated** (title, year, date added); a new link is **inserted**. Importing the same file twice changes nothing.
 - An update never touches `watched_at` or the TMDB data.
 - Films **with a link** that are **not in the file** are **removed**, but only films from the same source as the file (an IMDb file considers only films whose link is on `imdb.com`; a Letterboxd file everything else), so importing one export never removes the films of the other. The guard against a broken file below counts the same films. Films are removed unless they are watched (they are listed as `keptWatched`) or their row was rejected (a broken row must not delete a film). Exception: a row that can't be read at all (for example a broken quote) has no usable link, so its film appears in the removal list; check the preview's `rejected` list before confirming. A film that is marked watched while the import is being applied is not deleted. Films added by hand without a link are never removed.
+- **A film that is in both exports is not added twice.** A new row (its link is not stored yet) is **skipped** when a film that came from the *other* source has the same title and the same release year. Titles are compared without case, Latin accents, punctuation and a leading "the" (`normalizeTitle` in `import/plan.ts`); a row or a film without a year never matches, and films added by hand without a link are not compared. The skipped rows are listed in `skipped` (`{ line, title, releaseYear, existing }`, with the film they match), are not counted as rejected and change nothing, so importing the file again skips them again. The first export that is imported keeps the film, with its link and date. If that copy is later removed (it is dropped from its own export and that export is imported again), the film is gone until the other export is imported again. A film that is in the file under its own, already stored link is updated as usual, never skipped.
 - Rejected rows (`{ line, reason }`) are reported, never skipped silently. The valid rows are still imported. A link that appears twice in the file is rejected the second time.
 - The import runs in one transaction: if the database fails halfway, nothing is imported.
 - After an import, the TMDB enrichment starts in the background.
@@ -50,6 +51,7 @@ A UTF-8 BOM, CRLF line endings, quoted fields with commas, quotes or line breaks
 {
   "source": "letterboxd", "applied": false, "inserted": 12, "updated": 3, "unchanged": 480,
   "removed": [{ "id": 7, "title": "…", "releaseYear": 2001 }],
+  "skipped": [{ "line": 7, "title": "Heat", "releaseYear": 1995, "existing": { "id": 3, "title": "Heat", "releaseYear": 1995 } }],
   "keptWatched": [], "rejected": [{ "line": 5, "reason": "Name is empty" }],
   "removalToken": "…", "requiresLargeRemovalConfirmation": false
 }
@@ -70,6 +72,6 @@ curl -F file=@watchlist.csv -F removalToken=<token> http://localhost:8080/api/fi
 
 ## Known limits
 
-A film that is in both a Letterboxd and an IMDb export is stored twice, because its two links differ. Matching them by title and year is not done: it would merge different films with the same title.
+The match between the two exports is by title and year only. A film whose title differs between the sites (a local title on one of them, or "&" against "and") is not recognised and is stored twice; the second copy then ends up as "Needs review" when TMDB data arrives, because it cannot take the TMDB id of the first. Two different films with the same title and year would be taken for one; every skipped row is listed, so this is visible.
 
 Two imports at the same moment are not serialized. This is a single-user tool; the removal token protects against a changed list.

@@ -13,6 +13,8 @@ export interface ExistingFilm {
 export interface ImportPlan {
   toInsert: ImportRow[]
   toUpdate: { id: number; row: ImportRow }[]
+  /** New rows that are not added because the same film (title and year) came from the other export. */
+  toSkip: { row: ImportRow; existing: ExistingFilm }[]
   unchanged: number
   toRemove: ExistingFilm[]
   keptWatched: ExistingFilm[]
@@ -29,10 +31,25 @@ const isChanged = (film: ExistingFilm, row: ImportRow) =>
 export const sourceOfLink = (link: string): ImportSource =>
   /^https?:\/\/([\w-]+\.)*imdb\.com(\/|$)/i.test(link) ? 'imdb' : 'letterboxd'
 
+/** A title as it is compared across exports: no case, Latin accents or punctuation, and without a leading "the". */
+export const normalizeTitle = (title: string): string =>
+  title
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, ' ')
+    .trim()
+    .replace(/^the /, '')
+
+// a title of only punctuation ("!!!") has nothing left after normalizing, so it is compared as it is
+const filmKey = (title: string, year: number) => `${year}|${normalizeTitle(title) || title.trim().toLowerCase()}`
+
 /**
  * Compares the CSV with the films in the database. Films with a link that are missing from the CSV are removed,
  * unless they are watched or their CSV row was rejected (a bad row must not delete a film). Only films from the
  * same source as the file can be removed: an IMDb file never removes a Letterboxd film, and the other way round.
+ * A new row is skipped when a film of the other source has the same title and year (both known), so a film that is
+ * in both exports is not stored twice. The first export that is imported keeps the film.
  */
 export function buildPlan(
   rows: ImportRow[],
@@ -44,9 +61,16 @@ export function buildPlan(
   const inFile = new Set([...rows.map((row) => row.letterboxdUrl), ...rejected.flatMap((r) => r.letterboxdUrl ?? [])])
 
   const sameSource = existing.filter((film) => sourceOfLink(film.letterboxdUrl) === source)
+  const otherSource = new Map<string, ExistingFilm>()
+  for (const film of existing) {
+    if (sourceOfLink(film.letterboxdUrl) === source || film.releaseYear === null) continue
+    const key = filmKey(film.title, film.releaseYear)
+    if (!otherSource.has(key)) otherSource.set(key, film)
+  }
   const plan: ImportPlan = {
     toInsert: [],
     toUpdate: [],
+    toSkip: [],
     unchanged: 0,
     toRemove: [],
     keptWatched: [],
@@ -54,7 +78,9 @@ export function buildPlan(
   }
   for (const row of rows) {
     const film = existingByUrl.get(row.letterboxdUrl)
-    if (!film) plan.toInsert.push(row)
+    const sameFilm = row.releaseYear === null ? undefined : otherSource.get(filmKey(row.title, row.releaseYear))
+    if (!film && sameFilm) plan.toSkip.push({ row, existing: sameFilm })
+    else if (!film) plan.toInsert.push(row)
     else if (isChanged(film, row)) plan.toUpdate.push({ id: film.id, row })
     else plan.unchanged++
   }

@@ -23,6 +23,7 @@ async function stubApi(page: Page) {
         inserted: 3,
         updated: 0,
         unchanged: 0,
+        skipped: [],
         removed: [],
         keptWatched: [{ id: elephantsDream.id, title: elephantsDream.title, releaseYear: elephantsDream.releaseYear }],
         rejected: [{ line: 5, reason: 'Name is empty' }],

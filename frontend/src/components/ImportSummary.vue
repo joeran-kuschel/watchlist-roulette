@@ -5,7 +5,7 @@ defineProps<{ report: ImportReport }>()
 
 const formats = { letterboxd: 'Letterboxd export', imdb: 'IMDb export' } as const
 
-const label = (film: ImportedFilmRef) => (film.releaseYear ? `${film.title} (${film.releaseYear})` : film.title)
+const label = (film: Pick<ImportedFilmRef, 'title' | 'releaseYear'>) => (film.releaseYear ? `${film.title} (${film.releaseYear})` : film.title)
 </script>
 
 <template>
@@ -44,6 +44,20 @@ const label = (film: ImportedFilmRef) => (film.releaseYear ? `${film.title} (${f
       </h3>
       <ul>
         <li v-for="film in report.removed" :key="film.id">{{ label(film) }}</li>
+      </ul>
+    </section>
+
+    <section v-if="report.skipped.length" aria-labelledby="skipped-heading">
+      <h3 id="skipped-heading">
+        {{ report.skipped.length }} {{ report.skipped.length === 1 ? 'film is' : 'films are' }} already on your list
+      </h3>
+      <p class="summary__note">
+        These rows are not added, because a film with the same title and year came from the other export.
+      </p>
+      <ul>
+        <li v-for="item in report.skipped" :key="item.line">
+          {{ label(item) }} (line {{ item.line }}) is already on your list as {{ label(item.existing) }}
+        </li>
       </ul>
     </section>
 
