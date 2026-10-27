@@ -2,6 +2,8 @@
 
 Route `/`. Picks a random unwatched film. Code: `views/RouletteView.vue`, `stores/roulette.ts`, `filters.ts`, `components/FilmCard.vue`.
 
+![The roulette page: filters on the left, and on the right a film card for Big Buck Bunny with poster, year, runtime, director, genres and overview, followed by the Spin again and Mark as watched buttons.](images/roulette.png)
+
 ## What the user does
 
 - The screen picks a film when it opens. Coming back keeps the filters (they live in the roulette store) and the last pick, which is reloaded: if it was watched or deleted in the meantime, a new film is picked with the same filters.

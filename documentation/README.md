@@ -23,6 +23,7 @@ Every feature is documented here, split into UI and backend.
 - [Watchlist](ui/watchlist.md): the list of films, search, sort, paging
 - [Film details](ui/film-details.md): the page behind a film's title, with Letterboxd and TMDB links
 - [Add and edit a film](ui/film-form.md): the film form and deleting
+- [Screenshots](ui/screenshots.md): how the screenshots in these pages are made and credited
 - [Choosing the TMDB match](ui/tmdb-match.md): fix a film's TMDB match by id
 - [CSV import](ui/import.md): check, confirm, import
 - [TMDB attribution](ui/tmdb-attribution.md): the required notice and logo

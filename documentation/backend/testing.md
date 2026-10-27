@@ -10,6 +10,7 @@
 | TMDB | `tmdb.client`, `tmdb.enricher` | fake `fetch` and fake client, pg-mem database |
 | Real PostgreSQL | `postgres.integration` | skipped unless `TEST_DATABASE_URL` is set |
 | Pool | `database` | idle-client errors are handled |
+| Documentation | `docs-images` | every image in the Markdown files exists, has alt text, is used and is small; no database |
 
 ## What pg-mem does not cover
 

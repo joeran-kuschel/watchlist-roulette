@@ -4,6 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- The documentation now shows screenshots of the roulette, the watchlist, the import page and a film's details page.
 - The arrow in the dropdowns now has more room, and long entries no longer run under it.
 - You can now import an IMDb watchlist or list export as well as a Letterboxd one. The import page works out which one you chose and says so. TV series are imported, TV episodes are not, and a missing date added becomes the day of the import. Importing one kind of file never removes the films that came from the other. A film that is in both lists is added twice.
 - On Kubernetes, the database now accepts connections only from the app's own backend. Other pods in the cluster can no longer connect to it. The backups and the restore work as before.
