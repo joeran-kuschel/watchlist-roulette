@@ -4,11 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 // jsdom does not apply stylesheets, so the rules are checked in the source (vitest runs in the frontend folder)
 const css = readFileSync(resolve(process.cwd(), 'src/styles/base.css'), 'utf8')
-const block = (selector: string) =>
-  new RegExp(`${selector.replace(/[.[\]()]/g, '\\$&')} \\{([^}]*)\\}`).exec(css)?.[1] ?? ''
 
 describe('dropdown chevron', () => {
-  const select = block('select.input')
+  const select = /^select\.input \{([^}]*)\}/m.exec(css)?.[1] ?? ''
 
   it('draws its own chevron 14px from the right edge and keeps the text clear of it', () => {
     expect(select).toContain('appearance: none')
