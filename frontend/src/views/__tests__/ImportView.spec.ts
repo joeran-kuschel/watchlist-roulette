@@ -18,6 +18,7 @@ const report = (patch: Partial<ImportReport> = {}): ImportReport => ({
   inserted: 2,
   updated: 1,
   unchanged: 10,
+  skipped: [],
   removed: [],
   keptWatched: [],
   rejected: [],

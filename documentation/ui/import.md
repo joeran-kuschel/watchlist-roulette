@@ -7,9 +7,13 @@ Route `/import`. Imports a Letterboxd or an IMDb export in two steps, like the b
 ## Steps
 
 1. **Choose a file** (`.csv`) with the **Choose CSV file** button; the chosen file name (or "No file chosen") is shown next to it. The file needs the columns of a Letterboxd export (`Date`, `Name`, `Year`, `Letterboxd URI`) or of an IMDb export (`Const`, `Title`, `Year`, `Created`, `URL`); the hint under the field names both. Then press **Check file**. This calls `POST /api/films/import?dryRun=true`, which writes nothing.
-2. The **Check result** starts with the detected format ("Detected: IMDb export.") and, for an IMDb file, a note that it only removes films that came from IMDb (a Letterboxd file leaves those alone too, without saying so). Then it shows what would happen: films added, updated, unchanged, **removed** and **rejected rows** (line number and reason), plus films kept because they are watched. Focus moves to the result heading and a status message says nothing has been changed yet.
+2. The **Check result** starts with the detected format ("Detected: IMDb export.") and, for an IMDb file, a note that it only removes films that came from IMDb (a Letterboxd file leaves those alone too, without saying so). Then it shows what would happen (rows skipped because the film is already on the list from the other export get a section of their own, "N films are already on your list", with the film each one matches): films added, updated, unchanged, **removed** and **rejected rows** (line number and reason), plus films kept because they are watched. Focus moves to the result heading and a status message says nothing has been changed yet.
 3. **Import films** applies the import (`POST /api/films/import`, same file).
 4. **Import finished** shows the same report in past tense, with a link to the watchlist.
+
+## Films that are already on the list
+
+When a new row is skipped because the same film (same title and year) came from the other export, the check result gets a section "N films are already on your list" (an `h3` linked to its `section` with `aria-labelledby`, singular or plural). It is only rendered when the report's `skipped` list is not empty, and lists each skipped row with its line number and the film it matches. These rows are not counted as rejected; nothing is wrong with them, and the import page does not offer to do anything about them.
 
 ## Confirmations
 

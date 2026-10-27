@@ -50,6 +50,7 @@ async function stubApi(page: Page) {
         inserted: 2,
         updated: 1,
         unchanged: 10,
+        skipped: [],
         removed: [{ id: 9, title: 'Metropolis', releaseYear: 1927 }],
         keptWatched: [],
         rejected: [{ line: 5, reason: 'Name is empty' }],

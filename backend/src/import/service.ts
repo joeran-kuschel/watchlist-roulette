@@ -9,20 +9,28 @@ export interface ImportOptions {
   confirmLargeRemoval?: boolean
 }
 
+interface FilmRef {
+  id: number
+  title: string
+  releaseYear: number | null
+}
+
 export interface ImportReport {
   source: ImportSource
   applied: boolean
   inserted: number
   updated: number
   unchanged: number
-  removed: { id: number; title: string; releaseYear: number | null }[]
-  keptWatched: { id: number; title: string; releaseYear: number | null }[]
+  /** New rows that were not added, because the same film (title and year) came from the other export. */
+  skipped: { line: number; title: string; releaseYear: number | null; existing: FilmRef }[]
+  removed: FilmRef[]
+  keptWatched: FilmRef[]
   rejected: Omit<RejectedRow, 'letterboxdUrl'>[]
   removalToken: string
   requiresLargeRemovalConfirmation: boolean
 }
 
-const summary = (film: { id: number; title: string; releaseYear: number | null }) => ({
+const summary = (film: FilmRef) => ({
   id: film.id,
   title: film.title,
   releaseYear: film.releaseYear,
@@ -35,6 +43,12 @@ function report(source: ImportSource, plan: ImportPlan, rejected: RejectedRow[],
     inserted: plan.toInsert.length,
     updated: plan.toUpdate.length,
     unchanged: plan.unchanged,
+    skipped: plan.toSkip.map(({ row, existing }) => ({
+      line: row.line,
+      title: row.title,
+      releaseYear: row.releaseYear,
+      existing: summary(existing),
+    })),
     removed: plan.toRemove.map(summary),
     keptWatched: plan.keptWatched.map(summary),
     rejected: rejected.map(({ line, reason }) => ({ line, reason })),
