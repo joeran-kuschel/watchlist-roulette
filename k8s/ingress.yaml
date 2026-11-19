@@ -1,5 +1,7 @@
-# Served at http://watchlist.local through the nginx ingress controller that Docker Desktop publishes on
-# localhost:80 (shared with the other apps on this cluster). Everything goes to the frontend, whose nginx forwards
+# Served at https://watchlist.local:8443 (and still at http://watchlist.local) through the nginx ingress controller that
+# Docker Desktop publishes on localhost:80 and :8443 (shared with the other apps on this cluster). The certificate is in
+# the watchlist-tls Secret, which deploy.sh makes once with mkcert (k8s/tls-secret.sh): it is not a manifest, so no key
+# is ever in the repository. Everything goes to the frontend, whose nginx forwards
 # /api and /health to the backend: the backend has no route of its own here, and network-policy.yaml lets only the
 # frontend pods reach it. The name needs "127.0.0.1" and "::1" lines in
 # /etc/hosts; deploy.sh prints them if they are missing.
@@ -11,8 +13,15 @@ metadata:
     # The controller allows 1 MB per request by default, which would answer a CSV upload with 413 before it
     # reaches the app. Set on this Ingress only (the controller is shared). Above the backend's 5 MB limit.
     nginx.ingress.kubernetes.io/proxy-body-size: 6m
+    # With a tls section the controller would redirect http://watchlist.local to https://watchlist.local, which is port
+    # 443; Docker Desktop publishes HTTPS on 8443 here, so that redirect would lead nowhere. This Ingress only.
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - watchlist.local
+      secretName: watchlist-tls
   rules:
     - host: watchlist.local
       http:

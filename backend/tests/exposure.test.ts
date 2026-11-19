@@ -77,9 +77,9 @@ describe('where the frontend finds the backend', () => {
     expect(env).toContainEqual({ name: 'BACKEND_URL', value: 'http://backend.watchlist-roulette.svc.cluster.local:3000' })
   })
 
-  it('is what deploy.sh probes: the ingress host and /health, which nginx forwards', () => {
+  it('is what deploy.sh probes: the ingress host over HTTPS and /health, which nginx forwards', () => {
     const script = read('k8s/deploy.sh')
-    expect(script).toMatch(/-H "Host: \$\{HOST\}" "http:\/\/127\.0\.0\.1\/health"/)
+    expect(script).toContain('--resolve "${HOST}:${HTTPS_PORT}:127.0.0.1" "https://${HOST}:${HTTPS_PORT}/health"')
     expect(read('frontend/nginx.conf.template')).toContain('location = /health')
   })
 })

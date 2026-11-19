@@ -18,7 +18,15 @@ case "$*" in
   *"get nodes"*) exit 0 ;;
   *"get ingressclass nginx"*) exit 0 ;;
   *"kustomize k8s"*) printf 'image: watchlist-backend:dev\\nimage: watchlist-frontend:dev\\n' ;;
+  *"get secret watchlist-tls"*) exit "\${TLS_SECRET_EXIT:-1}" ;;
   *"get secret"*) exit 1 ;;
+  *"create secret tls"*)
+    while [ $# -gt 0 ]; do
+      case "$1" in --cert) cert="$2" ;; --key) key="$2" ;; esac
+      shift
+    done
+    printf 'kind: Secret\ntype: kubernetes.io/tls\ndata:\n  tls.crt: %s\n  tls.key: %s\n' "$(cat "$cert")" "$(cat "$key")" ;;
+  *"create -f -"*) tee -a "$FAKE_DIR/created-all.yaml" > /dev/null ;;
   *"apply -f -"*) tee -a "$FAKE_DIR/applied-all.yaml" > /dev/null ;;
   *"rollout status deployment/"*) exit "\${FAIL_ROLLOUT:-0}" ;;
   *"get deployment backend -o jsonpath"*)
@@ -77,7 +85,25 @@ case "$1" in
     esac ;;
 esac
 `
-const FAKE_CURL = '#!/bin/bash\nexit 0\n'
+// mkcert writes a certificate and a key (a random one) to the files it is told, and logs where; its certificate
+// authority is in $FAKE_DIR/ca unless FAKE_NO_CA is set.
+const FAKE_MKCERT = `#!/bin/bash
+echo "$*" >> "$FAKE_DIR/mkcert.log"
+if [ "$1" = "-CAROOT" ]; then
+  [ -n "$FAKE_NO_CA" ] && mkdir -p "$FAKE_DIR/noca" && echo "$FAKE_DIR/noca" || echo "$FAKE_DIR/ca"
+  exit 0
+fi
+while [ $# -gt 0 ]; do
+  case "$1" in -cert-file) cert="$2" ;; -key-file) key="$2" ;; esac
+  shift
+done
+echo "$cert" >> "$FAKE_DIR/mkcert-files"
+echo "$key" >> "$FAKE_DIR/mkcert-files"
+[ -n "$FAKE_MKCERT_FAILS" ] && { echo "mkcert: boom" >&2; exit 1; }
+echo "CERTIFICATE-$RANDOM" > "$cert"
+echo "PRIVATE-KEY-$RANDOM$RANDOM" > "$key"
+`
+const FAKE_CURL = '#!/bin/bash\necho "$*" >> "$FAKE_DIR/curl.log"\nexit 0\n'
 const FAKE_SLEEP = '#!/bin/bash\nexit 0\n'
 
 let work: string
@@ -92,27 +118,139 @@ beforeEach(() => {
   mkdirSync(join(work, 'bin'))
   writeExecutable(join(work, 'bin', 'kubectl'), FAKE_KUBECTL)
   writeExecutable(join(work, 'bin', 'docker'), FAKE_DOCKER)
+  writeExecutable(join(work, 'bin', 'mkcert'), FAKE_MKCERT)
+  mkdirSync(join(work, 'ca'))
+  writeFileSync(join(work, 'ca', 'rootCA.pem'), 'ROOT CA')
   writeExecutable(join(work, 'bin', 'curl'), FAKE_CURL)
   writeExecutable(join(work, 'bin', 'sleep'), FAKE_SLEEP)
 })
 afterEach(() => rmSync(work, { recursive: true, force: true }))
 
 // A TMDB token in the environment keeps the script from reading the developer's own .env (it only goes to the fake kubectl)
-const run = (env: Record<string, string> = {}) =>
-  spawnSync('bash', [join(k8sDir, 'deploy.sh')], {
+// `withoutMkcert` leaves only the fakes and the system's own tools on the PATH, as on a machine without mkcert.
+const run = (env: Record<string, string> = {}, { withoutMkcert = false } = {}) => {
+  if (withoutMkcert) rmSync(join(work, 'bin', 'mkcert'), { force: true })
+  return spawnSync('bash', [join(k8sDir, 'deploy.sh')], {
     encoding: 'utf8',
     env: {
       ...process.env,
-      PATH: `${join(work, 'bin')}:${process.env.PATH}`,
+      PATH: `${join(work, 'bin')}:${withoutMkcert ? '/usr/bin:/bin' : process.env.PATH}`,
       FAKE_DIR: work,
       TMDB_ACCESS_TOKEN: 'test',
       LOCAL_ENV_FILE: join(work, 'no-local.env'),
       ...env,
     },
   })
+}
 const log = (name: string) => (existsSync(join(work, name)) ? readFileSync(join(work, name), 'utf8') : '')
 const lines = (name: string) => log(name).split('\n').filter(Boolean).sort()
 const newTag = () => /--tag watchlist-backend:(\d{14}) /.exec(log('docker.log'))![1]
+
+describe('deploy.sh: HTTPS', () => {
+  it('makes the certificate with mkcert for watchlist.local the first time, before anything is built', () => {
+    const result = run()
+
+    expect(result.status).toBe(0)
+    expect(log('mkcert.log')).toContain('watchlist.local')
+    expect(result.stdout).toContain('Created the watchlist-tls Secret with a certificate for watchlist.local.')
+    expect(log('calls.log')).toContain('-n watchlist-roulette create secret tls watchlist-tls --cert')
+    const calls = log('calls.log')
+    expect(calls.indexOf('create secret tls')).toBeLessThan(calls.indexOf('docker build'))
+    expect(log('created-all.yaml')).toContain('tls.crt: CERTIFICATE-')
+  })
+
+  it('never leaves the key anywhere: not in a command line, the output, or a file that stays behind', () => {
+    const result = run()
+
+    const key = readFileSync(join(work, 'mkcert-files'), 'utf8').split('\n').filter(Boolean)[1]!
+    expect(existsSync(key)).toBe(false)
+    expect(existsSync(key.replace(/tls\.key$/, ''))).toBe(false)
+    const keyText = /tls\.key: (PRIVATE-KEY-\d+)/.exec(log('created-all.yaml'))![1]!
+    expect(result.stdout + result.stderr + log('calls.log') + log('docker.log') + log('mkcert.log')).not.toContain(keyText)
+  })
+
+  it('stops before building, creates no Secret and leaves no temporary directory when mkcert cannot make the certificate', () => {
+    const result = run({ FAKE_MKCERT_FAILS: '1' })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('mkcert could not make a certificate for watchlist.local.')
+    expect(log('docker.log')).not.toContain('build')
+    expect(log('created-all.yaml')).not.toContain('watchlist-tls')
+    for (const file of log('mkcert-files').split('\n').filter(Boolean)) expect(existsSync(file), file).toBe(false)
+  })
+
+  it('keeps an existing Secret, without needing mkcert at all', () => {
+    const result = run({ TLS_SECRET_EXIT: '0' }, { withoutMkcert: true })
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('The watchlist-tls Secret exists and is kept.')
+    expect(log('calls.log')).not.toContain('create secret tls')
+  })
+
+  it('stops with the install commands, before building, when mkcert is missing, and installs nothing itself', () => {
+    const result = run({}, { withoutMkcert: true })
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('brew install mkcert && mkcert -install')
+    expect(log('docker.log')).not.toContain('build')
+    expect(log('applied-all.yaml')).not.toContain('image:')
+  })
+
+  it('stops and asks for `mkcert -install` when mkcert has no certificate authority yet', () => {
+    const result = run({ FAKE_NO_CA: '1' })
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('mkcert -install')
+    expect(log('docker.log')).not.toContain('build')
+    expect(log('mkcert.log')).not.toContain('watchlist.local')
+  })
+
+  it('checks https://watchlist.local:8443 against mkcert\'s own authority, and says where to open the app', () => {
+    const result = run()
+
+    expect(result.status).toBe(0)
+    const curl = log('curl.log')
+    expect(curl).toContain(`--cacert ${join(work, 'ca', 'rootCA.pem')}`)
+    expect(curl).toContain('--resolve watchlist.local:8443:127.0.0.1 https://watchlist.local:8443/health')
+    expect(result.stdout).toContain('Open https://watchlist.local:8443')
+  })
+
+  it('reminds you of CORS_ORIGIN only when the local file does not name the HTTPS address', () => {
+    const without = run()
+    expect(without.stdout).toContain('add CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443 to')
+
+    const file = join(work, 'local.env')
+    writeFileSync(file, 'CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443\n')
+    const withIt = run({ LOCAL_ENV_FILE: file })
+    expect(withIt.stdout).toContain('Open https://watchlist.local:8443')
+    expect(withIt.stdout).not.toContain('add CORS_ORIGIN=')
+  })
+
+  it('still succeeds, with a warning, when only the plain HTTP address answers', () => {
+    writeExecutable(join(work, 'bin', 'curl'), '#!/bin/bash\ncase "$*" in *https://*) exit 60 ;; *) exit 0 ;; esac\n')
+    const result = run()
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('The app is deployed and answers at http://watchlist.local')
+    expect(result.stderr).toContain('mkcert -install')
+    expect(result.stdout).not.toContain('Open https://')
+  })
+
+  it('does not take a commented-out or foreign line for the HTTPS origin in the local file', () => {
+    const file = join(work, 'local.env')
+    writeFileSync(file, '# CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443\nOTHER=https://watchlistXlocal:8443\n')
+    expect(run({ LOCAL_ENV_FILE: file }).stdout).toContain('add CORS_ORIGIN=')
+  })
+
+  it('stops with a hint when the HTTPS address never answers', () => {
+    writeExecutable(join(work, 'bin', 'curl'), '#!/bin/bash\nexit 22\n')
+    const result = run()
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('https://watchlist.local:8443 did not answer')
+    expect(result.stderr).toContain('mkcert -install')
+  })
+})
 
 describe('deploy.sh: local overrides', () => {
   it('turns the file into the ConfigMap watchlist-local, before anything is built', () => {
@@ -275,7 +413,7 @@ describe('deploy.sh: old images and the node disk', () => {
     expect(result.status).toBe(0)
     expect(result.stderr).toContain('Warning: could not remove docker.io/library/watchlist-backend:20261001100000 from the node.')
     expect(result.stderr).toContain('Warning: could not remove watchlist-backend:20261001100000 from the host.')
-    expect(result.stdout).toContain('Open http://watchlist.local')
+    expect(result.stdout).toContain('Open https://watchlist.local:8443')
   })
 
   it.each([

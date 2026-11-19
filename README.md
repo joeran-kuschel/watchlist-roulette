@@ -29,7 +29,7 @@ See [documentation/](documentation/README.md) for the API, the CSV format, the T
 
 ## Run it on Kubernetes (Docker Desktop)
 
-Together with the other apps on the cluster, at http://watchlist.local:
+Together with the other apps on the cluster, at https://watchlist.local:8443 (a local certificate from [mkcert](https://github.com/FiloSottile/mkcert); see [k8s/README.md](k8s/README.md) for the one-time setup):
 
 ```sh
 ./k8s/deploy.sh

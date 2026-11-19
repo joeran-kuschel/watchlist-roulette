@@ -9,6 +9,8 @@ set -euo pipefail
 CLUSTER=docker-desktop
 NAMESPACE=watchlist-roulette
 HOST=watchlist.local
+# Where Docker Desktop publishes the shared ingress controller's HTTPS port on this machine
+HTTPS_PORT=8443
 BACKEND_REPO=watchlist-backend
 FRONTEND_REPO=watchlist-frontend
 
@@ -25,6 +27,8 @@ KUBECTL_NS=("${KUBECTL[@]}" -n "$NAMESPACE")
 
 # shellcheck source=k8s/image-cleanup.sh
 source k8s/image-cleanup.sh
+# shellcheck source=k8s/tls-secret.sh
+source k8s/tls-secret.sh
 
 step "Checking the cluster"
 if ! "${KUBECTL[@]}" get nodes >/dev/null 2>&1; then
@@ -67,6 +71,15 @@ else
     "$password" "$password" \
     | "${KUBECTL_NS[@]}" create secret generic watchlist-db --from-env-file=/dev/stdin >/dev/null
   echo "Created the watchlist-db Secret with a random password."
+fi
+
+# Like the database Secret, the TLS Secret is made once and then left alone. It needs mkcert only then.
+if "${KUBECTL_NS[@]}" get secret "$TLS_SECRET" >/dev/null 2>&1; then
+  echo "The $TLS_SECRET Secret exists and is kept."
+else
+  require_mkcert "$HOST" || exit 1
+  tls_secret_manifest "$HOST" | "${KUBECTL_NS[@]}" create -f - >/dev/null
+  echo "Created the $TLS_SECRET Secret with a certificate for $HOST."
 fi
 
 token="${TMDB_ACCESS_TOKEN:-}"
@@ -151,15 +164,36 @@ for line in "127.0.0.1 ${HOST}" "::1 ${HOST}"; do
   fi
 done
 
-# The ingress controller takes a few seconds to pick up a new Ingress
+# The ingress controller takes a few seconds to pick up a new Ingress. The certificate is checked against mkcert's own
+# authority when mkcert is there (otherwise against the system's, which `mkcert -install` extends).
+# (The ${…+…} form: macOS ships bash 3.2, where an empty array is an unbound variable under `set -u`.)
+CURL_TRUST=()
+if command -v mkcert >/dev/null 2>&1 && [ -f "$(mkcert -CAROOT)/rootCA.pem" ]; then
+  CURL_TRUST=(--cacert "$(mkcert -CAROOT)/rootCA.pem")
+fi
 for _ in $(seq 1 30); do
-  if curl -s -o /dev/null --max-time 3 --fail -H "Host: ${HOST}" "http://127.0.0.1/health"; then
-    echo "Open http://${HOST}"
+  if curl -s -o /dev/null --max-time 3 --fail ${CURL_TRUST[@]+"${CURL_TRUST[@]}"} \
+    --resolve "${HOST}:${HTTPS_PORT}:127.0.0.1" "https://${HOST}:${HTTPS_PORT}/health"; then
+    echo "Open https://${HOST}:${HTTPS_PORT}"
+    # CORS_ORIGIN is a local setting (see k8s/.env.local), so a deploy only reminds you when it does not name this address
+    if ! grep -qsE "^CORS_ORIGIN=.*https://${HOST//./\\.}:${HTTPS_PORT}" "$LOCAL_ENV_FILE"; then
+      echo "Saving from that address needs it in CORS_ORIGIN: add CORS_ORIGIN=http://${HOST},https://${HOST}:${HTTPS_PORT} to $LOCAL_ENV_FILE and deploy again."
+    fi
     exit 0
   fi
   sleep 1
 done
 
-echo "The app is deployed, but http://${HOST} did not answer through the ingress on localhost:80." >&2
-echo "Check that nothing else holds port 80: kubectl --context $CLUSTER -n ingress-nginx get svc" >&2
+# HTTPS did not answer (or curl does not trust the certificate: a curl built on OpenSSL does not read the macOS
+# keychain, where `mkcert -install` put the authority). If the plain address answers, the deploy worked.
+if curl -s -o /dev/null --max-time 3 --fail -H "Host: ${HOST}" "http://127.0.0.1/health"; then
+  echo "The app is deployed and answers at http://${HOST}, but https://${HOST}:${HTTPS_PORT} did not answer or its" >&2
+  echo "certificate is not trusted here (run 'mkcert -install', and check that the ingress publishes port ${HTTPS_PORT})." >&2
+  exit 0
+fi
+
+echo "The app is deployed, but https://${HOST}:${HTTPS_PORT} did not answer through the ingress on" >&2
+echo "localhost:${HTTPS_PORT}, or its certificate is not trusted (run 'mkcert -install'). Check that nothing" >&2
+echo "else holds that port and that the ingress controller has an address:" >&2
+echo "  kubectl --context $CLUSTER -n ingress-nginx get svc" >&2
 exit 1

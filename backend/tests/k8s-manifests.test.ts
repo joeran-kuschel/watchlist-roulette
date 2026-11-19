@@ -126,6 +126,20 @@ describe('ingress', () => {
     expect(routes).toEqual({ '/': 'frontend' })
   })
 
+  it('has a tls section for the same host, with a Secret that is not in git', () => {
+    expect(ingress.spec.tls).toEqual([{ hosts: [rule.host], secretName: 'watchlist-tls' }])
+    expect(all.some(({ doc }) => doc.kind === 'Secret')).toBe(false)
+  })
+
+  it('does not redirect HTTP to HTTPS: the redirect would go to port 443, but HTTPS is published on 8443', () => {
+    expect(ingress.metadata.annotations!['nginx.ingress.kubernetes.io/ssl-redirect']).toBe('false')
+  })
+
+  it('leaves the HTTPS origin out of the shared settings: it is a local override in k8s/.env.local', () => {
+    // CORS_ORIGIN here stays the plain-HTTP address; a local file adds the HTTPS one (documentation/backend/kubernetes.md)
+    expect(find('ConfigMap', 'watchlist-config').data!.CORS_ORIGIN).not.toContain('https')
+  })
+
   it('matches the CORS origin the backend allows writes from', () => {
     expect(find('ConfigMap', 'watchlist-config').data!.CORS_ORIGIN).toBe(`http://${rule.host}`)
   })
