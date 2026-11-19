@@ -23,6 +23,9 @@ step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 KUBECTL=(kubectl --context "$CLUSTER")
 KUBECTL_NS=("${KUBECTL[@]}" -n "$NAMESPACE")
 
+# shellcheck source=k8s/image-cleanup.sh
+source k8s/image-cleanup.sh
+
 step "Checking the cluster"
 if ! "${KUBECTL[@]}" get nodes >/dev/null 2>&1; then
   echo "The '$CLUSTER' cluster is not reachable. Start Docker Desktop and turn on" >&2
@@ -36,6 +39,20 @@ if ! "${KUBECTL[@]}" get ingressclass nginx >/dev/null 2>&1; then
   echo "    --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace" >&2
   exit 1
 fi
+
+# The node that images are imported into, and the tags the app runs now: the ones to roll back to, kept when old images
+# are removed (empty on the first deploy).
+NODE="$("${KUBECTL[@]}" get nodes -o jsonpath='{.items[0].metadata.name}')"
+ROLLBACK_KNOWN=1
+PREVIOUS_TAGS=""
+for deployment in backend frontend; do
+  if previous_image="$("${KUBECTL_NS[@]}" get deployment "$deployment" -o jsonpath='{.spec.template.spec.containers[0].image}' --ignore-not-found 2>/dev/null)"; then
+    PREVIOUS_TAGS="$PREVIOUS_TAGS $(printf '%s' "$previous_image" | sed -n 's/.*:\([0-9]\{14\}\)$/\1/p')"
+  else
+    # Not "there is none" (that answers with nothing) but "could not ask": no image is removed then.
+    ROLLBACK_KNOWN=0
+  fi
+done
 
 step "Checking the secrets"
 "${KUBECTL[@]}" apply -f k8s/namespace.yaml >/dev/null
@@ -69,13 +86,21 @@ fi
 
 # Local overrides (e.g. CORS_ORIGIN for another port) live in the gitignored k8s/.env.local. The backend reads
 # them through the optional ConfigMap watchlist-local, which wins over watchlist-config.
-if [ -f k8s/.env.local ]; then
-  "${KUBECTL_NS[@]}" create configmap watchlist-local --from-env-file=k8s/.env.local --dry-run=client -o yaml \
+LOCAL_ENV_FILE="${LOCAL_ENV_FILE:-k8s/.env.local}"
+if [ -f "$LOCAL_ENV_FILE" ]; then
+  "${KUBECTL_NS[@]}" create configmap watchlist-local --from-env-file="$LOCAL_ENV_FILE" --dry-run=client -o yaml \
     | "${KUBECTL_NS[@]}" apply -f - >/dev/null
-  echo "Applied local overrides from k8s/.env.local."
+  echo "Applied local overrides from $LOCAL_ENV_FILE."
 else
   "${KUBECTL_NS[@]}" delete configmap watchlist-local --ignore-not-found >/dev/null
 fi
+
+step "Checking the free disk space on the node"
+# Docker Desktop's disk holds every image of every deploy. Under 2 GB the old images of this project go first;
+# if that is not enough the deploy stops here, before it starts a rollout that cannot finish (Postgres cannot start
+# on a full disk). The tags kept: the new one, the ones the app runs now, and any a pod uses.
+# shellcheck disable=SC2086 # the tags are words
+if ! ensure_free_space "$TAG" $PREVIOUS_TAGS; then exit 1; fi
 
 step "Building images ($TAG)"
 docker build --tag "$BACKEND_REPO:$TAG" backend
@@ -84,7 +109,6 @@ docker build --tag "$FRONTEND_REPO:$TAG" frontend
 step "Loading images into the cluster"
 # Docker Desktop runs Kubernetes as a kind node with its own image store, so an image built on the host is
 # invisible to it until it is imported into the node. The manifests use imagePullPolicy: Never.
-NODE="$("${KUBECTL[@]}" get nodes -o jsonpath='{.items[0].metadata.name}')"
 for image in "$BACKEND_REPO:$TAG" "$FRONTEND_REPO:$TAG"; do
   docker save "$image" | docker exec -i "$NODE" ctr --namespace k8s.io images import -
 done
@@ -108,6 +132,12 @@ if ! "${KUBECTL_NS[@]}" rollout status deployment/backend --timeout=300s \
   "${KUBECTL_NS[@]}" logs deployment/backend --tail=40 || true
   exit 1
 fi
+
+step "Removing old images"
+# Only now, when the new version is running: a failed deploy keeps every image the old pod might need. The new tag and
+# the ones before it stay, so there is always one version to go back to.
+# shellcheck disable=SC2086
+prune_images "$TAG" $PREVIOUS_TAGS
 
 step "Ready"
 # Both lines are needed: without the IPv6 one, macOS first asks Bonjour about the .local name, which adds a

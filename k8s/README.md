@@ -27,6 +27,10 @@ Builds both images with a fresh tag, loads them into the cluster's node, applies
 - `watchlist-db`: the database login, with a random password (never in git, never changed by a later deploy: Postgres only reads its password when the volume is created).
 - `watchlist-tmdb`: the TMDB token, updated whenever `TMDB_ACCESS_TOKEN` is set.
 
+To change a setting only on your machine, put `NAME=value` lines into `k8s/.env.local` (git-ignored); the next deploy applies them on top of `k8s/configmap.yaml` (see [Local overrides](../documentation/backend/kubernetes.md#why-it-looks-like-this)).
+
+Before it builds, it checks that the node has 2 GiB free, and after a successful rollout it removes this app's old images from the node and the host (the new version and the one before it stay; other apps' images are never touched). If the disk is full anyway, see [Old images and the node's disk](../documentation/backend/kubernetes.md#old-images-and-the-nodes-disk).
+
 ## Look at it
 
 ```bash

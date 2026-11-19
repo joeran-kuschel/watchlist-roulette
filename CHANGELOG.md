@@ -4,6 +4,8 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- On Kubernetes, settings that differ on your machine, such as `CORS_ORIGIN` for another port, can now go into the git-ignored file `k8s/.env.local`. The next `./k8s/deploy.sh` applies them on top of the shared settings, and removes them again when the file is gone.
+- On Kubernetes, `./k8s/deploy.sh` now removes the old images of this app from the cluster node after a successful deploy, and checks the node's free disk space before it builds (it stops with a hint when less than 2 GiB is free). The images of the last two versions stay, so you can go back. Other apps' images are never touched.
 - The import page has a new checkbox, "Also delete watched films that are not in the file", below the check result. It is unchecked, so watched films stay on your list as before. When you tick it, the file is checked again and the watched films that are not in the file are listed (marked "watched") and deleted by the import. A deleted film and its watched date cannot be restored.
 - The app now runs on Node 26 (it ran on Node 24), in Docker Compose and on Kubernetes. The app looks and works the same. To develop it you need Node 26; `nvm use` picks it up from `.nvmrc`.
 - A film that is in both your Letterboxd and your IMDb export is no longer added twice. When a new row has the same title and year as a film that came from the other export, the import skips it and lists it under "already on your list". Films whose titles differ between the two sites are still added twice.

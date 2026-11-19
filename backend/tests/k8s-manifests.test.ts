@@ -230,6 +230,14 @@ describe('network policy for the database', () => {
     expect(usesSecret.sort()).toEqual(['backend', 'postgres'])
   })
 
+  it('reads the optional ConfigMap watchlist-local after watchlist-config, so a local file wins', () => {
+    const envFrom = find('Deployment', 'backend').spec.template.spec.containers[0].envFrom
+    expect(envFrom).toEqual([
+      { configMapRef: { name: 'watchlist-config' } },
+      { configMapRef: { name: 'watchlist-local', optional: true } },
+    ])
+  })
+
   it('has the database wait in the backend pod (init container), where the policy lets it in', () => {
     const pod = find('Deployment', 'backend').spec.template.spec
     expect(pod.initContainers.map((c: any) => c.name)).toContain('wait-for-db')
