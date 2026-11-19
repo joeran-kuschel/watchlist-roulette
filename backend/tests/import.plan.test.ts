@@ -84,7 +84,7 @@ describe('buildPlan with several sources', () => {
   it('counts only films of the same source for the large-removal guard', () => {
     const existing = [film(1), film(2), film(3), imdbFilm(4), imdbFilm(5)]
     const plan = buildPlan([imdbRow(4), imdbRow(5)], [], existing, 'imdb')
-    expect(plan.unwatchedCount).toBe(2)
+    expect(plan.removableCount).toBe(2)
     expect(isLargeRemoval(plan)).toBe(false)
   })
 
@@ -183,7 +183,7 @@ describe('buildPlan skips a film that came from the other export', () => {
   it('does not change what is removed or counted for the guard', () => {
     const plan = buildPlan([imdbRow(9, { title: 'Film 1', releaseYear: 2000 })], [], [film(1)], 'imdb')
     expect(plan.toRemove).toEqual([])
-    expect(plan.unwatchedCount).toBe(0)
+    expect(plan.removableCount).toBe(0)
   })
 
   it('matches the oldest film when several films of the other source share title and year', () => {
@@ -257,5 +257,65 @@ describe('buildPlan skip edge cases', () => {
     const plan = buildPlan([], [{ line: 3, reason: 'x', letterboxdUrl: 'https://www.imdb.com/title/tt0000009/' }], [film(1)], 'imdb')
     expect(plan.toSkip).toEqual([])
     expect(plan.toRemove).toEqual([])
+  })
+})
+
+describe('buildPlan with deleteWatched', () => {
+  const existing = [film(1), film(2, { watched: true }), film(3, { watched: true }), film(4)]
+
+  it('keeps watched films that are not in the file by default', () => {
+    const plan = buildPlan([row(1)], [], existing)
+    expect(plan.toRemove.map((f) => f.id)).toEqual([4])
+    expect(plan.keptWatched.map((f) => f.id)).toEqual([2, 3])
+  })
+
+  it('removes them too when asked, and keeps nothing', () => {
+    const plan = buildPlan([row(1)], [], existing, 'letterboxd', true)
+    expect(plan.toRemove.map((f) => f.id)).toEqual([2, 3, 4])
+    expect(plan.keptWatched).toEqual([])
+  })
+
+  it('never removes a watched film that is in the file, or one whose row was rejected', () => {
+    const rejected = [{ line: 3, reason: 'Year is not a number', letterboxdUrl: film(3).letterboxdUrl }]
+    const plan = buildPlan([row(2)], rejected, existing, 'letterboxd', true)
+    expect(plan.toRemove.map((f) => f.id)).toEqual([1, 4])
+  })
+
+  it('only touches films of the same source', () => {
+    const imdbFilm = film(2, { letterboxdUrl: 'https://www.imdb.com/title/tt0000002/', watched: true })
+    const mixed = [film(1, { watched: true }), imdbFilm]
+    expect(buildPlan([], [], mixed, 'imdb', true).toRemove.map((f) => f.id)).toEqual([2])
+  })
+
+  it('counts the watched films for the large-removal guard only when asked', () => {
+    const films = [film(1), film(2, { watched: true }), film(3, { watched: true }), film(4, { watched: true })]
+    expect(buildPlan([row(1)], [], films).removableCount).toBe(1)
+    const plan = buildPlan([row(1)], [], films, 'letterboxd', true)
+    expect(plan.removableCount).toBe(4)
+    expect(isLargeRemoval(plan)).toBe(true)
+  })
+
+  it('removes every film of the source from an empty file, and the guard asks to confirm', () => {
+    const plan = buildPlan([], [], existing, 'letterboxd', true)
+    expect(plan.toRemove.map((f) => f.id)).toEqual([1, 2, 3, 4])
+    expect(isLargeRemoval(plan)).toBe(true)
+  })
+
+  it('does not ask for the large-removal confirmation when only watched films exist and the option is off', () => {
+    const plan = buildPlan([], [], [film(1, { watched: true }), film(2, { watched: true })])
+    expect(plan.toRemove).toEqual([])
+    expect(plan.removableCount).toBe(0)
+    expect(isLargeRemoval(plan)).toBe(false)
+  })
+
+  it('plans the same as without the option when no film is watched', () => {
+    const films = [film(1), film(2)]
+    expect(buildPlan([row(1)], [], films, 'letterboxd', true)).toEqual(buildPlan([row(1)], [], films))
+  })
+
+  it('gives another removal token once watched films join the list', () => {
+    const off = buildPlan([row(1)], [], existing)
+    const on = buildPlan([row(1)], [], existing, 'letterboxd', true)
+    expect(removalToken(on.toRemove)).not.toBe(removalToken(off.toRemove))
   })
 })

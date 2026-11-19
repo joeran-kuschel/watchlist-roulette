@@ -268,11 +268,18 @@ describe('ImportSummary', () => {
     updated: 3,
     unchanged: 480,
     skipped: [],
-    removed: [{ id: 7, title: 'Metropolis', releaseYear: 1927 }],
+    removed: [{ id: 7, title: 'Metropolis', releaseYear: 1927, watched: false }],
     keptWatched: [{ id: 8, title: 'Stalker', releaseYear: null }],
     rejected: [{ line: 5, reason: 'Name is empty' }],
     requiresLargeRemovalConfirmation: false,
     ...patch,
+  })
+
+  it('marks a removed film that was watched', () => {
+    const wrapper = mount(ImportSummary, {
+      props: { report: report({ removed: [{ id: 8, title: 'Stalker', releaseYear: 1979, watched: true }] }) },
+    })
+    expect(wrapper.get('#removed-heading').element.parentElement?.textContent).toContain('Stalker (1979) (watched)')
   })
 
   it('lists counts, removals, kept films and rejected rows for a check', async () => {

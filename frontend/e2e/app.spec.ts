@@ -44,6 +44,8 @@ async function stubApi(page: Page) {
 
     if (path === '/films/random') return json(films.find((f) => !f.watchedAt))
     if (path === '/films/import') {
+      // The form field is only there when the box "Also delete watched films" is ticked
+      const deleteWatched = request.postData()?.includes('name="deleteWatched"') ?? false
       return json({
         source: 'letterboxd',
         applied: url.searchParams.get('dryRun') !== 'true',
@@ -51,8 +53,11 @@ async function stubApi(page: Page) {
         updated: 1,
         unchanged: 10,
         skipped: [],
-        removed: [{ id: 9, title: 'Metropolis', releaseYear: 1927 }],
-        keptWatched: [],
+        removed: [
+          { id: 9, title: 'Metropolis', releaseYear: 1927, watched: false },
+          ...(deleteWatched ? [{ id: 8, title: 'Stalker', releaseYear: 1979, watched: true }] : []),
+        ],
+        keptWatched: deleteWatched ? [] : [{ id: 8, title: 'Stalker', releaseYear: 1979 }],
         rejected: [{ line: 5, reason: 'Name is empty' }],
         removalToken: 'tok',
         requiresLargeRemovalConfirmation: false,
@@ -659,6 +664,30 @@ test('importing a CSV: check, confirm the removal, import', async ({ page }) => 
   await expect(importButton).toBeDisabled()
   await page.getByLabel(/I understand that 1 film will be removed/).check()
   await importButton.click()
+  await expect(page.getByRole('heading', { name: 'Import finished' })).toBeVisible()
+})
+
+test('importing a CSV: the box to delete watched films checks again and keeps the focus', async ({ page }) => {
+  await page.goto('/import')
+  await page.getByLabel('CSV file').setInputFiles({
+    name: 'watchlist.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Date,Name,Year,Letterboxd URI\n'),
+  })
+  await page.getByRole('button', { name: 'Check file' }).click()
+  await expect(page.getByText('Kept because you watched them')).toBeVisible()
+  const box = page.getByLabel('Also delete watched films that are not in the file')
+  await expect(box).not.toBeChecked()
+
+  await box.check()
+  await expect(page.getByText('Stalker (1979) (watched)')).toBeVisible()
+  await expect(page.getByText('Kept because you watched them')).toHaveCount(0)
+  await expect(page.getByText('Check updated. 2 films will be removed.')).toBeAttached()
+  await expect(box).toBeFocused()
+  await expectAccessible(page)
+
+  await page.getByLabel(/I understand that 2 films will be removed/).check()
+  await page.getByRole('button', { name: 'Import films' }).click()
   await expect(page.getByRole('heading', { name: 'Import finished' })).toBeVisible()
 })
 

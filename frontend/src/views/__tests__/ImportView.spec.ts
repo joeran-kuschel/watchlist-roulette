@@ -25,7 +25,7 @@ const report = (patch: Partial<ImportReport> = {}): ImportReport => ({
   requiresLargeRemovalConfirmation: false,
   ...patch,
 })
-const removal = { removed: [{ id: 7, title: 'Metropolis', releaseYear: 1927 }], removalToken: 'tok' }
+const removal = { removed: [{ id: 7, title: 'Metropolis', releaseYear: 1927, watched: false }], removalToken: 'tok' }
 const file = new File(['Date,Name'], 'watchlist.csv', { type: 'text/csv' })
 
 async function choose(wrapper: VueWrapper) {
@@ -179,7 +179,7 @@ describe('ImportView', () => {
     expect(wrapper.get('[role="status"]').text()).toBe('Check finished. Nothing has been changed yet.')
     expect(wrapper.text()).toContain('Will be added2')
     // nothing to remove: no confirmation needed
-    expect(confirmForm(wrapper).findAll('input[type="checkbox"]')).toHaveLength(0)
+    expect(confirmForm(wrapper).findAll('input[type="checkbox"]:not(#delete-watched)')).toHaveLength(0)
     expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeUndefined()
     await expectNoA11yViolations(wrapper.element)
   })
@@ -199,7 +199,7 @@ describe('ImportView', () => {
     await check(wrapper)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: undefined, confirmLargeRemoval: false })
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: undefined, confirmLargeRemoval: false, deleteWatched: false })
     expect(wrapper.get('#result-heading').text()).toBe('Import finished')
     expect(wrapper.find('.import__confirm').exists()).toBe(false)
     expect(wrapper.get('a[href="/watchlist"]').text()).toBe('Go to your watchlist')
@@ -216,11 +216,11 @@ describe('ImportView', () => {
     await confirmForm(wrapper).trigger('submit')
     expect(mocked.applyImport).not.toHaveBeenCalled()
 
-    await confirmForm(wrapper).get('input[type="checkbox"]').setValue(true)
+    await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     expect(button.attributes('disabled')).toBeUndefined()
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'tok', confirmLargeRemoval: false })
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'tok', confirmLargeRemoval: false, deleteWatched: false })
     expect(wrapper.get('#result-heading').text()).toBe('Import finished')
   })
 
@@ -229,14 +229,14 @@ describe('ImportView', () => {
     mocked.applyImport.mockResolvedValue(report({ applied: true }))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    const boxes = confirmForm(wrapper).findAll('input[type="checkbox"]')
+    const boxes = confirmForm(wrapper).findAll('input[type="checkbox"]:not(#delete-watched)')
     expect(boxes).toHaveLength(2)
     await boxes[0]!.setValue(true)
     expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeDefined()
     await boxes[1]!.setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'tok', confirmLargeRemoval: true })
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'tok', confirmLargeRemoval: true, deleteWatched: false })
     await expectNoA11yViolations(wrapper.element)
   })
 
@@ -245,7 +245,7 @@ describe('ImportView', () => {
     mocked.applyImport.mockRejectedValue(new api.ApiError(409, 'changed', 'removal_not_confirmed'))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    await confirmForm(wrapper).get('input[type="checkbox"]').setValue(true)
+    await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toMatch(/nothing was imported\. Check the file again/)
@@ -362,10 +362,10 @@ describe('ImportView: edge cases', () => {
     mocked.previewImport.mockResolvedValue(report(removal))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    await confirmForm(wrapper).get('input[type="checkbox"]').setValue(true)
+    await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect((confirmForm(wrapper).get('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(false)
+    expect((confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').element as HTMLInputElement).checked).toBe(false)
     expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeDefined()
   })
 
@@ -374,7 +374,7 @@ describe('ImportView: edge cases', () => {
     mocked.applyImport.mockRejectedValueOnce(new api.ApiError(409, 'changed'))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    await confirmForm(wrapper).get('input[type="checkbox"]').setValue(true)
+    await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
 
@@ -383,10 +383,10 @@ describe('ImportView: edge cases', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
-    await confirmForm(wrapper).get('input[type="checkbox"]').setValue(true)
+    await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenLastCalledWith(file, { removalToken: 'new', confirmLargeRemoval: false })
+    expect(mocked.applyImport).toHaveBeenLastCalledWith(file, { removalToken: 'new', confirmLargeRemoval: false, deleteWatched: false })
   })
 
   it('clears the error of a failed apply when the next apply works', async () => {
@@ -468,7 +468,7 @@ describe('ImportView: edge cases', () => {
     )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    await confirmForm(wrapper).get('input[type="checkbox"]').setValue(true)
+    await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
     expect(wrapper.text()).toContain('Removed from your list')
@@ -479,7 +479,7 @@ describe('ImportView: edge cases', () => {
     mocked.previewImport.mockResolvedValue(report(removal))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    const box = confirmForm(wrapper).get('input[type="checkbox"]')
+    const box = confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)')
     await box.setValue(true)
     await box.setValue(false)
     await confirmForm(wrapper).trigger('submit')
@@ -491,6 +491,7 @@ describe('ImportView: edge cases', () => {
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     expect(wrapper.findAll('label.import__check').map((l) => l.text())).toEqual([
+      'Also delete watched films that are not in the file',
       expect.stringContaining('will be removed from my list'),
       expect.stringContaining('more than half of my unwatched films'),
     ])
@@ -500,7 +501,7 @@ describe('ImportView: edge cases', () => {
     mocked.previewImport.mockResolvedValue(report(removal))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    expect(wrapper.get('label.import__check').text()).not.toContain('1 films')
+    expect(wrapper.findAll('label.import__check')[1]!.text()).toBe('I understand that 1 film will be removed from my list.')
   })
 })
 
@@ -741,5 +742,244 @@ describe('ImportView: drop and button together', () => {
     await wrapper.get('form').trigger('submit')
     await wrapper.get('.filepick').trigger('dragenter')
     expect(wrapper.get('.filepick').classes()).not.toContain('filepick--over')
+  })
+})
+
+describe('ImportView: delete watched films', () => {
+  const watched = { id: 8, title: 'Stalker', releaseYear: 1979, watched: true }
+  const box = (wrapper: VueWrapper) => wrapper.get<HTMLInputElement>('#delete-watched')
+  const confirmBoxes = (wrapper: VueWrapper) => confirmForm(wrapper).findAll('input[type="checkbox"]:not(#delete-watched)')
+
+  it('shows the checkbox below the summary, unchecked, with a hint about what it does', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    expect(box(wrapper).element.checked).toBe(false)
+    expect(wrapper.get('label[for="delete-watched"], label:has(#delete-watched)').text()).toBe(
+      'Also delete watched films that are not in the file',
+    )
+    expect(box(wrapper).attributes('aria-describedby')).toBe('delete-watched-hint')
+    expect(wrapper.get('#delete-watched-hint').text()).toContain('cannot be restored')
+    const html = wrapper.html()
+    expect(html.indexOf('summary')).toBeLessThan(html.indexOf('id="delete-watched"'))
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('does not send the option for a first check or an import that was not changed', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    mocked.applyImport.mockResolvedValue(report({ applied: true }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    expect(mocked.previewImport).toHaveBeenCalledWith(file)
+    await confirmForm(wrapper).trigger('submit')
+    await flushPromises()
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, expect.objectContaining({ deleteWatched: false }))
+  })
+
+  it('checks the same file again when ticked, shows the watched films to delete and says so', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report({ keptWatched: [watched] }))
+    mocked.previewImport.mockResolvedValueOnce(report({ removed: [watched], keptWatched: [], removalToken: 'w' }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    expect(wrapper.text()).toContain('Kept because you watched them')
+
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(mocked.previewImport).toHaveBeenLastCalledWith(file, { deleteWatched: true })
+    expect(wrapper.text()).not.toContain('Kept because you watched them')
+    expect(wrapper.get('#removed-heading').element.parentElement?.textContent).toContain('Stalker (1979) (watched)')
+    expect(wrapper.get('.import__chosen').text()).toBe('Check updated. 1 film will be removed.')
+    expect(box(wrapper).element.checked).toBe(true)
+  })
+
+  it('applies with the option and the token of the check that included it', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockResolvedValueOnce(report({ removed: [watched], removalToken: 'w' }))
+    mocked.applyImport.mockResolvedValue(report({ applied: true, removed: [watched] }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeDefined()
+    await confirmBoxes(wrapper)[0]!.setValue(true)
+    await confirmForm(wrapper).trigger('submit')
+    await flushPromises()
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'w', confirmLargeRemoval: false, deleteWatched: true })
+  })
+
+  it('clears the confirmations when the list of films to remove changes', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report(removal))
+    mocked.previewImport.mockResolvedValueOnce(report({ removed: [...removal.removed, watched], removalToken: 'w' }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await confirmBoxes(wrapper)[0]!.setValue(true)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect((confirmBoxes(wrapper)[0]!.element as HTMLInputElement).checked).toBe(false)
+    expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeDefined()
+  })
+
+  it('names the watched films in the large-removal confirmation when the option is on', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockResolvedValueOnce(report({ ...removal, requiresLargeRemovalConfirmation: true }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(confirmForm(wrapper).text()).toContain('more than half of my films, watched ones included')
+  })
+
+  it('goes back to unchecked for another file and for a new check', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(box(wrapper).element.checked).toBe(false)
+    expect(mocked.previewImport).toHaveBeenLastCalledWith(file)
+
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    await choose(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(box(wrapper).element.checked).toBe(false)
+  })
+
+  it('only the newest answer counts when the box is ticked twice quickly', async () => {
+    let first!: (r: ImportReport) => void
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((resolve) => (first = resolve)))
+    mocked.previewImport.mockResolvedValueOnce(report({ removalToken: 'newest' }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await box(wrapper).setValue(false)
+    await flushPromises()
+    first(report({ removalToken: 'old', removed: [watched] }))
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Stalker')
+    expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeUndefined()
+  })
+
+  it('shows an error when the new check fails and keeps the old result', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockRejectedValueOnce(new api.ApiError(0, 'x'))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toMatch(/Can't reach the server/)
+    expect(wrapper.find('#result-heading').exists()).toBe(true)
+    expect(box(wrapper).element.checked).toBe(false)
+  })
+
+  it('turns the checkbox off while the import is running', async () => {
+    mocked.previewImport.mockResolvedValue(report())
+    let done!: (r: ImportReport) => void
+    mocked.applyImport.mockImplementation(() => new Promise<ImportReport>((resolve) => (done = resolve)))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await confirmForm(wrapper).trigger('submit')
+    expect(box(wrapper).attributes('disabled')).toBeDefined()
+    await box(wrapper).trigger('change')
+    expect(mocked.previewImport).toHaveBeenCalledTimes(1)
+    done(report({ applied: true }))
+    await flushPromises()
+  })
+
+  it('keeps the focus on the checkbox after the new check', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockResolvedValueOnce(report({ removed: [watched], removalToken: 'w' }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    box(wrapper).element.focus()
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(document.activeElement).toBe(box(wrapper).element)
+  })
+
+  it('does not show the error of an answer that was replaced by a newer tick', async () => {
+    let first!: (e: unknown) => void
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((_, reject) => (first = reject)))
+    mocked.previewImport.mockResolvedValueOnce(report({ removalToken: 'newest' }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await box(wrapper).setValue(false)
+    await flushPromises()
+    first(new api.ApiError(500, 'boom'))
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeUndefined()
+  })
+
+  it('keeps the Import button off while the new check runs, then lets the new list through', async () => {
+    let second!: (r: ImportReport) => void
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((resolve) => (second = resolve)))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeDefined()
+    second(report())
+    await flushPromises()
+    expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeUndefined()
+  })
+
+  it('clears an earlier error when the new check works', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockRejectedValueOnce(new api.ApiError(500, 'boom'))
+    mocked.previewImport.mockResolvedValueOnce(report({ removed: [watched], removalToken: 'w' }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    expect(box(wrapper).element.checked).toBe(false)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(box(wrapper).element.checked).toBe(true)
+  })
+
+  it('announces zero films in the plural', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockResolvedValueOnce(report())
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(wrapper.get('.import__chosen').text()).toBe('Check updated. 0 films will be removed.')
+  })
+
+  it('has no accessibility violations after the check with the option and its confirmations', async () => {
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockResolvedValueOnce(report({ ...removal, requiresLargeRemovalConfirmation: true }))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await flushPromises()
+    expect(wrapper.findAll('label.import__check')).toHaveLength(3)
+    await expectNoA11yViolations(wrapper.element)
+  })
+
+  it('goes back to the setting of the result on screen when the newest check fails after a quick untick', async () => {
+    let first!: (r: ImportReport) => void
+    mocked.previewImport.mockResolvedValueOnce(report())
+    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((resolve) => (first = resolve)))
+    mocked.previewImport.mockRejectedValueOnce(new api.ApiError(500, 'boom'))
+    const { wrapper } = await mountWithApp(ImportView, '/import')
+    await check(wrapper)
+    await box(wrapper).setValue(true)
+    await box(wrapper).setValue(false)
+    await flushPromises()
+    first(report({ removed: [watched] }))
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('The server had a problem')
+    expect(box(wrapper).element.checked).toBe(false)
   })
 })

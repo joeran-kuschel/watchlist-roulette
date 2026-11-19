@@ -2,14 +2,24 @@
 
 Route `/import`. Imports a Letterboxd or an IMDb export in two steps, like the backend ([CSV import](../backend/csv-import.md)). Code: `views/ImportView.vue`, `components/ImportSummary.vue`.
 
-![The import page after checking a file: the chosen file name, then the check result with the counts of films to add, update, keep and reject, a film kept because it was watched, one rejected row with its reason, and the Import films button.](images/import.png)
+![The import page after checking a file: the chosen file name, then the check result with the counts of films to add, update, keep and reject, a film kept because it was watched, one rejected row with its reason, the unchecked box to delete watched films, and the Import films button.](images/import.png)
 
 ## Steps
 
 1. **Choose a file** (`.csv`) with the **Choose CSV file** button; the chosen file name (or "No file chosen") is shown next to it. The file needs the columns of a Letterboxd export (`Date`, `Name`, `Year`, `Letterboxd URI`) or of an IMDb export (`Const`, `Title`, `Year`, `Created`, `URL`); the hint under the field names both. Then press **Check file**. This calls `POST /api/films/import?dryRun=true`, which writes nothing.
 2. The **Check result** starts with the detected format ("Detected: IMDb export.") and, for an IMDb file, a note that it only removes films that came from IMDb (a Letterboxd file leaves those alone too, without saying so). Then it shows what would happen (rows skipped because the film is already on the list from the other export get a section of their own, "N films are already on your list", with the film each one matches): films added, updated, unchanged, **removed** and **rejected rows** (line number and reason), plus films kept because they are watched. Focus moves to the result heading and a status message says nothing has been changed yet.
-3. **Import films** applies the import (`POST /api/films/import`, same file).
+3. Below the check result, the checkbox **Also delete watched films that are not in the file** is unchecked. Ticking it checks the same file again with `deleteWatched=true` (see [Delete watched films](#delete-watched-films)). Then **Import films** applies the import (`POST /api/films/import`, same file).
 4. **Import finished** shows the same report in past tense, with a link to the watchlist.
+
+## Delete watched films
+
+Films that are not in the file are removed, but watched films stay on the list by default (they appear under "Kept because you watched them"). The checkbox **Also delete watched films that are not in the file** (`#delete-watched`, in the confirm form below the check result) changes that:
+
+- It is unchecked for every new file and every new check, and after a reload. A delete is always a fresh choice.
+- It is always shown with a check result, even when no watched film is missing from the file. Otherwise it would disappear right after being ticked, because the "kept" list becomes empty. A hint under it says a deleted film and its watched date cannot be restored (`aria-describedby`).
+- Ticking or unticking it runs the check again for the same file, with `deleteWatched=true` or without. The result, including the removal token, is replaced; the confirmation boxes are cleared, because the list of films to remove is another one. A status message says "Check updated. N films will be removed." and the focus stays on the checkbox. If two ticks come quickly, only the answer to the last one is used; if the new check fails, an alert is shown, the old result stays and the box goes back to match it.
+- Watched films in the list of films to remove are marked "(watched)". With the option on, the second confirmation reads "more than half of my films, watched ones included".
+- The checkbox is disabled while the import is running. **Check file** and choosing another file reset it.
 
 ## Films that are already on the list
 
@@ -17,10 +27,10 @@ When a new row is skipped because the same film (same title and year) came from 
 
 ## Confirmations
 
-The import removes films that are not in the file (unless watched), so:
+The import removes films that are not in the file (unless they are watched and the box to delete watched films is not ticked), so:
 
 - If films would be removed, the user must tick "I understand that N films will be removed from my list." The check's `removalToken` is sent with the apply request; it identifies exactly the shown list.
-- If more than half of the unwatched films would be removed (`requiresLargeRemovalConfirmation`), a second box is needed and `confirmLargeRemoval=true` is sent.
+- If more than half of the films that can be removed (with the option above: watched ones too) would be removed (`requiresLargeRemovalConfirmation`), a second box is needed and `confirmLargeRemoval=true` is sent.
 - **Import films** stays disabled until the needed boxes are ticked.
 - If the backend answers `409` (the list changed since the check), nothing was imported; the screen goes back to the start and asks to check the file again.
 

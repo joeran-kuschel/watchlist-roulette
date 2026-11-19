@@ -18,8 +18,8 @@ export interface ImportPlan {
   unchanged: number
   toRemove: ExistingFilm[]
   keptWatched: ExistingFilm[]
-  /** Unwatched films with a link; the base for the "removes too many" guard. */
-  unwatchedCount: number
+  /** The films the import may remove (unwatched ones, plus watched ones with `deleteWatched`); the base for the "removes too many" guard. */
+  removableCount: number
 }
 
 const isChanged = (film: ExistingFilm, row: ImportRow) =>
@@ -46,7 +46,8 @@ const filmKey = (title: string, year: number) => `${year}|${normalizeTitle(title
 
 /**
  * Compares the CSV with the films in the database. Films with a link that are missing from the CSV are removed,
- * unless they are watched or their CSV row was rejected (a bad row must not delete a film). Only films from the
+ * unless they are watched (they are removed too with `deleteWatched`) or their CSV row was rejected (a bad row
+ * must not delete a film). Only films from the
  * same source as the file can be removed: an IMDb file never removes a Letterboxd film, and the other way round.
  * A new row is skipped when a film of the other source has the same title and year (both known), so a film that is
  * in both exports is not stored twice. The first export that is imported keeps the film.
@@ -56,6 +57,7 @@ export function buildPlan(
   rejected: RejectedRow[],
   existing: ExistingFilm[],
   source: ImportSource = 'letterboxd',
+  deleteWatched = false,
 ): ImportPlan {
   const existingByUrl = new Map(existing.map((film) => [film.letterboxdUrl, film]))
   const inFile = new Set([...rows.map((row) => row.letterboxdUrl), ...rejected.flatMap((r) => r.letterboxdUrl ?? [])])
@@ -74,7 +76,7 @@ export function buildPlan(
     unchanged: 0,
     toRemove: [],
     keptWatched: [],
-    unwatchedCount: sameSource.filter((film) => !film.watched).length,
+    removableCount: sameSource.filter((film) => deleteWatched || !film.watched).length,
   }
   for (const row of rows) {
     const film = existingByUrl.get(row.letterboxdUrl)
@@ -86,7 +88,7 @@ export function buildPlan(
   }
   for (const film of sameSource) {
     if (inFile.has(film.letterboxdUrl)) continue
-    ;(film.watched ? plan.keptWatched : plan.toRemove).push(film)
+    ;(film.watched && !deleteWatched ? plan.keptWatched : plan.toRemove).push(film)
   }
   return plan
 }
@@ -97,7 +99,7 @@ export function removalToken(toRemove: ExistingFilm[]): string {
   return createHash('sha256').update(ids.join(',')).digest('hex').slice(0, 32)
 }
 
-/** Removing more than half of the unwatched films (or all of them from an empty file) needs an explicit OK. */
+/** Removing more than half of the films the import may remove (or all of them from an empty file) needs an explicit OK. */
 export function isLargeRemoval(plan: ImportPlan): boolean {
-  return plan.toRemove.length > 0 && plan.toRemove.length * 2 > plan.unwatchedCount
+  return plan.toRemove.length > 0 && plan.toRemove.length * 2 > plan.removableCount
 }

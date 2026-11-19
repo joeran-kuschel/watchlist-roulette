@@ -128,6 +128,43 @@ describe.skipIf(!url)('real PostgreSQL', () => {
     expect((await pool.query('SELECT count(*) FROM films')).rows[0].count).toBe('1')
   })
 
+  describe('import removals with watched films', () => {
+    const csv = `${HEADER}2020-01-01,Film 1,2000,https://boxd.it/1\n2020-01-02,Film 2,2002,https://boxd.it/2\n`
+    const planFor = (id: number, watched: boolean) => ({
+      toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], removableCount: 1,
+      toRemove: [{ id, title: 'Film 2', releaseYear: 2002, letterboxdUrl: 'https://boxd.it/2', addedAt: '2020-01-02', watched }],
+    })
+    const seed = async () => {
+      await testApp().post('/api/films/import').attach('file', Buffer.from(csv), 'w.csv')
+      return Number((await pool.query(`SELECT id FROM films WHERE title = 'Film 2'`)).rows[0].id)
+    }
+    const count = async () => (await pool.query('SELECT count(*) FROM films')).rows[0].count
+
+    it('deletes a film planned as watched, but keeps one planned as unwatched that was marked watched since', async () => {
+      const { applyPlan } = await import('../src/models/filmImport.js')
+      const id = await seed()
+      await pool.query('UPDATE films SET watched_at = now() WHERE id = $1', [id])
+      await applyPlan(planFor(id, false), pool)
+      expect(await count()).toBe('2')
+      await applyPlan(planFor(id, true), pool)
+      expect(await count()).toBe('1')
+    })
+
+    it('deletes a watched film through the API with deleteWatched and the preview token', async () => {
+      const id = await seed()
+      await pool.query('UPDATE films SET watched_at = now() WHERE id = $1', [id])
+      const file = Buffer.from(`${HEADER}2020-01-01,Film 1,2000,https://boxd.it/1\n`)
+      const preview = await testApp().post('/api/films/import?dryRun=true').field('deleteWatched', 'true').attach('file', file, 'w.csv')
+      const res = await testApp()
+        .post('/api/films/import')
+        .field('deleteWatched', 'true')
+        .field('removalToken', preview.body.removalToken)
+        .attach('file', file, 'w.csv')
+      expect(res.status).toBe(200)
+      expect(await count()).toBe('1')
+    })
+  })
+
   describe('TMDB media type (migration 003)', () => {
     const insert = (title: string, type: string) =>
       pool.query(`INSERT INTO films (title, tmdb_id, tmdb_media_type) VALUES ($1, 5, $2)`, [title, type])
