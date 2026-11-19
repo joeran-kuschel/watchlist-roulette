@@ -67,6 +67,16 @@ elif ! "${KUBECTL_NS[@]}" get secret watchlist-tmdb >/dev/null 2>&1; then
   echo "No TMDB token found: films will not be enriched. Set TMDB_ACCESS_TOKEN in .env and deploy again."
 fi
 
+# Local overrides (e.g. CORS_ORIGIN for another port) live in the gitignored k8s/.env.local. The backend reads
+# them through the optional ConfigMap watchlist-local, which wins over watchlist-config.
+if [ -f k8s/.env.local ]; then
+  "${KUBECTL_NS[@]}" create configmap watchlist-local --from-env-file=k8s/.env.local --dry-run=client -o yaml \
+    | "${KUBECTL_NS[@]}" apply -f - >/dev/null
+  echo "Applied local overrides from k8s/.env.local."
+else
+  "${KUBECTL_NS[@]}" delete configmap watchlist-local --ignore-not-found >/dev/null
+fi
+
 step "Building images ($TAG)"
 docker build --tag "$BACKEND_REPO:$TAG" backend
 docker build --tag "$FRONTEND_REPO:$TAG" frontend
