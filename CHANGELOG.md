@@ -4,6 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- The app now runs on Node 26 (it ran on Node 24), in Docker Compose and on Kubernetes. The app looks and works the same. To develop it you need Node 26; `nvm use` picks it up from `.nvmrc`.
 - A film that is in both your Letterboxd and your IMDb export is no longer added twice. When a new row has the same title and year as a film that came from the other export, the import skips it and lists it under "already on your list". Films whose titles differ between the two sites are still added twice.
 - The documentation now shows screenshots of the roulette, the watchlist, the import page and a film's details page.
 - The arrow in the dropdowns now has more room, and long entries no longer run under it.

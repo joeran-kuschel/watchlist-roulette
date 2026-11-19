@@ -6,9 +6,11 @@ GitHub Actions checks every pull request and every push to `main`. The workflows
 
 | Job | What it runs |
 |---|---|
-| Backend (Node 22 and 24) | `npm ci`, type-check, `npm test`, build. A throwaway PostgreSQL 17 service is started and passed as `TEST_DATABASE_URL`, so the real-PostgreSQL tests run instead of being skipped. |
-| Frontend (Node 22 and 24) | `npm ci`, type-check, `oxlint` and `eslint` (check only, without `--fix`), unit tests, build |
+| Backend (Node 26) | `npm ci`, type-check, `npm test`, build. A throwaway PostgreSQL 17 service is started and passed as `TEST_DATABASE_URL`, so the real-PostgreSQL tests run instead of being skipped. |
+| Frontend (Node 26) | `npm ci`, type-check, `oxlint` and `eslint` (check only, without `--fix`), unit tests, build |
 | Docker images | builds the backend and frontend images and validates `docker-compose.yml` on its own and merged with `docker-compose.dev.yml` |
+
+The Node version is set in `.nvmrc`, in `engines` of both `package.json` files (and lock files), in both Dockerfiles and in `ci.yml`. `backend/tests/node-version.test.ts` fails when they differ, so a Node upgrade changes all of them together.
 
 The end-to-end tests (Playwright) are not part of CI. They stub the API in the browser, so they need no database, only the Vite dev server. Run them locally (see [Testing the UI](../ui/testing.md)).
 

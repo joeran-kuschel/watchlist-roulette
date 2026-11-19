@@ -4,7 +4,7 @@ Thanks for your interest. This is a personal project, so please open an issue to
 
 ## Set up
 
-Use Node 22.18+ or 24.12+. How to run the app, the dev servers and the tests is in the [README](README.md).
+Use Node 26 (`nvm use` reads `.nvmrc`). How to run the app, the dev servers and the tests is in the [README](README.md).
 
 ## Making a change
 
