@@ -1,6 +1,6 @@
 # Kubernetes (Docker Desktop)
 
-Runs the app in Docker Desktop's Kubernetes (context `docker-desktop`), next to the other apps on the cluster. It has its own namespace `watchlist-roulette` and is served at **http://watchlist.local** through the nginx ingress controller that all apps share. This folder never installs or changes the controller.
+Runs the app in Docker Desktop's Kubernetes (context `docker-desktop`), next to the other apps on the cluster. It has its own namespace `watchlist-roulette` and is served at **https://watchlist.local:8443** (and still at http://watchlist.local) through the nginx ingress controller that all apps share. This folder never installs or changes the controller.
 
 Details and background: [documentation/backend/kubernetes.md](../documentation/backend/kubernetes.md).
 
@@ -14,7 +14,19 @@ echo '127.0.0.1 watchlist.local' | sudo tee -a /etc/hosts
 echo '::1 watchlist.local' | sudo tee -a /etc/hosts
 ```
 
-3. Optional, for TMDB data: put `TMDB_ACCESS_TOKEN=...` into `.env` (see `.env.example`).
+3. Install mkcert and its local certificate authority once, so the browser trusts the certificate that `deploy.sh` makes for `watchlist.local` (it only prints these commands, it never installs or trusts anything itself):
+
+```bash
+brew install mkcert && mkcert -install
+```
+
+4. Saving from the HTTPS address needs it in `CORS_ORIGIN`. That is a local setting, not in git: put it into `k8s/.env.local` (git-ignored) and deploy:
+
+```
+CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443
+```
+
+5. Optional, for TMDB data: put `TMDB_ACCESS_TOKEN=...` into `.env` (see `.env.example`).
 
 ## Deploy and update
 
@@ -22,10 +34,11 @@ echo '::1 watchlist.local' | sudo tee -a /etc/hosts
 ./k8s/deploy.sh
 ```
 
-Builds both images with a fresh tag, loads them into the cluster's node, applies the manifests and waits until everything runs. Run it again after every code change. It creates two Secrets the first time and keeps them afterwards:
+Builds both images with a fresh tag, loads them into the cluster's node, applies the manifests and waits until everything runs. Run it again after every code change. It creates three Secrets the first time and keeps them afterwards:
 
 - `watchlist-db`: the database login, with a random password (never in git, never changed by a later deploy: Postgres only reads its password when the volume is created).
 - `watchlist-tmdb`: the TMDB token, updated whenever `TMDB_ACCESS_TOKEN` is set.
+- `watchlist-tls`: the certificate and key for `watchlist.local`, made with mkcert (needed only the first time: without mkcert, or without its authority, the deploy stops before it builds anything and prints the commands). To renew it, delete the Secret and deploy again: `kubectl --context docker-desktop -n watchlist-roulette delete secret watchlist-tls`.
 
 To change a setting only on your machine, put `NAME=value` lines into `k8s/.env.local` (git-ignored); the next deploy applies them on top of `k8s/configmap.yaml` (see [Local overrides](../documentation/backend/kubernetes.md#why-it-looks-like-this)).
 
