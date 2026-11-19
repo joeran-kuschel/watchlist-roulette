@@ -30,6 +30,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: watchlist-config
+            # Local overrides (e.g. CORS_ORIGIN) from the gitignored k8s/.env.local, created by deploy.sh
+            - configMapRef:
+                name: watchlist-local
+                optional: true
           env:
             - name: DATABASE_URL
               valueFrom: { secretKeyRef: { name: watchlist-db, key: DATABASE_URL } }
