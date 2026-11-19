@@ -43,7 +43,7 @@ const label = (film: Pick<ImportedFilmRef, 'title' | 'releaseYear'>) => (film.re
         {{ report.applied ? 'Removed from your list' : 'These films are not in the file and will be removed' }}
       </h3>
       <ul>
-        <li v-for="film in report.removed" :key="film.id">{{ label(film) }}</li>
+        <li v-for="film in report.removed" :key="film.id">{{ label(film) }}<template v-if="film.watched"> (watched)</template></li>
       </ul>
     </section>
 

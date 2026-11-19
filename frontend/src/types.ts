@@ -73,6 +73,10 @@ export interface ImportedFilmRef {
   releaseYear: number | null
 }
 
+export interface RemovedFilmRef extends ImportedFilmRef {
+  watched: boolean
+}
+
 export type ImportSource = 'letterboxd' | 'imdb'
 
 export interface ImportReport {
@@ -82,14 +86,19 @@ export interface ImportReport {
   updated: number
   unchanged: number
   skipped: { line: number; title: string; releaseYear: number | null; existing: ImportedFilmRef }[]
-  removed: ImportedFilmRef[]
+  removed: RemovedFilmRef[]
   keptWatched: ImportedFilmRef[]
   rejected: { line: number; reason: string }[]
   removalToken?: string
   requiresLargeRemovalConfirmation: boolean
 }
 
-export interface ApplyImportOptions {
+export interface ImportCheckOptions {
+  /** Also delete watched films that are not in the file. */
+  deleteWatched?: boolean
+}
+
+export interface ApplyImportOptions extends ImportCheckOptions {
   removalToken?: string
   confirmLargeRemoval?: boolean
 }

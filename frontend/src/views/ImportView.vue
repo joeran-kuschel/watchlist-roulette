@@ -10,10 +10,16 @@ import type { ImportReport } from '../types'
 const file = ref<File | null>(null)
 const report = ref<ImportReport | null>(null)
 const busy = ref(false)
+// While the import runs, the checkbox is off: a tick then would change nothing that is being imported
+const applying = ref(false)
 const error = ref('')
 const fileError = ref('')
 const confirmRemoval = ref(false)
 const confirmLarge = ref(false)
+// Also delete the watched films that are not in the file. Off for every new file and every check
+const deleteWatched = ref(false)
+// The setting the result on screen was made with, so the box can go back to it when a new check fails
+let checkedWith = false
 const heading = ref<HTMLElement | null>(null)
 // Said aloud by a status region: the chosen file, or why a dropped file was refused
 const announcement = ref('')
@@ -42,6 +48,8 @@ function reset() {
   error.value = ''
   confirmRemoval.value = false
   confirmLarge.value = false
+  deleteWatched.value = false
+  checkedWith = false
 }
 
 function chooseFile(next: File | null) {
@@ -125,15 +133,46 @@ async function check() {
   }
 }
 
+// The check was made without or with the option; ticking the box asks again for the same file. The newest answer
+// wins, and the confirmations are cleared because the list of films to remove is another one now.
+let latestCheck = 0
+async function recheck() {
+  if (!file.value || !report.value || report.value.applied) return
+  const request = ++latestCheck
+  const wanted = deleteWatched.value
+  busy.value = true
+  error.value = ''
+  try {
+    const next = await previewImport(file.value, { deleteWatched: wanted })
+    if (request !== latestCheck) return
+    report.value = next
+    checkedWith = wanted
+    confirmRemoval.value = false
+    confirmLarge.value = false
+    const count = next.removed.length
+    void say(`Check updated. ${count} ${count === 1 ? 'film' : 'films'} will be removed.`)
+  } catch (e) {
+    if (request === latestCheck) {
+      // The result on screen is still the one for the old setting, so the box goes back to match it
+      deleteWatched.value = checkedWith
+      error.value = describeError(e)
+    }
+  } finally {
+    if (request === latestCheck) busy.value = false
+  }
+}
+
 async function apply() {
   if (!file.value || !report.value || !canApply.value) return
   busy.value = true
+  applying.value = true
   error.value = ''
   try {
     await showReport(
       await applyImport(file.value, {
         removalToken: hasRemovals.value ? report.value.removalToken : undefined,
         confirmLargeRemoval: needsLarge.value && confirmLarge.value,
+        deleteWatched: deleteWatched.value,
       }),
     )
   } catch (e) {
@@ -146,6 +185,7 @@ async function apply() {
     }
   } finally {
     busy.value = false
+    applying.value = false
   }
 }
 </script>
@@ -211,6 +251,16 @@ async function apply() {
       <ImportSummary :report="report" />
 
       <form v-if="!report.applied" class="import__confirm" @submit.prevent="apply">
+        <div class="import__option">
+          <label class="import__check">
+            <input id="delete-watched" v-model="deleteWatched" type="checkbox" :disabled="applying" aria-describedby="delete-watched-hint" @change="recheck" />
+            <span>Also delete watched films that are not in the file</span>
+          </label>
+          <p id="delete-watched-hint" class="import__hint">
+            Watched films stay on your list unless you tick this. A deleted film and its watched date cannot be
+            restored.
+          </p>
+        </div>
         <label v-if="hasRemovals" class="import__check">
           <input v-model="confirmRemoval" type="checkbox" />
           <span
@@ -220,7 +270,10 @@ async function apply() {
         </label>
         <label v-if="needsLarge" class="import__check">
           <input v-model="confirmLarge" type="checkbox" />
-          <span>This removes more than half of my unwatched films. The file is correct.</span>
+          <span
+            >This removes more than half of my {{ deleteWatched ? 'films, watched ones included' : 'unwatched films' }}.
+            The file is correct.</span
+          >
         </label>
         <div>
           <button class="btn btn--primary" type="submit" :disabled="!canApply || busy">
@@ -295,6 +348,11 @@ async function apply() {
   gap: 12px;
   align-items: flex-start;
   min-height: var(--target);
+}
+.import__hint {
+  margin: 0 0 0 36px;
+  color: var(--text-soft);
+  font-size: 0.875rem;
 }
 .import__check input {
   width: 24px;

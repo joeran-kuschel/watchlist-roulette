@@ -46,7 +46,9 @@ export async function applyPlan(plan: ImportPlan, db: Db): Promise<void> {
     )
   }
   for (const film of plan.toRemove) {
-    // re-check: a film marked watched since the plan was made must survive
-    await query('DELETE FROM films WHERE id = $1 AND watched_at IS NULL', [film.id], db)
+    // A film that was unwatched when the plan was made must survive being marked watched since then. A film
+    // that is already watched is only in the plan when the user asked to delete watched films.
+    const guard = film.watched ? '' : ' AND watched_at IS NULL'
+    await query(`DELETE FROM films WHERE id = $1${guard}`, [film.id], db)
   }
 }

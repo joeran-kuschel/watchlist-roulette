@@ -35,6 +35,26 @@ describe('POST /api/films/import?dryRun=true', () => {
     expect(res.body.removalToken).toEqual(expect.any(String))
   })
 
+  it('lists the watched films as removals, marked as watched, when deleteWatched is set', async () => {
+    await upload(HEADER + line(1) + line(2) + line(3))
+    await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Film 3'`)
+    const res = await upload(HEADER + line(1), { dryRun: true, fields: { deleteWatched: 'true' } })
+    expect(res.body.removed.map((f: { title: string; watched: boolean }) => [f.title, f.watched])).toEqual([
+      ['Film 2', false],
+      ['Film 3', true],
+    ])
+    expect(res.body.keptWatched).toEqual([])
+    expect(await titles()).toHaveLength(3)
+  })
+
+  it('gives another removal token when deleteWatched changes the list', async () => {
+    await upload(HEADER + line(1) + line(2))
+    await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Film 2'`)
+    const keep = await upload(HEADER + line(1), { dryRun: true })
+    const drop = await upload(HEADER + line(1), { dryRun: true, fields: { deleteWatched: 'true' } })
+    expect(keep.body.removalToken).not.toBe(drop.body.removalToken)
+  })
+
   it('reports rejected rows', async () => {
     const res = await upload(HEADER + line(1) + '2020-01-01,,2000,https://boxd.it/9\n', { dryRun: true })
     expect(res.body.rejected).toEqual([{ line: 3, reason: 'Name is empty' }])
@@ -109,6 +129,80 @@ describe('POST /api/films/import', () => {
 
     const confirmed = await upload(csv, { fields: { ...fields, confirmLargeRemoval: 'true' } })
     expect(confirmed.status).toBe(200)
+    expect(await titles()).toEqual(['Film 1'])
+  })
+
+  it('deletes watched films that are not in the file only with deleteWatched and a matching preview', async () => {
+    await upload(HEADER + line(1) + line(2) + line(3) + line(4))
+    await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Film 2'`)
+    const csv = HEADER + line(1) + line(3) + line(4)
+
+    const kept = await upload(csv)
+    expect(kept.body).toMatchObject({ removed: [], keptWatched: [{ title: 'Film 2' }] })
+    expect(await titles()).toHaveLength(4)
+
+    const preview = await upload(csv, { dryRun: true, fields: { deleteWatched: 'true' } })
+    const mismatch = await upload(csv, { fields: { deleteWatched: 'true', removalToken: 'stale' } })
+    expect(mismatch.status).toBe(409)
+    expect(mismatch.body.code).toBe('removal_not_confirmed')
+    expect(await titles()).toHaveLength(4)
+
+    const applied = await upload(csv, { fields: { deleteWatched: 'true', removalToken: preview.body.removalToken } })
+    expect(applied.status).toBe(200)
+    expect(applied.body.removed).toEqual([expect.objectContaining({ title: 'Film 2', watched: true })])
+    expect(await titles()).toEqual(['Film 1', 'Film 3', 'Film 4'])
+  })
+
+  it('a token from a preview without deleteWatched does not allow deleting watched films', async () => {
+    await upload(HEADER + line(1) + line(2))
+    await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Film 2'`)
+    const preview = await upload(HEADER + line(1), { dryRun: true })
+    const res = await upload(HEADER + line(1), { fields: { deleteWatched: 'true', removalToken: preview.body.removalToken } })
+    expect(res.status).toBe(409)
+    expect(await titles()).toEqual(['Film 1', 'Film 2'])
+  })
+
+  it('counts the watched films for the large-removal guard when deleteWatched is set', async () => {
+    await upload(HEADER + line(1) + line(2) + line(3) + line(4))
+    await pool.query(`UPDATE films SET watched_at = now() WHERE title IN ('Film 2', 'Film 3', 'Film 4')`)
+    const csv = HEADER + line(1)
+    const preview = await upload(csv, { dryRun: true, fields: { deleteWatched: 'true' } })
+    expect(preview.body.requiresLargeRemovalConfirmation).toBe(true)
+    const fields = { deleteWatched: 'true', removalToken: preview.body.removalToken }
+    const refused = await upload(csv, { fields })
+    expect(refused.status).toBe(409)
+    expect(refused.body.code).toBe('large_removal')
+    expect(await titles()).toHaveLength(4)
+    expect((await upload(csv, { fields: { ...fields, confirmLargeRemoval: 'true' } })).status).toBe(200)
+    expect(await titles()).toEqual(['Film 1'])
+  })
+
+  it('refuses a deleteWatched value that is not true or false, for the preview and the import', async () => {
+    await upload(HEADER + line(1))
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const preview = await upload(HEADER + line(1), { dryRun: true, fields: { deleteWatched: 'yes' } })
+    const apply = await upload(HEADER + line(1), { fields: { deleteWatched: 'yes' } })
+    spy.mockRestore()
+    expect([preview.status, apply.status]).toEqual([400, 400])
+    expect(await titles()).toEqual(['Film 1'])
+  })
+
+  it('deletes a watched film that is missing from a header-only file, after the large-removal confirmation', async () => {
+    await upload(HEADER + line(1))
+    await pool.query(`UPDATE films SET watched_at = now()`)
+    const preview = await upload(HEADER, { dryRun: true, fields: { deleteWatched: 'true' } })
+    expect(preview.body.requiresLargeRemovalConfirmation).toBe(true)
+    const fields = { deleteWatched: 'true', removalToken: preview.body.removalToken, confirmLargeRemoval: 'true' }
+    expect((await upload(HEADER, { fields })).status).toBe(200)
+    expect(await titles()).toEqual([])
+  })
+
+  it('does not delete a watched film of the other source', async () => {
+    await upload(HEADER + line(1))
+    await pool.query(`UPDATE films SET watched_at = now()`)
+    const imdb = 'Position,Const,Created,Modified,Description,Title,URL,Title Type,Year\n'
+    const preview = await upload(imdb, { dryRun: true, fields: { deleteWatched: 'true' } })
+    expect(preview.body.removed).toEqual([])
     expect(await titles()).toEqual(['Film 1'])
   })
 
@@ -354,11 +448,36 @@ describe('film marked watched while an import is applied', () => {
     const film = (await pool.query(`SELECT id FROM films WHERE title = 'Film 2'`)).rows[0]
     await pool.query('UPDATE films SET watched_at = now() WHERE id = $1', [film.id])
     const plan = {
-      toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], unwatchedCount: 2,
+      toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], removableCount: 2,
       toRemove: [{ id: Number(film.id), title: 'Film 2', releaseYear: 2002, letterboxdUrl: 'https://boxd.it/2', addedAt: '2020-01-02', watched: false }],
     }
     await applyPlan(plan, getPool())
     expect(await titles()).toEqual(['Film 1', 'Film 2'])
+  })
+})
+
+describe('applyPlan with watched films', () => {
+  const planFor = (id: number, watched: boolean) => ({
+    toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], removableCount: 1,
+    toRemove: [{ id, title: 'Film 2', releaseYear: 2002, letterboxdUrl: 'https://boxd.it/2', addedAt: '2020-01-02', watched }],
+  })
+  const filmId = async () => Number((await pool.query(`SELECT id FROM films WHERE title = 'Film 2'`)).rows[0].id)
+
+  it('deletes a film that was already watched when it was planned', async () => {
+    const { applyPlan } = await import('../src/models/filmImport.js')
+    const { getPool } = await import('../src/config/database.js')
+    await upload(HEADER + line(1) + line(2))
+    await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Film 2'`)
+    await applyPlan(planFor(await filmId(), true), getPool())
+    expect(await titles()).toEqual(['Film 1'])
+  })
+
+  it('still deletes a film that was unwatched when planned and is still unwatched', async () => {
+    const { applyPlan } = await import('../src/models/filmImport.js')
+    const { getPool } = await import('../src/config/database.js')
+    await upload(HEADER + line(1) + line(2))
+    await applyPlan(planFor(await filmId(), false), getPool())
+    expect(await titles()).toEqual(['Film 1'])
   })
 })
 

@@ -1,5 +1,6 @@
 import type {
   ApplyImportOptions,
+  ImportCheckOptions,
   Film,
   FilmInput,
   FilmPage,
@@ -104,12 +105,13 @@ function importForm(file: File, options: ApplyImportOptions = {}): FormData {
   form.append('file', file)
   if (options.removalToken) form.append('removalToken', options.removalToken)
   if (options.confirmLargeRemoval) form.append('confirmLargeRemoval', 'true')
+  if (options.deleteWatched) form.append('deleteWatched', 'true')
   return form
 }
 
 /** Reports what an import would do and writes nothing. */
-export const previewImport = (file: File) =>
-  request<ImportReport>('/films/import?dryRun=true', { method: 'POST', body: importForm(file) })
+export const previewImport = (file: File, options: ImportCheckOptions = {}) =>
+  request<ImportReport>('/films/import?dryRun=true', { method: 'POST', body: importForm(file, options) })
 
 export const applyImport = (file: File, options: ApplyImportOptions = {}) =>
   request<ImportReport>('/films/import', { method: 'POST', body: importForm(file, options) })

@@ -8,19 +8,22 @@ const querySchema = z.object({ dryRun: z.enum(['true', 'false']).default('false'
 const fieldsSchema = z.object({
   removalToken: z.string().max(100).optional(),
   confirmLargeRemoval: z.enum(['true', 'false']).default('false'),
+  deleteWatched: z.enum(['true', 'false']).default('false'),
 })
 
 export const importFilms = (enricher: Enricher) => async (req: Request, res: Response) => {
   if (!req.file) throw new HttpError(400, 'Upload the CSV as the multipart field "file"')
   const { dryRun } = querySchema.parse(req.query)
+  const fields = fieldsSchema.parse(req.body ?? {})
+  const deleteWatched = fields.deleteWatched === 'true'
   if (dryRun === 'true') {
-    res.json(await previewImport(req.file.buffer))
+    res.json(await previewImport(req.file.buffer, { deleteWatched }))
     return
   }
-  const fields = fieldsSchema.parse(req.body ?? {})
   const report = await applyImport(req.file.buffer, {
     removalToken: fields.removalToken,
     confirmLargeRemoval: fields.confirmLargeRemoval === 'true',
+    deleteWatched,
   })
   void enricher.trigger()
   res.json(report)

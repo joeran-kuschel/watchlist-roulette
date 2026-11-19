@@ -165,6 +165,16 @@ describe('import requests', () => {
     expect(init!.headers).toBeUndefined()
   })
 
+  it('sends deleteWatched with the check and with the import, only when it is set', async () => {
+    fetchMock.mockReturnValue(respond({ applied: false }))
+    await previewImport(file, { deleteWatched: true })
+    expect((fetchMock.mock.calls[0]![1]!.body as FormData).get('deleteWatched')).toBe('true')
+    await applyImport(file, { removalToken: 'tok', deleteWatched: true })
+    expect((fetchMock.mock.calls[1]![1]!.body as FormData).get('deleteWatched')).toBe('true')
+    await previewImport(file, { deleteWatched: false })
+    expect((fetchMock.mock.calls[2]![1]!.body as FormData).has('deleteWatched')).toBe(false)
+  })
+
   it('applies with the removal token and the large-removal confirmation', async () => {
     fetchMock.mockReturnValue(respond({ applied: true }))
     await applyImport(file, { removalToken: 'tok', confirmLargeRemoval: true })
@@ -180,6 +190,7 @@ describe('import requests', () => {
     const body = fetchMock.mock.calls[0]![1]!.body as FormData
     expect(body.has('removalToken')).toBe(false)
     expect(body.has('confirmLargeRemoval')).toBe(false)
+    expect(body.has('deleteWatched')).toBe(false)
   })
 })
 
