@@ -20,6 +20,9 @@ case "$*" in
   *"kustomize k8s"*) printf 'image: watchlist-backend:dev\\nimage: watchlist-frontend:dev\\n' ;;
   *"get secret watchlist-tls"*) exit "\${TLS_SECRET_EXIT:-1}" ;;
   *"get secret"*) exit 1 ;;
+  # Reads what deploy.sh pipes into it, like the real kubectl does (--from-env-file=/dev/stdin). A fake that exits without
+  # reading makes the writer's printf die with SIGPIPE (exit 141 under pipefail), depending on timing.
+  *"create secret generic"*) cat > /dev/null ;;
   *"create secret tls"*)
     while [ $# -gt 0 ]; do
       case "$1" in --cert) cert="$2" ;; --key) key="$2" ;; esac
