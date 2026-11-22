@@ -1,11 +1,30 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, describeError } from '../api'
-import { directorLabel, filmFacts, formatDate, formatFileSize, formatRuntime, joinNames, linkSite, needsMatch, text, tmdbBadge } from '../format'
+import {
+  directorLabel,
+  filmFacts,
+  formatDate,
+  formatFileSize,
+  formatRuntime,
+  joinNames,
+  linkSite,
+  needsMatch,
+  text,
+  tmdbBadge,
+} from '../format'
 import { makeFilm } from './helpers'
 import { countActiveFilters, emptyFilters, hasFilters, parseRouletteFilters } from '../filters'
 import { emptyFilmForm, issuesToErrors, validateFilmForm } from '../filmForm'
 import { parseTmdbTitle, tmdbSearchUrl, tmdbTitleUrl } from '../tmdbId'
-import { ariaSort, fromQuery, nextSort, SORT_COLUMNS, SORTS, toListParams, toQuery } from '../watchlistQuery'
+import {
+  ariaSort,
+  fromQuery,
+  nextSort,
+  SORT_COLUMNS,
+  SORTS,
+  toListParams,
+  toQuery,
+} from '../watchlistQuery'
 
 describe('format', () => {
   it('formats dates and timestamps in UTC', () => {
@@ -20,7 +39,10 @@ describe('format', () => {
 })
 
 describe('parseRouletteFilters', () => {
-  const input = (patch: Partial<ReturnType<typeof emptyFilters>>) => ({ ...emptyFilters(), ...patch })
+  const input = (patch: Partial<ReturnType<typeof emptyFilters>>) => ({
+    ...emptyFilters(),
+    ...patch,
+  })
 
   it('gives no parameters for empty filters', () => {
     const { params, errors } = parseRouletteFilters(emptyFilters())
@@ -33,7 +55,13 @@ describe('parseRouletteFilters', () => {
     const { params } = parseRouletteFilters(
       input({ yearFrom: '1990', yearTo: '1999', genre: '18', country: 'jp', maxRuntime: '90' }),
     )
-    expect(params).toEqual({ yearFrom: 1990, yearTo: 1999, genre: 18, country: 'JP', maxRuntime: 90 })
+    expect(params).toEqual({
+      yearFrom: 1990,
+      yearTo: 1999,
+      genre: 18,
+      country: 'JP',
+      maxRuntime: 90,
+    })
     expect(hasFilters(params)).toBe(true)
   })
 
@@ -51,8 +79,17 @@ describe('parseRouletteFilters', () => {
   })
 
   it('accepts numbers, which is what v-model gives for number inputs', () => {
-    const numeric = { ...emptyFilters(), yearFrom: 1990, yearTo: 1999, maxRuntime: 90 } as unknown as ReturnType<typeof emptyFilters>
-    expect(parseRouletteFilters(numeric).params).toEqual({ yearFrom: 1990, yearTo: 1999, maxRuntime: 90 })
+    const numeric = {
+      ...emptyFilters(),
+      yearFrom: 1990,
+      yearTo: 1999,
+      maxRuntime: 90,
+    } as unknown as ReturnType<typeof emptyFilters>
+    expect(parseRouletteFilters(numeric).params).toEqual({
+      yearFrom: 1990,
+      yearTo: 1999,
+      maxRuntime: 90,
+    })
   })
 
   it('rejects a range that ends before it starts', () => {
@@ -74,7 +111,9 @@ describe('film form validation', () => {
     const { errors, payload } = validateFilmForm(values({ releaseYear: 2015 as unknown as string }))
     expect(errors).toEqual({})
     expect(payload.releaseYear).toBe(2015)
-    expect(validateFilmForm(values({ releaseYear: null as unknown as string })).payload.releaseYear).toBeNull()
+    expect(
+      validateFilmForm(values({ releaseYear: null as unknown as string })).payload.releaseYear,
+    ).toBeNull()
   })
 
   it('keeps the given values', () => {
@@ -143,13 +182,21 @@ describe('parseTmdbTitle', () => {
   ])('rejects %j', (text) => expect(parseTmdbTitle(text)).toBeNull())
 
   it('builds an encoded search link that finds movies and shows', () => {
-    expect(tmdbSearchUrl('Cléo & Co')).toBe('https://www.themoviedb.org/search?query=Cl%C3%A9o%20%26%20Co')
+    expect(tmdbSearchUrl('Cléo & Co')).toBe(
+      'https://www.themoviedb.org/search?query=Cl%C3%A9o%20%26%20Co',
+    )
   })
 })
 
 describe('watchlist query', () => {
   it('uses defaults for an empty or unknown query', () => {
-    expect(fromQuery({})).toEqual({ q: '', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 })
+    expect(fromQuery({})).toEqual({
+      q: '',
+      watched: 'all',
+      tmdb: 'all',
+      sort: 'added-desc',
+      page: 1,
+    })
     expect(fromQuery({ watched: 'maybe', tmdb: 'nope', sort: 'nope', page: '-3' })).toEqual({
       q: '',
       watched: 'all',
@@ -159,16 +206,29 @@ describe('watchlist query', () => {
     })
   })
 
-  it.each(['constructor', '__proto__', 'toString', ''])('does not accept %j as a TMDB status', (tmdb) => {
-    expect(fromQuery({ tmdb }).tmdb).toBe('all')
-  })
+  it.each(['constructor', '__proto__', 'toString', ''])(
+    'does not accept %j as a TMDB status',
+    (tmdb) => {
+      expect(fromQuery({ tmdb }).tmdb).toBe('all')
+    },
+  )
 
   it('sends no TMDB status to the API when all are shown', () => {
-    expect(toListParams({ q: '', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 }).tmdbStatus).toBeUndefined()
+    expect(
+      toListParams({ q: '', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 }).tmdbStatus,
+    ).toBeUndefined()
   })
 
   it('reads valid values and takes the first of repeated ones', () => {
-    expect(fromQuery({ q: ['a', 'b'], watched: 'false', tmdb: ['not_found', 'error'], sort: 'year-asc', page: '3' })).toEqual({
+    expect(
+      fromQuery({
+        q: ['a', 'b'],
+        watched: 'false',
+        tmdb: ['not_found', 'error'],
+        sort: 'year-asc',
+        page: '3',
+      }),
+    ).toEqual({
       q: 'a',
       watched: 'false',
       tmdb: 'not_found',
@@ -185,7 +245,9 @@ describe('watchlist query', () => {
       sort: undefined,
       page: undefined,
     })
-    expect(toQuery({ q: 'joy', watched: 'true', tmdb: 'ambiguous', sort: 'title', page: 2 })).toEqual({
+    expect(
+      toQuery({ q: 'joy', watched: 'true', tmdb: 'ambiguous', sort: 'title', page: 2 }),
+    ).toEqual({
       q: 'joy',
       watched: 'true',
       tmdb: 'ambiguous',
@@ -195,7 +257,9 @@ describe('watchlist query', () => {
   })
 
   it('translates the sort choice for the API', () => {
-    expect(toListParams({ q: 'joy', watched: 'false', tmdb: 'pending', sort: 'year-desc', page: 2 })).toEqual({
+    expect(
+      toListParams({ q: 'joy', watched: 'false', tmdb: 'pending', sort: 'year-desc', page: 2 }),
+    ).toEqual({
       q: 'joy',
       watched: 'false',
       tmdbStatus: 'pending',
@@ -230,7 +294,9 @@ describe('describeError', () => {
     expect(describeError(new ApiError(status, message))).toBe(message)
   })
   it.each([500, 502, 503])('uses fixed wording for %i', (status) => {
-    expect(describeError(new ApiError(status, 'stack trace'))).toBe('The server had a problem. Try again in a moment.')
+    expect(describeError(new ApiError(status, 'stack trace'))).toBe(
+      'The server had a problem. Try again in a moment.',
+    )
   })
   it('uses a generic sentence for anything else', () => {
     expect(describeError(new TypeError('x'))).toBe('Something went wrong.')
@@ -243,10 +309,15 @@ describe('describeError', () => {
 })
 
 describe('parseRouletteFilters: edge cases', () => {
-  const input = (patch: Partial<ReturnType<typeof emptyFilters>>) => ({ ...emptyFilters(), ...patch })
+  const input = (patch: Partial<ReturnType<typeof emptyFilters>>) => ({
+    ...emptyFilters(),
+    ...patch,
+  })
 
   it('accepts the limits of every range', () => {
-    const { params, errors } = parseRouletteFilters(input({ yearFrom: '1888', yearTo: '2100', maxRuntime: '10000' }))
+    const { params, errors } = parseRouletteFilters(
+      input({ yearFrom: '1888', yearTo: '2100', maxRuntime: '10000' }),
+    )
     expect(errors).toEqual({})
     expect(params).toEqual({ yearFrom: 1888, yearTo: 2100, maxRuntime: 10000 })
   })
@@ -259,7 +330,9 @@ describe('parseRouletteFilters: edge cases', () => {
     expect(parseRouletteFilters(input({ yearTo: '1999' })).params).toEqual({ yearTo: 1999 })
   })
   it('trims whitespace and treats blank text as not set', () => {
-    const { params, errors } = parseRouletteFilters(input({ yearFrom: ' 1990 ', yearTo: '   ', country: ' jp ' }))
+    const { params, errors } = parseRouletteFilters(
+      input({ yearFrom: ' 1990 ', yearTo: '   ', country: ' jp ' }),
+    )
     expect(errors).toEqual({})
     expect(params).toEqual({ yearFrom: 1990, country: 'JP' })
   })
@@ -270,7 +343,9 @@ describe('parseRouletteFilters: edge cases', () => {
     expect(parseRouletteFilters(input({ country })).errors).toHaveProperty('country')
   })
   it('reports every wrong field at once and returns no parameters', () => {
-    const { params, errors } = parseRouletteFilters(input({ yearFrom: 'x', country: 'x', maxRuntime: '0', genre: '18' }))
+    const { params, errors } = parseRouletteFilters(
+      input({ yearFrom: 'x', country: 'x', maxRuntime: '0', genre: '18' }),
+    )
     expect(Object.keys(errors).sort()).toEqual(['country', 'maxRuntime', 'yearFrom'])
     expect(params).toEqual({})
   })
@@ -284,7 +359,9 @@ describe('film form validation: edge cases', () => {
 
   it('accepts 500 characters, a non-ASCII title and the limits of the year', () => {
     expect(validateFilmForm(values({ title: 'x'.repeat(500) })).errors).toEqual({})
-    expect(validateFilmForm(values({ title: 'Cléo 5 à 7 – 千と千尋の神隠し' })).payload.title).toBe('Cléo 5 à 7 – 千と千尋の神隠し')
+    expect(validateFilmForm(values({ title: 'Cléo 5 à 7 – 千と千尋の神隠し' })).payload.title).toBe(
+      'Cléo 5 à 7 – 千と千尋の神隠し',
+    )
     expect(validateFilmForm(values({ releaseYear: '1888' })).errors).toEqual({})
     expect(validateFilmForm(values({ releaseYear: '2100' })).errors).toEqual({})
     expect(validateFilmForm(values({ releaseYear: '2101' })).errors).toHaveProperty('releaseYear')
@@ -292,15 +369,20 @@ describe('film form validation: edge cases', () => {
   it.each(['abc', '-1', '0', '19 90'])('rejects the year %j', (releaseYear) => {
     expect(validateFilmForm(values({ releaseYear })).errors).toHaveProperty('releaseYear')
   })
-  it.each(['javascript:alert(1)', 'mailto:a@b.c', 'file:///etc/passwd', 'boxd.it/abc', '//boxd.it/abc'])(
-    'rejects the link %j',
-    (letterboxdUrl) => {
-      expect(validateFilmForm(values({ letterboxdUrl })).errors).toHaveProperty('letterboxdUrl')
-    },
-  )
+  it.each([
+    'javascript:alert(1)',
+    'mailto:a@b.c',
+    'file:///etc/passwd',
+    'boxd.it/abc',
+    '//boxd.it/abc',
+  ])('rejects the link %j', (letterboxdUrl) => {
+    expect(validateFilmForm(values({ letterboxdUrl })).errors).toHaveProperty('letterboxdUrl')
+  })
   it('accepts http and https links in any case and trims them', () => {
     expect(validateFilmForm(values({ letterboxdUrl: 'HTTP://boxd.it/a' })).errors).toEqual({})
-    expect(validateFilmForm(values({ letterboxdUrl: '  https://boxd.it/a ' })).payload.letterboxdUrl).toBe('https://boxd.it/a')
+    expect(
+      validateFilmForm(values({ letterboxdUrl: '  https://boxd.it/a ' })).payload.letterboxdUrl,
+    ).toBe('https://boxd.it/a')
   })
   it('treats a link of only spaces as empty', () => {
     const { errors, payload } = validateFilmForm(values({ letterboxdUrl: '   ' }))
@@ -316,15 +398,28 @@ describe('film form validation: edge cases', () => {
       expect(validateFilmForm(values({ addedAt })).errors).toHaveProperty('addedAt')
     },
   )
-  it.each(['2025-13-01', '2025-00-10', '2025-01-32'])('rejects the impossible date %j without throwing', (addedAt) => {
-    expect(validateFilmForm(values({ addedAt })).errors).toHaveProperty('addedAt')
-  })
+  it.each(['2025-13-01', '2025-00-10', '2025-01-32'])(
+    'rejects the impossible date %j without throwing',
+    (addedAt) => {
+      expect(validateFilmForm(values({ addedAt })).errors).toHaveProperty('addedAt')
+    },
+  )
   it('reports all wrong fields together', () => {
-    const { errors } = validateFilmForm({ title: '', releaseYear: 'x', letterboxdUrl: 'x', addedAt: 'x' })
+    const { errors } = validateFilmForm({
+      title: '',
+      releaseYear: 'x',
+      letterboxdUrl: 'x',
+      addedAt: 'x',
+    })
     expect(Object.keys(errors).sort()).toEqual(['addedAt', 'letterboxdUrl', 'releaseYear', 'title'])
   })
   it('ignores issues without a path or with a numeric path', () => {
-    expect(issuesToErrors([{ path: [], message: 'x' }, { path: [0], message: 'y' }])).toEqual({})
+    expect(
+      issuesToErrors([
+        { path: [], message: 'x' },
+        { path: [0], message: 'y' },
+      ]),
+    ).toEqual({})
     expect(issuesToErrors([])).toEqual({})
   })
   it('maps each field of the backend', () => {
@@ -360,23 +455,31 @@ describe('parseTmdbTitle: edge cases', () => {
   ])('rejects %j', (value) => expect(parseTmdbTitle(value)).toBeNull())
 
   it('encodes a title with slashes, quotes and emoji in the search link', () => {
-    expect(tmdbSearchUrl('a/b "c" 🎬')).toBe('https://www.themoviedb.org/search?query=a%2Fb%20%22c%22%20%F0%9F%8E%AC')
+    expect(tmdbSearchUrl('a/b "c" 🎬')).toBe(
+      'https://www.themoviedb.org/search?query=a%2Fb%20%22c%22%20%F0%9F%8E%AC',
+    )
   })
 })
 
 describe('watchlist query: edge cases', () => {
-  it.each(['1.5', '0', 'abc', '', ' ', '2abc', '1e1'])('falls back to page 1 for page=%j', (page) => {
-    expect(fromQuery({ page }).page).toBe(page === '1e1' ? 10 : 1)
-  })
+  it.each(['1.5', '0', 'abc', '', ' ', '2abc', '1e1'])(
+    'falls back to page 1 for page=%j',
+    (page) => {
+      expect(fromQuery({ page }).page).toBe(page === '1e1' ? 10 : 1)
+    },
+  )
   it('falls back for a repeated key whose first value is empty', () => {
     expect(fromQuery({ q: [null, 'b'] }).q).toBe('')
   })
   it('keeps a search with spaces and non-ASCII characters', () => {
     expect(fromQuery({ q: 'cléo 5' }).q).toBe('cléo 5')
   })
-  it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty'])('falls back to the default sort for sort=%s', (sort) => {
-    expect(fromQuery({ sort }).sort).toBe('added-desc')
-  })
+  it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty'])(
+    'falls back to the default sort for sort=%s',
+    (sort) => {
+      expect(fromQuery({ sort }).sort).toBe('added-desc')
+    },
+  )
   it('trims the search before writing it to the URL and the API', () => {
     const view = { q: '  joy ', watched: 'all', tmdb: 'all', sort: 'added-desc', page: 1 } as const
     expect(toQuery(view).q).toBe('joy')
@@ -403,9 +506,12 @@ describe('tmdbTitleUrl', () => {
     expect(tmdbTitleUrl(1396, 'tv')).toBe('https://www.themoviedb.org/tv/1396')
   })
 
-  it.each(['movie', 'tv'] as const)('builds an address that parseTmdbTitle reads back for a %s', (mediaType) => {
-    expect(parseTmdbTitle(tmdbTitleUrl(976893, mediaType))).toEqual({ id: 976893, mediaType })
-  })
+  it.each(['movie', 'tv'] as const)(
+    'builds an address that parseTmdbTitle reads back for a %s',
+    (mediaType) => {
+      expect(parseTmdbTitle(tmdbTitleUrl(976893, mediaType))).toEqual({ id: 976893, mediaType })
+    },
+  )
 })
 
 describe('filmFacts', () => {
@@ -426,16 +532,26 @@ describe('filmFacts', () => {
   })
 
   it('leaves out what the film does not have, and the votes when there are none', () => {
-    const bare = makeFilm({ releaseYear: null, runtimeMinutes: null, voteAverage: null, voteCount: null, countries: [] })
+    const bare = makeFilm({
+      releaseYear: null,
+      runtimeMinutes: null,
+      voteAverage: null,
+      voteCount: null,
+      countries: [],
+    })
     expect(filmFacts(bare)).toEqual([])
     expect(filmFacts(bare, true)).toEqual([])
-    expect(filmFacts(makeFilm({ voteAverage: 6, voteCount: 0 }), true).find((f) => f.label === 'TMDB rating')?.value).toBe(
-      '6.0 / 10',
-    )
+    expect(
+      filmFacts(makeFilm({ voteAverage: 6, voteCount: 0 }), true).find(
+        (f) => f.label === 'TMDB rating',
+      )?.value,
+    ).toBe('6.0 / 10')
   })
 
   it('shows a runtime of 0 minutes as it is stored', () => {
-    expect(filmFacts(makeFilm({ runtimeMinutes: 0 })).find((f) => f.label === 'Runtime')?.value).toBe('0 min')
+    expect(
+      filmFacts(makeFilm({ runtimeMinutes: 0 })).find((f) => f.label === 'Runtime')?.value,
+    ).toBe('0 min')
   })
 })
 
@@ -457,7 +573,9 @@ describe('film facts and labels for a TV show', () => {
 describe('countActiveFilters', () => {
   it('counts the fields that have a value, ignoring blanks', () => {
     expect(countActiveFilters(emptyFilters())).toBe(0)
-    expect(countActiveFilters({ ...emptyFilters(), yearFrom: '1990', country: '  ', genre: '18' })).toBe(2)
+    expect(
+      countActiveFilters({ ...emptyFilters(), yearFrom: '1990', country: '  ', genre: '18' }),
+    ).toBe(2)
   })
 })
 
@@ -469,7 +587,8 @@ describe('tmdbBadge and needsMatch', () => {
     expect(tmdbBadge(withStatus('ambiguous'))).toBe('Needs review: several TMDB matches')
     expect(tmdbBadge(withStatus('not_found'))).toBe('Not found on TMDB')
     expect(tmdbBadge(withStatus('error'))).toBe('TMDB lookup failed')
-    for (const status of ['ambiguous', 'not_found', 'error']) expect(needsMatch(withStatus(status))).toBe(true)
+    for (const status of ['ambiguous', 'not_found', 'error'])
+      expect(needsMatch(withStatus(status))).toBe(true)
   })
 
   it('say nothing for matched and pending films', () => {
@@ -506,7 +625,10 @@ describe('formatFileSize', () => {
 describe('sorting by column', () => {
   it('knows Title Z to A, and puts it in the URL only when chosen', () => {
     expect(fromQuery({ sort: 'title-desc' }).sort).toBe('title-desc')
-    expect(toListParams(fromQuery({ sort: 'title-desc' }))).toMatchObject({ sort: 'title', order: 'desc' })
+    expect(toListParams(fromQuery({ sort: 'title-desc' }))).toMatchObject({
+      sort: 'title',
+      order: 'desc',
+    })
     expect(toQuery(fromQuery({ sort: 'title-desc' })).sort).toBe('title-desc')
   })
 
@@ -537,16 +659,20 @@ describe('sorting by column', () => {
 
 describe('linkSite', () => {
   it('names IMDb links and calls every other link Letterboxd', () => {
-    expect(['https://www.imdb.com/title/tt0113277/', 'http://IMDB.com/title/tt1/', 'https://m.imdb.com/title/tt1/?x=1'].map(linkSite)).toEqual([
-      'IMDb',
-      'IMDb',
-      'IMDb',
-    ])
-    expect(['https://boxd.it/8kEU', 'https://letterboxd.com/film/heat/', 'https://notimdb.com/', 'https://imdb.com.evil.test/'].map(linkSite)).toEqual([
-      'Letterboxd',
-      'Letterboxd',
-      'Letterboxd',
-      'Letterboxd',
-    ])
+    expect(
+      [
+        'https://www.imdb.com/title/tt0113277/',
+        'http://IMDB.com/title/tt1/',
+        'https://m.imdb.com/title/tt1/?x=1',
+      ].map(linkSite),
+    ).toEqual(['IMDb', 'IMDb', 'IMDb'])
+    expect(
+      [
+        'https://boxd.it/8kEU',
+        'https://letterboxd.com/film/heat/',
+        'https://notimdb.com/',
+        'https://imdb.com.evil.test/',
+      ].map(linkSite),
+    ).toEqual(['Letterboxd', 'Letterboxd', 'Letterboxd', 'Letterboxd'])
   })
 })

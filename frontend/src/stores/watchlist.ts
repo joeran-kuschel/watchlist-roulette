@@ -58,5 +58,17 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     }
   }
 
-  return { items, total, page, pageSize, status, error, notice, listLocation, rememberList, load, setWatched }
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    status,
+    error,
+    notice,
+    listLocation,
+    rememberList,
+    load,
+    setWatched,
+  }
 })

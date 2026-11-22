@@ -53,7 +53,13 @@ const bare = (overrides = {}) =>
 beforeEach(() => {
   vi.resetAllMocks()
   mocked.getFilm.mockResolvedValue(rich)
-  mocked.getTmdbCheck.mockResolvedValue({ enabled: true, running: false, total: 0, done: 0, lastRun: null })
+  mocked.getTmdbCheck.mockResolvedValue({
+    enabled: true,
+    running: false,
+    total: 0,
+    done: 0,
+    lastRun: null,
+  })
 })
 afterEach(() => (document.body.innerHTML = ''))
 
@@ -73,7 +79,9 @@ describe('FilmDetailsView', () => {
     expect(text).toContain('Wim Wenders')
     expect(text).toContain('A janitor in Tokyo finds joy in small things.')
     expect(text).toContain('Kōji Yakusho, Tokio Emoto')
-    expect(wrapper.get('.details__meta').text().replace(/\s+/g, ' ')).toBe('On your list since 12 Mar 2025 · Not watched yet')
+    expect(wrapper.get('.details__meta').text().replace(/\s+/g, ' ')).toBe(
+      'On your list since 12 Mar 2025 · Not watched yet',
+    )
     expect(wrapper.find('img.poster').attributes('src')).toBe('/api/films/7/poster')
   })
 
@@ -104,21 +112,29 @@ describe('FilmDetailsView', () => {
   })
 
   it('names the link IMDb for a film that came from an IMDb export', async () => {
-    mocked.getFilm.mockResolvedValue(bare({ letterboxdUrl: 'https://www.imdb.com/title/tt0113277/' }))
+    mocked.getFilm.mockResolvedValue(
+      bare({ letterboxdUrl: 'https://www.imdb.com/title/tt0113277/' }),
+    )
     const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/8')
-    expect(wrapper.findAll('#links-heading ~ ul a').map((a) => a.text())).toEqual(['IMDb (opens in a new tab)'])
+    expect(wrapper.findAll('#links-heading ~ ul a').map((a) => a.text())).toEqual([
+      'IMDb (opens in a new tab)',
+    ])
   })
 
   it('leaves out the TMDB link without a TMDB id and the Letterboxd link without an address', async () => {
     mocked.getFilm.mockResolvedValue(bare({ letterboxdUrl: 'https://boxd.it/x' }))
     const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/8')
-    expect(wrapper.findAll('#links-heading ~ ul a').map((a) => a.attributes('href'))).toEqual(['https://boxd.it/x'])
-
-    mocked.getFilm.mockResolvedValue(bare({ tmdb: { id: 5, mediaType: 'movie', status: 'matched', syncedAt: null } }))
-    const other = await mountWithApp(FilmDetailsView, '/watchlist/8')
-    expect(other.wrapper.findAll('#links-heading ~ ul a').map((a) => a.attributes('href'))).toEqual([
-      'https://www.themoviedb.org/movie/5',
+    expect(wrapper.findAll('#links-heading ~ ul a').map((a) => a.attributes('href'))).toEqual([
+      'https://boxd.it/x',
     ])
+
+    mocked.getFilm.mockResolvedValue(
+      bare({ tmdb: { id: 5, mediaType: 'movie', status: 'matched', syncedAt: null } }),
+    )
+    const other = await mountWithApp(FilmDetailsView, '/watchlist/8')
+    expect(other.wrapper.findAll('#links-heading ~ ul a').map((a) => a.attributes('href'))).toEqual(
+      ['https://www.themoviedb.org/movie/5'],
+    )
   })
 
   it('shows no Links section at all when there is neither link', async () => {
@@ -138,7 +154,8 @@ describe('FilmDetailsView', () => {
     const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/8')
     expect(wrapper.get('h1').text()).toBe('Perfect Days')
     expect(wrapper.find('.poster--empty').exists()).toBe(true)
-    for (const heading of ['#overview-heading', '#cast-heading']) expect(wrapper.find(heading).exists()).toBe(false)
+    for (const heading of ['#overview-heading', '#cast-heading'])
+      expect(wrapper.find(heading).exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Original title')
     expect(wrapper.text()).not.toContain('Runtime')
     expect(wrapper.text()).not.toContain('null')
@@ -172,7 +189,9 @@ describe('FilmDetailsView', () => {
     expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist')
     useWatchlistStore().rememberList({ q: 'cléo', watched: 'false', page: '2' })
     await flushPromises()
-    expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist?q=cl%C3%A9o&watched=false&page=2')
+    expect(wrapper.get('.back a').attributes('href')).toBe(
+      '/watchlist?q=cl%C3%A9o&watched=false&page=2',
+    )
     await expectNoA11yViolations(wrapper.element)
   })
 
@@ -301,10 +320,17 @@ describe('FilmDetailsView', () => {
     it.each(['ambiguous', 'not_found', 'error'] as const)(
       'links to the match page for a film with status %s, between Mark as watched and Edit',
       async (status) => {
-        mocked.getFilm.mockResolvedValue(makeFilm({ id: 3, tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }))
+        mocked.getFilm.mockResolvedValue(
+          makeFilm({ id: 3, tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }),
+        )
         const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/3')
         const lookUp = status === 'ambiguous' ? [] : ['Look up on TMDB']
-        expect(actions(wrapper)).toEqual(['Mark as watched', ...lookUp, 'Choose TMDB match', 'Edit'])
+        expect(actions(wrapper)).toEqual([
+          'Mark as watched',
+          ...lookUp,
+          'Choose TMDB match',
+          'Edit',
+        ])
         const link = wrapper.get('a[href="/watchlist/3/match"]')
         expect(link.classes()).toContain('btn')
         await expectNoA11yViolations(wrapper.element)
@@ -416,7 +442,13 @@ describe('FilmDetailsView', () => {
     })
 
     it('names the Edit link "Edit <title>" and puts the actions in the order watched, match, edit', async () => {
-      mocked.getFilm.mockResolvedValue(makeFilm({ id: 3, title: 'Cléo', tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null } }))
+      mocked.getFilm.mockResolvedValue(
+        makeFilm({
+          id: 3,
+          title: 'Cléo',
+          tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
+        }),
+      )
       const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/3')
       const items = wrapper.findAll('.details__actions > *')
       expect(items.map((i) => i.element.tagName)).toEqual(['BUTTON', 'A', 'A'])
@@ -424,11 +456,16 @@ describe('FilmDetailsView', () => {
       expect(items[1]!.attributes('aria-label')).toBeUndefined()
     })
 
-    it.each(['matched', 'pending'] as const)('has no match link for a film with status %s', async (status) => {
-      mocked.getFilm.mockResolvedValue(makeFilm({ tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }))
-      const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/1')
-      expect(wrapper.find('a[href$="/match"]').exists()).toBe(false)
-    })
+    it.each(['matched', 'pending'] as const)(
+      'has no match link for a film with status %s',
+      async (status) => {
+        mocked.getFilm.mockResolvedValue(
+          makeFilm({ tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }),
+        )
+        const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/1')
+        expect(wrapper.find('a[href$="/match"]').exists()).toBe(false)
+      },
+    )
   })
 
   it('shows a loading text first', async () => {
@@ -472,14 +509,22 @@ describe('FilmDetailsView', () => {
     mocked.getFilm.mockResolvedValue(makeFilm({ title }))
     const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/1')
     expect(wrapper.get('h1').text()).toBe(title)
-    expect(wrapper.get('a[href="/watchlist/1/edit"]').attributes('aria-label')).toBe(`Edit ${title}`)
+    expect(wrapper.get('a[href="/watchlist/1/edit"]').attributes('aria-label')).toBe(
+      `Edit ${title}`,
+    )
     await expectNoA11yViolations(wrapper.element)
   })
 
   it('shows markup in the overview, cast and title as plain text', async () => {
     const evil = '<img src=x onerror="alert(1)"><script>alert(2)</script>'
     mocked.getFilm.mockResolvedValue(
-      makeFilm({ title: evil, overview: evil, cast: [{ id: 1, name: evil }], tagline: evil, originalTitle: evil + '!' }),
+      makeFilm({
+        title: evil,
+        overview: evil,
+        cast: [{ id: 1, name: evil }],
+        tagline: evil,
+        originalTitle: evil + '!',
+      }),
     )
     const { wrapper } = await mountWithApp(FilmDetailsView, '/watchlist/1')
     expect(wrapper.find('article img[src="x"]').exists()).toBe(false)
@@ -516,7 +561,9 @@ describe('FilmDetailsView', () => {
   })
 
   it('shows the loading state while the other film loads', async () => {
-    mocked.getFilm.mockResolvedValueOnce(makeFilm({ id: 7, title: 'Film 7' })).mockReturnValueOnce(new Promise(() => {}))
+    mocked.getFilm
+      .mockResolvedValueOnce(makeFilm({ id: 7, title: 'Film 7' }))
+      .mockReturnValueOnce(new Promise(() => {}))
     const { wrapper, router } = await mountWithApp(AppLayout, '/watchlist/7')
     await router.push('/watchlist/8')
     await flushPromises()
@@ -573,11 +620,15 @@ describe('FilmDetailsView', () => {
   })
 })
 
-
 describe('FilmDetailsView look-up on TMDB', () => {
   type Status = import('../../types').Film['tmdb']['status']
   const withStatus = (status: Status, extra = {}) =>
-    makeFilm({ id: 3, title: 'Cléo', tmdb: { id: status === 'matched' ? 5 : null, mediaType: 'movie', status, syncedAt: null }, ...extra })
+    makeFilm({
+      id: 3,
+      title: 'Cléo',
+      tmdb: { id: status === 'matched' ? 5 : null, mediaType: 'movie', status, syncedAt: null },
+      ...extra,
+    })
   const lookupButton = (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper']) =>
     wrapper.findAll('button').find((b) => /Look/.test(b.text()))
   const mountFilm = (film: ReturnType<typeof makeFilm>) => {
@@ -585,18 +636,24 @@ describe('FilmDetailsView look-up on TMDB', () => {
     return mountWithApp(FilmDetailsView, `/watchlist/${film.id}`)
   }
 
-  it.each(['pending', 'error', 'not_found'] as const)('offers the button for a film with status %s, after Mark as watched', async (status) => {
-    const { wrapper } = await mountFilm(withStatus(status))
-    expect(lookupButton(wrapper)!.text()).toBe('Look up on TMDB')
-    const buttons = wrapper.findAll('.details__actions button').map((b) => b.text())
-    expect(buttons).toEqual(['Mark as watched', 'Look up on TMDB'])
-    await expectNoA11yViolations(wrapper.element)
-  })
+  it.each(['pending', 'error', 'not_found'] as const)(
+    'offers the button for a film with status %s, after Mark as watched',
+    async (status) => {
+      const { wrapper } = await mountFilm(withStatus(status))
+      expect(lookupButton(wrapper)!.text()).toBe('Look up on TMDB')
+      const buttons = wrapper.findAll('.details__actions button').map((b) => b.text())
+      expect(buttons).toEqual(['Mark as watched', 'Look up on TMDB'])
+      await expectNoA11yViolations(wrapper.element)
+    },
+  )
 
-  it.each(['matched', 'ambiguous'] as const)('has no button for a film with status %s', async (status) => {
-    const { wrapper } = await mountFilm(withStatus(status))
-    expect(lookupButton(wrapper)).toBeUndefined()
-  })
+  it.each(['matched', 'ambiguous'] as const)(
+    'has no button for a film with status %s',
+    async (status) => {
+      const { wrapper } = await mountFilm(withStatus(status))
+      expect(lookupButton(wrapper)).toBeUndefined()
+    },
+  )
 
   it('looks the film up, shows the new data and announces a match', async () => {
     mocked.lookupFilmOnTmdb.mockResolvedValue(withStatus('matched', { tagline: 'Found it' }))
@@ -605,7 +662,9 @@ describe('FilmDetailsView look-up on TMDB', () => {
     await flushPromises()
     expect(mocked.lookupFilmOnTmdb).toHaveBeenCalledWith(3)
     expect(wrapper.text()).toContain('Found it')
-    expect(wrapper.get('[role="status"]').text()).toBe('Look-up finished: Cléo was matched on TMDB.')
+    expect(wrapper.get('[role="status"]').text()).toBe(
+      'Look-up finished: Cléo was matched on TMDB.',
+    )
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(lookupButton(wrapper)).toBeUndefined()
   })
@@ -714,7 +773,9 @@ describe('FilmDetailsView look-up on TMDB', () => {
   })
 
   it('clears the error and the old announcement on the next try', async () => {
-    mocked.lookupFilmOnTmdb.mockRejectedValueOnce(new api.ApiError(502, 'down')).mockResolvedValueOnce(withStatus('matched'))
+    mocked.lookupFilmOnTmdb
+      .mockRejectedValueOnce(new api.ApiError(502, 'down'))
+      .mockResolvedValueOnce(withStatus('matched'))
     const { wrapper } = await mountFilm(withStatus('pending'))
     await lookupButton(wrapper)!.trigger('click')
     await flushPromises()
@@ -757,11 +818,14 @@ describe('FilmDetailsView look-up on TMDB', () => {
 
 describe('FilmDetailsView when TMDB is not configured', () => {
   const off = { enabled: false, running: false, total: 0, done: 0, lastRun: null }
-  const OFF_TEXT = 'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
+  const OFF_TEXT =
+    'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
   const actions = (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper']) =>
     wrapper.findAll('.details__actions .btn').map((a) => a.text())
   const mountFilm = (status: 'pending' | 'not_found' | 'ambiguous' | 'error') => {
-    mocked.getFilm.mockResolvedValue(makeFilm({ id: 3, tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }))
+    mocked.getFilm.mockResolvedValue(
+      makeFilm({ id: 3, tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }),
+    )
     return mountWithApp(FilmDetailsView, '/watchlist/3')
   }
 
@@ -778,14 +842,24 @@ describe('FilmDetailsView when TMDB is not configured', () => {
 
   it('shows no hint and the TMDB buttons when TMDB is on', async () => {
     const { wrapper } = await mountFilm('not_found')
-    expect(actions(wrapper)).toEqual(['Mark as watched', 'Look up on TMDB', 'Choose TMDB match', 'Edit'])
+    expect(actions(wrapper)).toEqual([
+      'Mark as watched',
+      'Look up on TMDB',
+      'Choose TMDB match',
+      'Edit',
+    ])
     expect(wrapper.text()).not.toContain('TMDB_ACCESS_TOKEN')
   })
 
   it('shows no hint and the TMDB buttons while it is unknown, because the request failed', async () => {
     mocked.getTmdbCheck.mockRejectedValue(new api.ApiError(0, 'unreachable'))
     const { wrapper } = await mountFilm('not_found')
-    expect(actions(wrapper)).toEqual(['Mark as watched', 'Look up on TMDB', 'Choose TMDB match', 'Edit'])
+    expect(actions(wrapper)).toEqual([
+      'Mark as watched',
+      'Look up on TMDB',
+      'Choose TMDB match',
+      'Edit',
+    ])
     expect(wrapper.text()).not.toContain('TMDB_ACCESS_TOKEN')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })

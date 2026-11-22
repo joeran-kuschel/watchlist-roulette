@@ -1,5 +1,14 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
@@ -46,7 +55,10 @@ esac
 afterEach(() => rmSync(work, { recursive: true, force: true }))
 
 const run = (script: string, args: string[] = [], extra: NodeJS.ProcessEnv = {}) =>
-  spawnSync('bash', [join(k8sDir, script), ...args], { env: { ...env, ...extra }, encoding: 'utf8' })
+  spawnSync('bash', [join(k8sDir, script), ...args], {
+    env: { ...env, ...extra },
+    encoding: 'utf8',
+  })
 const calls = () => (existsSync(env.FAKE_CALLS!) ? readFileSync(env.FAKE_CALLS!, 'utf8') : '')
 const dump = (text: string) => {
   const file = join(work, 'dump.sql')
@@ -61,7 +73,9 @@ describe('backup-db.sh', () => {
     const result = run('backup-db.sh', [], { FAKE_DUMP: dump(COMPLETE) })
     expect(result.status).toBe(0)
     expect(backups()).toHaveLength(1)
-    expect(calls()).toContain('--context docker-desktop -n watchlist-roulette exec -i deploy/postgres')
+    expect(calls()).toContain(
+      '--context docker-desktop -n watchlist-roulette exec -i deploy/postgres',
+    )
   })
 
   it('keeps the earlier backups and writes nothing when the dump is incomplete', () => {
@@ -95,7 +109,10 @@ describe('restore-db.sh', () => {
   const restore = (extra: NodeJS.ProcessEnv = {}, file = backupFile()) =>
     run('restore-db.sh', [file, '--yes'], { FAKE_COUNTS: COUNTS, ...extra })
   const sent = () => readFileSync(env.FAKE_STDIN_FILE!, 'utf8')
-  const scaleCalls = () => calls().split('\n').filter((l) => l.includes('scale deployment/backend'))
+  const scaleCalls = () =>
+    calls()
+      .split('\n')
+      .filter((l) => l.includes('scale deployment/backend'))
 
   it('needs an existing file', () => {
     expect(run('restore-db.sh', [join(work, 'missing.sql.gz'), '--yes']).status).toBe(1)
@@ -112,7 +129,7 @@ describe('restore-db.sh', () => {
     expect(result.stdout).toContain('Restored')
   })
 
-  it('does not use --single-transaction: the transaction is the script\'s own, so a cut stream cannot commit', () => {
+  it("does not use --single-transaction: the transaction is the script's own, so a cut stream cannot commit", () => {
     restore()
     expect(calls()).not.toContain('single-transaction')
     expect(calls()).toContain('ON_ERROR_STOP=1')
@@ -149,18 +166,30 @@ describe('restore-db.sh', () => {
   })
 
   it.each([
-    ['a dump without the end marker (cut off when it was written)', () => backupFile('SELECT 1;\n')],
-    ['a dump with the end marker in the middle and more after it', () => backupFile(`-- PostgreSQL database dump complete\n${'SELECT 1;\n'.repeat(50)}`)],
-    ['a damaged archive', () => {
-      const file = join(work, 'bad.sql.gz')
-      writeFileSync(file, 'not gzip')
-      return file
-    }],
-    ['a truncated archive', () => {
-      const file = join(work, 'cut.sql.gz')
-      writeFileSync(file, gzipSync(DUMP.repeat(2000)).subarray(0, 40))
-      return file
-    }],
+    [
+      'a dump without the end marker (cut off when it was written)',
+      () => backupFile('SELECT 1;\n'),
+    ],
+    [
+      'a dump with the end marker in the middle and more after it',
+      () => backupFile(`-- PostgreSQL database dump complete\n${'SELECT 1;\n'.repeat(50)}`),
+    ],
+    [
+      'a damaged archive',
+      () => {
+        const file = join(work, 'bad.sql.gz')
+        writeFileSync(file, 'not gzip')
+        return file
+      },
+    ],
+    [
+      'a truncated archive',
+      () => {
+        const file = join(work, 'cut.sql.gz')
+        writeFileSync(file, gzipSync(DUMP.repeat(2000)).subarray(0, 40))
+        return file
+      },
+    ],
   ])('refuses %s before it touches anything', (_what, make) => {
     const result = restore({}, make())
     expect(result.status).toBe(1)
@@ -227,17 +256,26 @@ exec ${real} "$@"
     const result = restore({}, file)
     expect(result.status).toBe(0)
     expect(sent()).toContain(DUMP)
-    for (const line of calls().trim().split('\n')) expect(line).toContain('--context docker-desktop -n watchlist-roulette')
+    for (const line of calls().trim().split('\n'))
+      expect(line).toContain('--context docker-desktop -n watchlist-roulette')
   })
 
   it('goes on when the confirmation is typed', () => {
-    const result = spawnSync('bash', [join(k8sDir, 'restore-db.sh'), backupFile()], { env: { ...env, FAKE_COUNTS: COUNTS }, encoding: 'utf8', input: 'restore\n' })
+    const result = spawnSync('bash', [join(k8sDir, 'restore-db.sh'), backupFile()], {
+      env: { ...env, FAKE_COUNTS: COUNTS },
+      encoding: 'utf8',
+      input: 'restore\n',
+    })
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('Restored')
   })
 
   it('aborts without confirmation input at all (closed stdin)', () => {
-    const result = spawnSync('bash', [join(k8sDir, 'restore-db.sh'), backupFile()], { env, encoding: 'utf8', input: '' })
+    const result = spawnSync('bash', [join(k8sDir, 'restore-db.sh'), backupFile()], {
+      env,
+      encoding: 'utf8',
+      input: '',
+    })
     expect(result.status).toBe(1)
     expect(calls()).toBe('')
   })
@@ -248,7 +286,11 @@ exec ${real} "$@"
   })
 
   it('does nothing without the confirmation', () => {
-    const result = spawnSync('bash', [join(k8sDir, 'restore-db.sh'), backupFile()], { env, encoding: 'utf8', input: 'no\n' })
+    const result = spawnSync('bash', [join(k8sDir, 'restore-db.sh'), backupFile()], {
+      env,
+      encoding: 'utf8',
+      input: 'no\n',
+    })
     expect(result.status).toBe(1)
     expect(calls()).toBe('')
   })
@@ -273,8 +315,17 @@ describe('deploy.sh', () => {
   })
 
   it('is valid shell', () => {
-    for (const file of ['deploy.sh', 'backup-db.sh', 'restore-db.sh', 'install-backup-job.sh', 'generate-init-scripts.sh']) {
-      expect(spawnSync('bash', ['-n', join(k8sDir, file)]).status, file).toBe(0)
+    for (const file of [
+      'deploy.sh',
+      'backup-db.sh',
+      'restore-db.sh',
+      'install-backup-job.sh',
+      'generate-init-scripts.sh',
+    ]) {
+      expect({ file, status: spawnSync('bash', ['-n', join(k8sDir, file)]).status }).toEqual({
+        file,
+        status: 0,
+      })
     }
   })
 })

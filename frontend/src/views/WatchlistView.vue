@@ -31,12 +31,22 @@ const router = useRouter()
 
 const view = computed(() => fromQuery(route.query))
 // What is typed or chosen in the form; it reaches the URL (and the list) on submit or change
-const form = reactive({ q: '', watched: view.value.watched, tmdb: view.value.tmdb, sort: view.value.sort })
+const form = reactive({
+  q: '',
+  watched: view.value.watched,
+  tmdb: view.value.tmdb,
+  sort: view.value.sort,
+})
 
 watch(
   () => route.query,
   () => {
-    Object.assign(form, { q: view.value.q, watched: view.value.watched, tmdb: view.value.tmdb, sort: view.value.sort })
+    Object.assign(form, {
+      q: view.value.q,
+      watched: view.value.watched,
+      tmdb: view.value.tmdb,
+      sort: view.value.sort,
+    })
     store.rememberList(route.query)
     void store.load(toListParams(view.value))
   },
@@ -92,7 +102,9 @@ const rangeText = computed(() => {
   const end = Math.min(store.page * store.pageSize, store.total)
   return `Showing ${start}–${end} of ${store.total}`
 })
-const isFiltered = computed(() => view.value.q !== '' || view.value.watched !== 'all' || view.value.tmdb !== 'all')
+const isFiltered = computed(
+  () => view.value.q !== '' || view.value.watched !== 'all' || view.value.tmdb !== 'all',
+)
 
 // A live region that already holds text when it appears is often not read out, so its text is set a tick later
 const announced = ref('')
@@ -115,7 +127,11 @@ onBeforeUnmount(() => (store.notice = ''))
       <div>
         <h1>Watchlist</h1>
         <p class="lead">
-          {{ store.status === 'ready' ? `${store.total} ${isFiltered ? 'matching ' : ''}films` : 'Loading…' }}
+          {{
+            store.status === 'ready'
+              ? `${store.total} ${isFiltered ? 'matching ' : ''}films`
+              : 'Loading…'
+          }}
         </p>
       </div>
       <IconButton label="Add film" icon="plus" variant="primary" to="/watchlist/new" />
@@ -127,7 +143,12 @@ onBeforeUnmount(() => (store.notice = ''))
     </section>
     <TmdbCheckPanel v-else @finished="reload" />
 
-    <form role="search" aria-label="Filter watchlist" class="watchlist__filters" @submit.prevent="apply">
+    <form
+      role="search"
+      aria-label="Filter watchlist"
+      class="watchlist__filters"
+      @submit.prevent="apply"
+    >
       <FormField id="search" label="Search by title" class="watchlist__search" v-slot="{ attrs }">
         <input v-bind="attrs" v-model="form.q" class="input" type="search" />
       </FormField>
@@ -141,7 +162,9 @@ onBeforeUnmount(() => (store.notice = ''))
       <FormField id="tmdb" label="TMDB status" v-slot="{ attrs }">
         <select v-bind="attrs" v-model="form.tmdb" class="input" @change="apply">
           <option value="all">Any status</option>
-          <option v-for="(label, status) in TMDB_FILTERS" :key="status" :value="status">{{ label }}</option>
+          <option v-for="(label, status) in TMDB_FILTERS" :key="status" :value="status">
+            {{ label }}
+          </option>
         </select>
       </FormField>
       <FormField v-if="cards" id="sort" label="Sort by" v-slot="{ attrs }">
@@ -221,7 +244,9 @@ onBeforeUnmount(() => (store.notice = ''))
           <tbody role="rowgroup">
             <tr v-for="film in store.items" :key="film.id" role="row">
               <th scope="row" role="rowheader">
-                <RouterLink class="watchlist__title" :to="`/watchlist/${film.id}`">{{ film.title }}</RouterLink>
+                <RouterLink class="watchlist__title" :to="`/watchlist/${film.id}`">{{
+                  film.title
+                }}</RouterLink>
               </th>
               <td role="cell" class="watchlist__year">{{ film.releaseYear ?? '—' }}</td>
               <td role="cell" class="watchlist__added">{{ formatDate(film.addedAt) }}</td>
@@ -231,7 +256,9 @@ onBeforeUnmount(() => (store.notice = ''))
                     >Watched {{ formatDate(film.watchedAt) }}</span
                   >
                   <span v-else class="badge">To watch</span>
-                  <span v-if="tmdbBadge(film)" class="badge badge--warn">{{ tmdbBadge(film) }}</span>
+                  <span v-if="tmdbBadge(film)" class="badge badge--warn">{{
+                    tmdbBadge(film)
+                  }}</span>
                   <span v-else-if="film.tmdb.status === 'pending'" class="badge">{{
                     tmdb.off ? 'TMDB data is off' : 'Waiting for TMDB data'
                   }}</span>

@@ -11,9 +11,14 @@ import { createPosterFetcher, type PosterFetcher } from './tmdb/poster.js'
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof ZodError) {
-    res.status(400).json({ error: 'Invalid request', issues: error.issues.map(({ path, message }) => ({ path, message })) })
+    res.status(400).json({
+      error: 'Invalid request',
+      issues: error.issues.map(({ path, message }) => ({ path, message })),
+    })
   } else if (error instanceof HttpError) {
-    res.status(error.status).json({ error: error.message, ...(error.details as object | undefined) })
+    res
+      .status(error.status)
+      .json({ error: error.message, ...(error.details as object | undefined) })
   } else if (error instanceof multer.MulterError) {
     res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: error.message })
   } else if (isUniqueViolation(error)) {
@@ -54,10 +59,19 @@ export interface AppOptions {
   rateLimitPerMinute?: number
 }
 
-export function createApp({ enricher, corsOrigin, fetchPoster = createPosterFetcher(), rateLimitPerMinute = 600 }: AppOptions) {
+export function createApp({
+  enricher,
+  corsOrigin,
+  fetchPoster = createPosterFetcher(),
+  rateLimitPerMinute = 600,
+}: AppOptions) {
   const app = express()
   app.disable('x-powered-by')
-  const origins = corsOrigin?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? []
+  const origins =
+    corsOrigin
+      ?.split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean) ?? []
   if (origins.length > 0) app.use(cors({ origin: origins }))
   // Behind nginx every request comes from the proxy, so this is one shared budget, which is fine for one user.
   // The X-Forwarded-For check is off because the app does not trust that header to tell clients apart.

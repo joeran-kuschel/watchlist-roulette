@@ -13,7 +13,8 @@ async function stubApi(page: Page) {
   await page.route('**/api/**', async (route) => {
     const request = route.request()
     const path = new URL(request.url()).pathname.replace('/api', '')
-    const json = (body: unknown) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
+    const json = (body: unknown) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
 
     if (path === '/films/random') return json(bigBuckBunny)
     if (path === '/films/import') {
@@ -25,7 +26,13 @@ async function stubApi(page: Page) {
         unchanged: 0,
         skipped: [],
         removed: [],
-        keptWatched: [{ id: elephantsDream.id, title: elephantsDream.title, releaseYear: elephantsDream.releaseYear }],
+        keptWatched: [
+          {
+            id: elephantsDream.id,
+            title: elephantsDream.title,
+            releaseYear: elephantsDream.releaseYear,
+          },
+        ],
         rejected: [{ line: 5, reason: 'Name is empty' }],
         removalToken: 'sample',
         requiresLargeRemovalConfirmation: false,
@@ -39,9 +46,13 @@ async function stubApi(page: Page) {
       const film = films.find((f) => f.id === Number(poster[1]))
       if (!film?.posterPath) return route.fulfill({ status: 404 })
       if (!posters.has(film.posterPath)) {
-        const response = await fetch(`https://image.tmdb.org/t/p/w500${film.posterPath}`).catch((error: Error) => {
-          throw new Error(`Poster ${film.posterPath} could not be loaded (is the internet connection up?): ${error.message}`)
-        })
+        const response = await fetch(`https://image.tmdb.org/t/p/w500${film.posterPath}`).catch(
+          (error: Error) => {
+            throw new Error(
+              `Poster ${film.posterPath} could not be loaded (is the internet connection up?): ${error.message}`,
+            )
+          },
+        )
         if (!response.ok) throw new Error(`Poster ${film.posterPath}: HTTP ${response.status}`)
         posters.set(film.posterPath, Buffer.from(await response.arrayBuffer()))
       }
@@ -50,13 +61,19 @@ async function stubApi(page: Page) {
     const one = /^\/films\/(\d+)$/.exec(path)
     const found = films.find((f) => f.id === Number(one?.[1]))
     if (found) return json(found)
-    return route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"Not found"}' })
+    return route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: '{"error":"Not found"}',
+    })
   })
 }
 
 async function shoot(page: Page, name: string) {
   // wait for the posters, then give fonts and layout a moment to settle
-  await page.waitForFunction(() => [...document.images].every((img) => img.complete && img.naturalWidth > 0))
+  await page.waitForFunction(() =>
+    [...document.images].every((img) => img.complete && img.naturalWidth > 0),
+  )
   await page.evaluate(() => document.fonts.ready)
   writeFileSync(resolve(OUT, `${name}.png`), await page.screenshot({ fullPage: true }))
 }

@@ -145,7 +145,9 @@ describe('watchlist store', () => {
     mocked.listFilms.mockResolvedValue(page())
     const store = useWatchlistStore()
     await store.load({})
-    mocked.updateFilm.mockResolvedValue(makeFilm({ id: 2, title: 'Stalker', watchedAt: '2026-10-11T10:00:00.000Z' }))
+    mocked.updateFilm.mockResolvedValue(
+      makeFilm({ id: 2, title: 'Stalker', watchedAt: '2026-10-11T10:00:00.000Z' }),
+    )
     await store.setWatched(store.items[1]!, true)
     expect(mocked.updateFilm).toHaveBeenCalledWith(2, { watched: true })
     expect(store.items[1]!.watchedAt).not.toBeNull()

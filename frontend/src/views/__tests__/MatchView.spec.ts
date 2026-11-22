@@ -34,7 +34,9 @@ describe('MatchView', () => {
     expect(wrapper.text()).toContain('(1962)')
     expect(wrapper.text()).toContain('TMDB found several films with this title')
     const link = wrapper.get('ol a')
-    expect(link.attributes('href')).toBe('https://www.themoviedb.org/search?query=Cl%C3%A9o%20from%205%20to%207')
+    expect(link.attributes('href')).toBe(
+      'https://www.themoviedb.org/search?query=Cl%C3%A9o%20from%205%20to%207',
+    )
     expect(link.attributes('rel')).toContain('noopener')
     await expectNoA11yViolations(wrapper.element)
   })
@@ -45,7 +47,9 @@ describe('MatchView', () => {
     ['pending', 'has not been looked up yet'],
     ['matched', 'already matched'],
   ] as const)('explains the %s status', async (status, text) => {
-    mocked.getFilm.mockResolvedValue(makeFilm({ tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }))
+    mocked.getFilm.mockResolvedValue(
+      makeFilm({ tmdb: { id: null, mediaType: 'movie', status, syncedAt: null } }),
+    )
     const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
     expect(wrapper.text()).toContain(text)
   })
@@ -58,7 +62,9 @@ describe('MatchView', () => {
     await flushPromises()
     expect(mocked.updateFilm).toHaveBeenCalledWith(3, { tmdbId: 262543, tmdbMediaType: 'movie' })
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/watchlist'))
-    expect(useWatchlistStore().notice).toBe('TMDB id saved for Cléo from 5 to 7. Its details load in the background.')
+    expect(useWatchlistStore().notice).toBe(
+      'TMDB id saved for Cléo from 5 to 7. Its details load in the background.',
+    )
   })
 
   it('accepts the bare number', async () => {
@@ -82,7 +88,9 @@ describe('MatchView', () => {
 
   it('searches TMDB for movies and shows, and says that a number alone means a movie', async () => {
     const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
-    expect(wrapper.get('ol a').attributes('href')).toBe('https://www.themoviedb.org/search?query=Cl%C3%A9o%20from%205%20to%207')
+    expect(wrapper.get('ol a').attributes('href')).toBe(
+      'https://www.themoviedb.org/search?query=Cl%C3%A9o%20from%205%20to%207',
+    )
     expect(wrapper.get('ol').text()).toContain('film or TV show')
     expect(wrapper.get('#tmdb-id-hint').text()).toContain('/tv/1396')
     expect(wrapper.get('#tmdb-id-hint').text()).toContain('A number alone means a movie')
@@ -104,7 +112,9 @@ describe('MatchView', () => {
     await wrapper.get('#tmdb-id').setValue('12')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('#tmdb-id-error').text()).toBe('Another film on your list already uses this TMDB movie.')
+    expect(wrapper.get('#tmdb-id-error').text()).toBe(
+      'Another film on your list already uses this TMDB movie.',
+    )
     expect(router.currentRoute.value.path).toBe('/watchlist/3/match')
   })
 
@@ -128,7 +138,10 @@ describe('MatchView', () => {
 })
 
 describe('MatchView: edge cases', () => {
-  const submitWith = async (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper'], value: string) => {
+  const submitWith = async (
+    wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper'],
+    value: string,
+  ) => {
     await wrapper.get('#tmdb-id').setValue(value)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -161,7 +174,14 @@ describe('MatchView: edge cases', () => {
     expect(wrapper.get('.lead').text()).not.toContain('(')
   })
 
-  it.each(['', '   ', '0', 'abc', 'https://www.themoviedb.org/person/12', 'https://www.themoviedb.org/tv/abc'])('rejects %j without calling the server', async (value) => {
+  it.each([
+    '',
+    '   ',
+    '0',
+    'abc',
+    'https://www.themoviedb.org/person/12',
+    'https://www.themoviedb.org/tv/abc',
+  ])('rejects %j without calling the server', async (value) => {
     const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
     await submitWith(wrapper, value)
     expect(mocked.updateFilm).not.toHaveBeenCalled()
@@ -224,7 +244,10 @@ describe('MatchView: edge cases', () => {
 
   it('links back to the watchlist twice (breadcrumb and Cancel)', async () => {
     const { wrapper } = await mountWithApp(MatchView, '/watchlist/3/match')
-    expect(wrapper.findAll('a[href="/watchlist"]').map((a) => a.text())).toEqual(['← Back to watchlist', 'Cancel'])
+    expect(wrapper.findAll('a[href="/watchlist"]').map((a) => a.text())).toEqual([
+      '← Back to watchlist',
+      'Cancel',
+    ])
   })
 
   it('uses the remembered watchlist query for both links and after saving', async () => {
@@ -233,7 +256,10 @@ describe('MatchView: edge cases', () => {
     useWatchlistStore().rememberList({ q: 'cléo', page: '2' })
     await flushPromises()
     const listUrl = '/watchlist?q=cl%C3%A9o&page=2'
-    expect(wrapper.findAll(`a[href="${listUrl}"]`).map((a) => a.text())).toEqual(['← Back to watchlist', 'Cancel'])
+    expect(wrapper.findAll(`a[href="${listUrl}"]`).map((a) => a.text())).toEqual([
+      '← Back to watchlist',
+      'Cancel',
+    ])
     await expectNoA11yViolations(wrapper.element)
     await wrapper.get('#tmdb-id').setValue('262543')
     await wrapper.get('form').trigger('submit')
@@ -256,8 +282,13 @@ describe('MatchView: edge cases', () => {
     const { wrapper, router } = await mountWithApp(MatchView, '/watchlist/3/match')
     useWatchlistStore().rememberList({ q: 'cléo', page: '2' })
     await flushPromises()
-    await wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.trigger('click')
-    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/watchlist?q=cl%C3%A9o&page=2'))
+    await wrapper
+      .findAll('a')
+      .find((a) => a.text() === 'Cancel')!
+      .trigger('click')
+    await vi.waitFor(() =>
+      expect(router.currentRoute.value.fullPath).toBe('/watchlist?q=cl%C3%A9o&page=2'),
+    )
   })
 
   it('opens the TMDB search in a new tab and says so', async () => {

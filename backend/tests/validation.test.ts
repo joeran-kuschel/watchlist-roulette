@@ -46,11 +46,14 @@ describe('filmPatchSchema', () => {
 })
 
 describe('dates', () => {
-  it.each(['2020-13-01', '2020-00-10', '2020-02-30', 'yesterday', ''])('rejects "%s" without throwing', (value) => {
-    expect(() => parseIsoDate(value)).not.toThrow()
-    expect(parseIsoDate(value).success).toBe(false)
-    expect(filmCreateSchema.safeParse({ title: 'A', addedAt: value }).success).toBe(false)
-  })
+  it.each(['2020-13-01', '2020-00-10', '2020-02-30', 'yesterday', ''])(
+    'rejects "%s" without throwing',
+    (value) => {
+      expect(() => parseIsoDate(value)).not.toThrow()
+      expect(parseIsoDate(value).success).toBe(false)
+      expect(filmCreateSchema.safeParse({ title: 'A', addedAt: value }).success).toBe(false)
+    },
+  )
 
   it.each(['2020-02-29', '1888-01-01', '2100-12-31'])('accepts %s', (value) => {
     expect(parseIsoDate(value).success).toBe(true)

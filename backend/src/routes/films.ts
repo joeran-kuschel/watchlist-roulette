@@ -6,7 +6,10 @@ import type { Enricher } from '../tmdb/enricher.js'
 import type { PosterFetcher } from '../tmdb/poster.js'
 
 const MAX_CSV_BYTES = 5 * 1024 * 1024
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_CSV_BYTES, files: 1 } })
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_CSV_BYTES, files: 1 },
+})
 
 export function filmRoutes(enricher: Enricher, fetchPoster: PosterFetcher): Router {
   const router = Router()

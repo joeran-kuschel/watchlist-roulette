@@ -2,7 +2,13 @@ import { withTransaction } from '../config/database.js'
 import { HttpError } from '../errors.js'
 import { applyPlan, loadLinkedFilms } from '../models/filmImport.js'
 import { parseWatchlistCsv, type ImportSource, type RejectedRow } from './csv.js'
-import { buildPlan, isLargeRemoval, removalToken, type ExistingFilm, type ImportPlan } from './plan.js'
+import {
+  buildPlan,
+  isLargeRemoval,
+  removalToken,
+  type ExistingFilm,
+  type ImportPlan,
+} from './plan.js'
 
 export interface ImportOptions {
   removalToken?: string
@@ -42,9 +48,17 @@ const summary = (film: FilmRef) => ({
   releaseYear: film.releaseYear,
 })
 
-const removedSummary = (film: ExistingFilm): RemovedFilm => ({ ...summary(film), watched: film.watched })
+const removedSummary = (film: ExistingFilm): RemovedFilm => ({
+  ...summary(film),
+  watched: film.watched,
+})
 
-function report(source: ImportSource, plan: ImportPlan, rejected: RejectedRow[], applied: boolean): ImportReport {
+function report(
+  source: ImportSource,
+  plan: ImportPlan,
+  rejected: RejectedRow[],
+  applied: boolean,
+): ImportReport {
   return {
     source,
     applied,
@@ -66,7 +80,10 @@ function report(source: ImportSource, plan: ImportPlan, rejected: RejectedRow[],
 }
 
 /** Shows what an import would do, without writing anything. */
-export async function previewImport(file: Buffer, options: Pick<ImportOptions, 'deleteWatched'> = {}): Promise<ImportReport> {
+export async function previewImport(
+  file: Buffer,
+  options: Pick<ImportOptions, 'deleteWatched'> = {},
+): Promise<ImportReport> {
   const { source, rows, rejected } = parseWatchlistCsv(file)
   const plan = buildPlan(rows, rejected, await loadLinkedFilms(), source, options.deleteWatched)
   return report(source, plan, rejected, false)
@@ -86,10 +103,14 @@ export async function applyImport(file: Buffer, options: ImportOptions): Promise
     }
     if (isLargeRemoval(plan) && !options.confirmLargeRemoval) {
       const films = options.deleteWatched ? 'films it can remove' : 'unwatched films'
-      throw new HttpError(409, `This import removes more than half of the ${films}. Confirm it explicitly.`, {
-        code: 'large_removal',
-        removed: plan.toRemove.map(removedSummary),
-      })
+      throw new HttpError(
+        409,
+        `This import removes more than half of the ${films}. Confirm it explicitly.`,
+        {
+          code: 'large_removal',
+          removed: plan.toRemove.map(removedSummary),
+        },
+      )
     }
     await applyPlan(plan, db)
     return report(source, plan, rejected, true)

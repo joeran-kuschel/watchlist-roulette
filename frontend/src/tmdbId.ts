@@ -12,13 +12,17 @@ export interface TmdbTitle {
  */
 export function parseTmdbTitle(text: string): TmdbTitle | null {
   const trimmed = text.trim()
-  const fromUrl = /^https?:\/\/(?:www\.)?themoviedb\.org\/(movie|tv)\/(\d+)(?:[-/?#].*)?$/i.exec(trimmed)
+  const fromUrl = /^https?:\/\/(?:www\.)?themoviedb\.org\/(movie|tv)\/(\d+)(?:[-/?#].*)?$/i.exec(
+    trimmed,
+  )
   const mediaType = (fromUrl ? fromUrl[1]!.toLowerCase() : 'movie') as TmdbMediaType
   const digits = fromUrl ? fromUrl[2] : /^\d+$/.test(trimmed) ? trimmed : undefined
   const id = digits === undefined ? NaN : Number(digits)
   return Number.isSafeInteger(id) && id > 0 ? { id, mediaType } : null
 }
 
-export const tmdbSearchUrl = (title: string) => `https://www.themoviedb.org/search?query=${encodeURIComponent(title)}`
+export const tmdbSearchUrl = (title: string) =>
+  `https://www.themoviedb.org/search?query=${encodeURIComponent(title)}`
 
-export const tmdbTitleUrl = (id: number, mediaType: TmdbMediaType) => `https://www.themoviedb.org/${mediaType}/${id}`
+export const tmdbTitleUrl = (id: number, mediaType: TmdbMediaType) =>
+  `https://www.themoviedb.org/${mediaType}/${id}`

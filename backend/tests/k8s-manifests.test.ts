@@ -15,9 +15,12 @@ type Doc = {
 
 const read = (file: string) => readFileSync(join(k8sDir, file), 'utf8')
 const docs = (file: string) => loadAll(read(file)) as Doc[]
-const yamlFiles = readdirSync(k8sDir).filter((f) => f.endsWith('.yaml') && f !== 'kustomization.yaml')
+const yamlFiles = readdirSync(k8sDir).filter(
+  (f) => f.endsWith('.yaml') && f !== 'kustomization.yaml',
+)
 const all = yamlFiles.flatMap((file) => docs(file).map((doc) => ({ file, doc })))
-const find = (kind: string, name: string) => all.find((d) => d.doc.kind === kind && d.doc.metadata.name === name)?.doc as Doc
+const find = (kind: string, name: string) =>
+  all.find((d) => d.doc.kind === kind && d.doc.metadata.name === name)?.doc as Doc
 
 describe('k8s manifests', () => {
   it('are all valid YAML with a kind and a name', () => {
@@ -28,7 +31,10 @@ describe('k8s manifests', () => {
   })
 
   it('are listed in the kustomization, which sets the namespace', () => {
-    const [kustomization] = docs('kustomization.yaml') as unknown as { namespace: string; resources: string[] }[]
+    const [kustomization] = docs('kustomization.yaml') as unknown as {
+      namespace: string
+      resources: string[]
+    }[]
     expect([...kustomization!.resources].sort()).toEqual([...yamlFiles].sort())
     expect(kustomization!.namespace).toBe('watchlist-roulette')
     expect(find('Namespace', 'watchlist-roulette')).toBeTruthy()
@@ -36,7 +42,9 @@ describe('k8s manifests', () => {
 
   it('contain no Secret: passwords and tokens are created by deploy.sh', () => {
     expect(all.filter(({ doc }) => doc.kind === 'Secret')).toEqual([])
-    expect(yamlFiles.map(read).join('\n')).not.toMatch(/password:|PASSWORD: ?\S|TMDB_ACCESS_TOKEN: ?\S/i)
+    expect(yamlFiles.map(read).join('\n')).not.toMatch(
+      /password:|PASSWORD: ?\S|TMDB_ACCESS_TOKEN: ?\S/i,
+    )
   })
 
   it('carry the init scripts exactly as they are in backend/migrations', () => {
@@ -74,15 +82,21 @@ describe('k8s manifests', () => {
   it('keep the database on a volume and let only one postgres pod use it', () => {
     const deployment = find('Deployment', 'postgres')
     expect(deployment.spec.strategy.type).toBe('Recreate')
-    expect(find('PersistentVolumeClaim', 'postgres-pvc').spec.accessModes).toEqual(['ReadWriteOnce'])
-    const mounts = deployment.spec.template.spec.containers[0].volumeMounts.map((m: any) => m.mountPath)
+    expect(find('PersistentVolumeClaim', 'postgres-pvc').spec.accessModes).toEqual([
+      'ReadWriteOnce',
+    ])
+    const mounts = deployment.spec.template.spec.containers[0].volumeMounts.map(
+      (m: any) => m.mountPath,
+    )
     expect(mounts).toContain('/var/lib/postgresql/data')
     expect(mounts).toContain('/docker-entrypoint-initdb.d')
   })
 
   it('read the database login from the watchlist-db Secret that deploy.sh creates', () => {
     const keys = (container: any) =>
-      container.env.filter((e: any) => e.valueFrom?.secretKeyRef?.name === 'watchlist-db').map((e: any) => e.valueFrom.secretKeyRef.key)
+      container.env
+        .filter((e: any) => e.valueFrom?.secretKeyRef?.name === 'watchlist-db')
+        .map((e: any) => e.valueFrom.secretKeyRef.key)
     const backend = find('Deployment', 'backend').spec.template.spec
     expect(keys(backend.containers[0])).toEqual(['DATABASE_URL'])
     expect(keys(backend.initContainers[0])).toEqual(['DATABASE_URL'])
@@ -97,14 +111,20 @@ describe('k8s manifests', () => {
 
   it('run the backend as a non-root user and probe /health', () => {
     const container = find('Deployment', 'backend').spec.template.spec.containers[0]
-    expect(container.securityContext).toMatchObject({ runAsNonRoot: true, allowPrivilegeEscalation: false })
+    expect(container.securityContext).toMatchObject({
+      runAsNonRoot: true,
+      allowPrivilegeEscalation: false,
+    })
     expect(container.livenessProbe.httpGet.path).toBe('/health')
     expect(container.readinessProbe.httpGet.path).toBe('/health')
   })
 
   it('point the frontend at the backend by its full service name', () => {
     const env = find('Deployment', 'frontend').spec.template.spec.containers[0].env
-    expect(env).toContainEqual({ name: 'BACKEND_URL', value: 'http://backend.watchlist-roulette.svc.cluster.local:3000' })
+    expect(env).toContainEqual({
+      name: 'BACKEND_URL',
+      value: 'http://backend.watchlist-roulette.svc.cluster.local:3000',
+    })
   })
 })
 
@@ -122,7 +142,9 @@ describe('ingress', () => {
   })
 
   it('sends everything to the frontend, so the backend has no route of its own and is reached through nginx', () => {
-    const routes = Object.fromEntries(rule.http.paths.map((p: any) => [p.path, p.backend.service.name]))
+    const routes = Object.fromEntries(
+      rule.http.paths.map((p: any) => [p.path, p.backend.service.name]),
+    )
     expect(routes).toEqual({ '/': 'frontend' })
   })
 
@@ -156,7 +178,10 @@ describe('network policy', () => {
 
   it('lets only the frontend pods in, on the backend port', () => {
     expect(policy.spec.ingress).toEqual([
-      { from: [{ podSelector: { matchLabels: { app: 'frontend' } } }], ports: [{ port: 3000, protocol: 'TCP' }] },
+      {
+        from: [{ podSelector: { matchLabels: { app: 'frontend' } } }],
+        ports: [{ port: 3000, protocol: 'TCP' }],
+      },
     ])
     expect(find('Deployment', 'frontend').spec.template.metadata.labels.app).toBe('frontend')
     const port = find('Service', 'backend').spec.ports[0].targetPort
@@ -177,16 +202,25 @@ describe('network policy', () => {
   })
 
   it('selects by labels that the kustomization does not change', () => {
-    const [kustomization] = docs('kustomization.yaml') as unknown as { labels: { includeSelectors: boolean }[] }[]
+    const [kustomization] = docs('kustomization.yaml') as unknown as {
+      labels: { includeSelectors: boolean }[]
+    }[]
     expect(kustomization!.labels.every((l) => l.includeSelectors === false)).toBe(true)
     expect(find('Deployment', 'backend').spec.selector.matchLabels).toEqual({ app: 'backend' })
     expect(find('Service', 'backend').spec.selector).toEqual({ app: 'backend' })
   })
 
   it('leaves the frontend open, which is the way in for the ingress', () => {
-    const targets = all.filter(({ doc }) => doc.kind === 'NetworkPolicy').map(({ doc }) => doc.spec.podSelector)
+    const targets = all
+      .filter(({ doc }) => doc.kind === 'NetworkPolicy')
+      .map(({ doc }) => doc.spec.podSelector)
     expect(targets).toHaveLength(2)
-    expect(targets).toEqual(expect.arrayContaining([{ matchLabels: { app: 'backend' } }, { matchLabels: { app: 'postgres' } }]))
+    expect(targets).toEqual(
+      expect.arrayContaining([
+        { matchLabels: { app: 'backend' } },
+        { matchLabels: { app: 'postgres' } },
+      ]),
+    )
   })
 })
 
@@ -203,7 +237,10 @@ describe('network policy for the database', () => {
 
   it('lets only the backend pods in, on the PostgreSQL port', () => {
     expect(policy.spec.ingress).toEqual([
-      { from: [{ podSelector: { matchLabels: { app: 'backend' } } }], ports: [{ port: 5432, protocol: 'TCP' }] },
+      {
+        from: [{ podSelector: { matchLabels: { app: 'backend' } } }],
+        ports: [{ port: 5432, protocol: 'TCP' }],
+      },
     ])
     expect(find('Service', 'postgres').spec.ports[0].targetPort).toBe(5432)
     expect(find('Deployment', 'backend').spec.template.metadata.labels.app).toBe('backend')
@@ -218,21 +255,34 @@ describe('network policy for the database', () => {
 
   it('keeps every script off the network: the database is only reached through kubectl exec', () => {
     const scripts = readdirSync(k8sDir).filter((f) => f.endsWith('.sh'))
-    expect(scripts).toEqual(expect.arrayContaining(['backup-db.sh', 'restore-db.sh', 'db-common.sh']))
+    expect(scripts).toEqual(
+      expect.arrayContaining(['backup-db.sh', 'restore-db.sh', 'db-common.sh']),
+    )
+    // The scripts that break a rule, by name, so a failure says which one
+    const offenders: string[] = []
     for (const file of scripts) {
       const code = read(file)
         .split('\n')
         .filter((line) => !line.trim().startsWith('#'))
         .join('\n')
       // no way for a pod of ours or the Mac to open a connection to the database over the network
-      expect(code, file).not.toMatch(/port-forward|\bkubectl\b(\s+-{1,2}[A-Za-z][\w-]*(=\S+)?(\s+[^\s-]\S*)?)*\s+(run|debug|attach)\b/)
-      expect(code, file).not.toMatch(/\b(psql|pg_dump|pg_isready)\b[^\n|]*(\s-h[\s=]|--host|postgres(ql)?:\/\/)/)
+      if (
+        /port-forward|\bkubectl\b(\s+-{1,2}[A-Za-z][\w-]*(=\S+)?(\s+[^\s-]\S*)?)*\s+(run|debug|attach)\b/.test(
+          code,
+        )
+      )
+        offenders.push(file)
+      if (/\b(psql|pg_dump|pg_isready)\b[^\n|]*(\s-h[\s=]|--host|postgres(ql)?:\/\/)/.test(code))
+        offenders.push(file)
     }
+    expect(offenders).toEqual([])
     expect(read('db-common.sh')).toMatch(/kubectl[^\n]* exec -i deploy\/postgres /)
   })
 
   it('has the backend as the only pod template that gets the database URL, so no other pod needs access', () => {
-    const workloads = all.filter(({ doc }) => ['Deployment', 'Job', 'CronJob', 'StatefulSet', 'DaemonSet'].includes(doc.kind))
+    const workloads = all.filter(({ doc }) =>
+      ['Deployment', 'Job', 'CronJob', 'StatefulSet', 'DaemonSet'].includes(doc.kind),
+    )
     const usesUrl = workloads
       .filter(({ doc }) => JSON.stringify(doc.spec).includes('DATABASE_URL'))
       .map(({ doc }) => doc.metadata.name)
@@ -270,12 +320,16 @@ describe('network policy for the database', () => {
     const service = find('Service', 'postgres')
     expect(service.spec.selector).toEqual(policy.spec.podSelector.matchLabels)
     expect(service.spec.ports[0].port).toBe(5432)
-    expect(find('Deployment', 'postgres').spec.template.spec.containers[0].ports[0].containerPort).toBe(5432)
+    expect(
+      find('Deployment', 'postgres').spec.template.spec.containers[0].ports[0].containerPort,
+    ).toBe(5432)
     expect(read('deploy.sh')).toContain('@postgres:5432/')
   })
 
   it('has both policies in network-policy.yaml, which the kustomization lists', () => {
     const names = docs('network-policy.yaml').map((d) => d.metadata.name)
-    expect(names).toEqual(expect.arrayContaining(['backend-from-frontend', 'postgres-from-backend']))
+    expect(names).toEqual(
+      expect.arrayContaining(['backend-from-frontend', 'postgres-from-backend']),
+    )
   })
 })

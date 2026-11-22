@@ -37,7 +37,10 @@ const PENDING_COLUMNS = `id, title, release_year, tmdb_id, tmdb_media_type`
  * never in the last group: re-searching by title must not undo that choice.
  */
 export async function loadPendingFilms(
-  { retryErrors = false, retryUnmatched = false }: { retryErrors?: boolean; retryUnmatched?: boolean } = {},
+  {
+    retryErrors = false,
+    retryUnmatched = false,
+  }: { retryErrors?: boolean; retryUnmatched?: boolean } = {},
   db: Db = getPool(),
 ): Promise<PendingFilm[]> {
   const rows = await query<PendingRow>(
@@ -53,12 +56,23 @@ export async function loadPendingFilms(
 }
 
 /** One film for a look-up the user asked for, whatever its status; null if there is no such film. */
-export async function loadFilmToEnrich(filmId: number, db: Db = getPool()): Promise<PendingFilm | null> {
-  const rows = await query<PendingRow>(`SELECT ${PENDING_COLUMNS} FROM films WHERE id = $1`, [filmId], db)
+export async function loadFilmToEnrich(
+  filmId: number,
+  db: Db = getPool(),
+): Promise<PendingFilm | null> {
+  const rows = await query<PendingRow>(
+    `SELECT ${PENDING_COLUMNS} FROM films WHERE id = $1`,
+    [filmId],
+    db,
+  )
   return rows[0] ? toPendingFilm(rows[0]) : null
 }
 
-export async function setStatus(filmId: number, status: TmdbStatus, db: Db = getPool()): Promise<void> {
+export async function setStatus(
+  filmId: number,
+  status: TmdbStatus,
+  db: Db = getPool(),
+): Promise<void> {
   await query(
     `UPDATE films SET tmdb_status = $1, tmdb_synced_at = now(), updated_at = now() WHERE id = $2`,
     [status, filmId],
@@ -92,7 +106,11 @@ async function updateFilmRow(filmId: number, movie: TmdbMovie, db: Db): Promise<
 }
 
 /** Inserts or renames a genre or person, keyed by its TMDB id. */
-async function upsertNamed(table: 'genres' | 'people', row: { id: number; name: string }, db: Db): Promise<void> {
+async function upsertNamed(
+  table: 'genres' | 'people',
+  row: { id: number; name: string },
+  db: Db,
+): Promise<void> {
   await query(
     `INSERT INTO ${table} (id, name) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
     [row.id, row.name],
@@ -104,7 +122,11 @@ async function replaceGenres(filmId: number, movie: TmdbMovie, db: Db): Promise<
   await query('DELETE FROM film_genres WHERE film_id = $1', [filmId], db)
   for (const genre of movie.genres) {
     await upsertNamed('genres', genre, db)
-    await query('INSERT INTO film_genres (film_id, genre_id) VALUES ($1, $2)', [filmId, genre.id], db)
+    await query(
+      'INSERT INTO film_genres (film_id, genre_id) VALUES ($1, $2)',
+      [filmId, genre.id],
+      db,
+    )
   }
 }
 

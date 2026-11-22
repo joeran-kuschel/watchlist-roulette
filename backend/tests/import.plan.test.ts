@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { ImportRow } from '../src/import/csv.js'
-import { buildPlan, isLargeRemoval, normalizeTitle, removalToken, sourceOfLink, type ExistingFilm } from '../src/import/plan.js'
+import {
+  buildPlan,
+  isLargeRemoval,
+  normalizeTitle,
+  removalToken,
+  sourceOfLink,
+  type ExistingFilm,
+} from '../src/import/plan.js'
 
 const row = (n: number, extra: Partial<ImportRow> = {}): ImportRow => ({
   line: n + 1,
@@ -40,7 +47,11 @@ describe('buildPlan', () => {
   })
 
   it('does not remove a film whose row was rejected', () => {
-    const plan = buildPlan([], [{ line: 2, reason: 'bad year', letterboxdUrl: 'https://boxd.it/1' }], [film(1)])
+    const plan = buildPlan(
+      [],
+      [{ line: 2, reason: 'bad year', letterboxdUrl: 'https://boxd.it/1' }],
+      [film(1)],
+    )
     expect(plan.toRemove).toEqual([])
   })
 
@@ -54,7 +65,9 @@ describe('buildPlan', () => {
 describe('isLargeRemoval', () => {
   it('is false for no removals and for at most half of the unwatched films', () => {
     expect(isLargeRemoval(buildPlan([row(1)], [], [film(1)]))).toBe(false)
-    expect(isLargeRemoval(buildPlan([row(1), row(2)], [], [film(1), film(2), film(3), film(4)]))).toBe(false)
+    expect(
+      isLargeRemoval(buildPlan([row(1), row(2)], [], [film(1), film(2), film(3), film(4)])),
+    ).toBe(false)
   })
 
   it('is true above half', () => {
@@ -96,7 +109,9 @@ describe('buildPlan with several sources', () => {
 
   it('a row without a date never counts as a change', () => {
     expect(buildPlan([row(1, { addedAt: null })], [], [film(1)]).unchanged).toBe(1)
-    expect(buildPlan([row(1, { addedAt: null, title: 'New' })], [], [film(1)]).toUpdate).toHaveLength(1)
+    expect(
+      buildPlan([row(1, { addedAt: null, title: 'New' })], [], [film(1)]).toUpdate,
+    ).toHaveLength(1)
   })
 
   it.each([
@@ -120,14 +135,25 @@ describe('buildPlan with several sources', () => {
 
   it('does not remove an IMDb film whose row was rejected, and keeps watched manual IMDb films', () => {
     const existing = [imdbFilm(1), imdbFilm(2, { watched: true }), imdbFilm(3)]
-    const rejected = [{ line: 2, reason: 'TV episodes are not imported', letterboxdUrl: existing[0]!.letterboxdUrl }]
+    const rejected = [
+      {
+        line: 2,
+        reason: 'TV episodes are not imported',
+        letterboxdUrl: existing[0]!.letterboxdUrl,
+      },
+    ]
     const plan = buildPlan([], rejected, existing, 'imdb')
     expect(plan.toRemove.map((f) => f.id)).toEqual([3])
     expect(plan.keptWatched.map((f) => f.id)).toEqual([2])
   })
 
   it('updates the title of a film without touching its date when the row has none', () => {
-    const plan = buildPlan([imdbRow(1, { addedAt: null, title: 'New', releaseYear: 1999 })], [], [imdbFilm(1)], 'imdb')
+    const plan = buildPlan(
+      [imdbRow(1, { addedAt: null, title: 'New', releaseYear: 1999 })],
+      [],
+      [imdbFilm(1)],
+      'imdb',
+    )
     expect(plan.toUpdate).toHaveLength(1)
   })
 })
@@ -153,12 +179,20 @@ describe('normalizeTitle', () => {
 
 describe('buildPlan skips a film that came from the other export', () => {
   const imdbLink = (n: number) => `https://www.imdb.com/title/tt000000${n}/`
-  const imdbRow = (n: number, extra: Partial<ImportRow> = {}) => row(n, { letterboxdUrl: imdbLink(n), ...extra })
+  const imdbRow = (n: number, extra: Partial<ImportRow> = {}) =>
+    row(n, { letterboxdUrl: imdbLink(n), ...extra })
 
   it('skips an IMDb row whose title and year match a Letterboxd film, and lists the film it matches', () => {
-    const plan = buildPlan([imdbRow(9, { title: 'film 1!', releaseYear: 2000 })], [], [film(1)], 'imdb')
+    const plan = buildPlan(
+      [imdbRow(9, { title: 'film 1!', releaseYear: 2000 })],
+      [],
+      [film(1)],
+      'imdb',
+    )
     expect(plan.toInsert).toEqual([])
-    expect(plan.toSkip).toEqual([{ row: expect.objectContaining({ title: 'film 1!' }), existing: film(1) }])
+    expect(plan.toSkip).toEqual([
+      { row: expect.objectContaining({ title: 'film 1!' }), existing: film(1) },
+    ])
   })
 
   it('works the other way round for a Letterboxd file', () => {
@@ -168,20 +202,38 @@ describe('buildPlan skips a film that came from the other export', () => {
 
   it('does not skip a row from the same source, a different year, or a row or film without a year', () => {
     expect(buildPlan([row(9, { title: 'Film 1' })], [], [film(1)]).toInsert).toHaveLength(1)
-    expect(buildPlan([imdbRow(9, { title: 'Film 1', releaseYear: 2001 })], [], [film(1)], 'imdb').toInsert).toHaveLength(1)
-    const noYear = buildPlan([imdbRow(9, { title: 'Film 1', releaseYear: null })], [], [film(1, { releaseYear: null })], 'imdb')
+    expect(
+      buildPlan([imdbRow(9, { title: 'Film 1', releaseYear: 2001 })], [], [film(1)], 'imdb')
+        .toInsert,
+    ).toHaveLength(1)
+    const noYear = buildPlan(
+      [imdbRow(9, { title: 'Film 1', releaseYear: null })],
+      [],
+      [film(1, { releaseYear: null })],
+      'imdb',
+    )
     expect(noYear.toInsert).toHaveLength(1)
   })
 
   it('does not skip a row whose link is already stored, so an update still happens', () => {
     const stored = film(9, { title: 'Film 1', letterboxdUrl: imdbLink(9) })
-    const plan = buildPlan([imdbRow(9, { title: 'Film 1', releaseYear: 2000, addedAt: '2021-01-01' })], [], [film(1), stored], 'imdb')
+    const plan = buildPlan(
+      [imdbRow(9, { title: 'Film 1', releaseYear: 2000, addedAt: '2021-01-01' })],
+      [],
+      [film(1), stored],
+      'imdb',
+    )
     expect(plan.toSkip).toEqual([])
     expect(plan.toUpdate).toHaveLength(1)
   })
 
   it('does not change what is removed or counted for the guard', () => {
-    const plan = buildPlan([imdbRow(9, { title: 'Film 1', releaseYear: 2000 })], [], [film(1)], 'imdb')
+    const plan = buildPlan(
+      [imdbRow(9, { title: 'Film 1', releaseYear: 2000 })],
+      [],
+      [film(1)],
+      'imdb',
+    )
     expect(plan.toRemove).toEqual([])
     expect(plan.removableCount).toBe(0)
   })
@@ -215,7 +267,18 @@ describe('normalizeTitle edge cases', () => {
 
   it('compares a punctuation-only title as it is, so "!!!" and "???" are different films', () => {
     const imdb = (title: string) =>
-      buildPlan([row(9, { title, releaseYear: 2000, letterboxdUrl: 'https://www.imdb.com/title/tt0000009/' })], [], [film(1, { title: '!!!', releaseYear: 2000 })], 'imdb')
+      buildPlan(
+        [
+          row(9, {
+            title,
+            releaseYear: 2000,
+            letterboxdUrl: 'https://www.imdb.com/title/tt0000009/',
+          }),
+        ],
+        [],
+        [film(1, { title: '!!!', releaseYear: 2000 })],
+        'imdb',
+      )
     expect(imdb('???').toInsert).toHaveLength(1)
     expect(imdb('???').toSkip).toEqual([])
     expect(imdb(' !!! ').toSkip).toHaveLength(1)
@@ -230,7 +293,10 @@ describe('buildPlan skip edge cases', () => {
     const rows = [imdbRow(8, { title: 'Film 1' }), imdbRow(9, { title: 'FILM 1' })]
     const plan = buildPlan(rows, [], [film(1)], 'imdb')
     expect(plan.toInsert).toEqual([])
-    expect(plan.toSkip.map((s) => [s.row.line, s.existing.id])).toEqual([[9, 1], [10, 1]])
+    expect(plan.toSkip.map((s) => [s.row.line, s.existing.id])).toEqual([
+      [9, 1],
+      [10, 1],
+    ])
   })
 
   it('does not let the other-source rule skip a row that matches a film of its own source', () => {
@@ -249,12 +315,22 @@ describe('buildPlan skip edge cases', () => {
   })
 
   it('does not match films that differ only in year', () => {
-    const plan = buildPlan([imdbRow(9, { title: 'Film 1', releaseYear: 1999 })], [], [film(1), film(2, { title: 'Film 1', releaseYear: 2001 })], 'imdb')
+    const plan = buildPlan(
+      [imdbRow(9, { title: 'Film 1', releaseYear: 1999 })],
+      [],
+      [film(1), film(2, { title: 'Film 1', releaseYear: 2001 })],
+      'imdb',
+    )
     expect(plan.toSkip).toEqual([])
   })
 
   it('does not let a rejected row hide or skip anything', () => {
-    const plan = buildPlan([], [{ line: 3, reason: 'x', letterboxdUrl: 'https://www.imdb.com/title/tt0000009/' }], [film(1)], 'imdb')
+    const plan = buildPlan(
+      [],
+      [{ line: 3, reason: 'x', letterboxdUrl: 'https://www.imdb.com/title/tt0000009/' }],
+      [film(1)],
+      'imdb',
+    )
     expect(plan.toSkip).toEqual([])
     expect(plan.toRemove).toEqual([])
   })
@@ -276,19 +352,29 @@ describe('buildPlan with deleteWatched', () => {
   })
 
   it('never removes a watched film that is in the file, or one whose row was rejected', () => {
-    const rejected = [{ line: 3, reason: 'Year is not a number', letterboxdUrl: film(3).letterboxdUrl }]
+    const rejected = [
+      { line: 3, reason: 'Year is not a number', letterboxdUrl: film(3).letterboxdUrl },
+    ]
     const plan = buildPlan([row(2)], rejected, existing, 'letterboxd', true)
     expect(plan.toRemove.map((f) => f.id)).toEqual([1, 4])
   })
 
   it('only touches films of the same source', () => {
-    const imdbFilm = film(2, { letterboxdUrl: 'https://www.imdb.com/title/tt0000002/', watched: true })
+    const imdbFilm = film(2, {
+      letterboxdUrl: 'https://www.imdb.com/title/tt0000002/',
+      watched: true,
+    })
     const mixed = [film(1, { watched: true }), imdbFilm]
     expect(buildPlan([], [], mixed, 'imdb', true).toRemove.map((f) => f.id)).toEqual([2])
   })
 
   it('counts the watched films for the large-removal guard only when asked', () => {
-    const films = [film(1), film(2, { watched: true }), film(3, { watched: true }), film(4, { watched: true })]
+    const films = [
+      film(1),
+      film(2, { watched: true }),
+      film(3, { watched: true }),
+      film(4, { watched: true }),
+    ]
     expect(buildPlan([row(1)], [], films).removableCount).toBe(1)
     const plan = buildPlan([row(1)], [], films, 'letterboxd', true)
     expect(plan.removableCount).toBe(4)
@@ -310,7 +396,9 @@ describe('buildPlan with deleteWatched', () => {
 
   it('plans the same as without the option when no film is watched', () => {
     const films = [film(1), film(2)]
-    expect(buildPlan([row(1)], [], films, 'letterboxd', true)).toEqual(buildPlan([row(1)], [], films))
+    expect(buildPlan([row(1)], [], films, 'letterboxd', true)).toEqual(
+      buildPlan([row(1)], [], films),
+    )
   })
 
   it('gives another removal token once watched films join the list', () => {

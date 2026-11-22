@@ -14,7 +14,8 @@ const film = (id: number, title: string, extra: Record<string, unknown> = {}) =>
   tmdb: { id: id * 10, mediaType: 'movie', status: 'matched', syncedAt: null },
   originalTitle: null,
   tagline: null,
-  overview: 'A sample overview that is long enough to wrap onto more than one line in the film card.',
+  overview:
+    'A sample overview that is long enough to wrap onto more than one line in the film card.',
   runtimeMinutes: 100,
   voteAverage: 7.4,
   voteCount: 10,
@@ -31,7 +32,9 @@ async function stubApi(page: Page) {
   const films = [
     film(1, 'Perfect Days'),
     film(2, 'Aftersun', { watchedAt: '2025-03-04T10:00:00.000Z' }),
-    film(3, 'Cléo from 5 to 7', { tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null } }),
+    film(3, 'Cléo from 5 to 7', {
+      tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
+    }),
   ]
   const calls: string[] = []
   await page.route('**/api/**', async (route) => {
@@ -91,7 +94,8 @@ async function expectAccessible(page: Page) {
     // @ts-expect-error axe is injected above
     const results = await window.axe.run('#app', { rules: { region: { enabled: false } } })
     return results.violations.map(
-      (v: { id: string; help: string; nodes: { html: string }[] }) => `${v.id}: ${v.help} (${v.nodes[0]?.html.slice(0, 120)})`,
+      (v: { id: string; help: string; nodes: { html: string }[] }) =>
+        `${v.id}: ${v.help} (${v.nodes[0]?.html.slice(0, 120)})`,
     )
   })
   expect(violations).toEqual([])
@@ -138,7 +142,9 @@ test('the roulette filters stay compact next to the result at medium widths', as
     expect(Math.abs(from.y - to.y)).toBeLessThan(2)
     for (const field of [country, runtime, from, to]) expect(field.width).toBeGreaterThan(60)
     expect(form.x + form.width).toBeLessThanOrEqual(width)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true)
   }
   await expectAccessible(page)
 })
@@ -146,7 +152,9 @@ test('the roulette filters stay compact next to the result at medium widths', as
 // Below this the filters and the result cannot sit side by side (280 + 40 + 560 + 2 × 48 px of page padding), so the
 // filters are a collapsed panel above the result
 for (const width of [900, 989]) {
-  test(`the roulette filters are a collapsed panel above the result at ${width} px`, async ({ page }) => {
+  test(`the roulette filters are a collapsed panel above the result at ${width} px`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 2, name: 'Perfect Days' })).toBeVisible()
@@ -200,7 +208,9 @@ for (const width of [320, 375, 989]) {
     expect(country.x + country.width).toBeLessThanOrEqual(runtime.x)
     // Error messages of different length under the two inputs can push one a little lower than the other
     expect(Math.abs(country.y - runtime.y)).toBeLessThan(40)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true)
     await expectAccessible(page)
   })
 }
@@ -227,7 +237,9 @@ test('the watchlist lists films, can be searched and updates a film', async ({ p
   await expect(page).toHaveURL(/q=after/)
 })
 
-test('going back from a film keeps the search, filters and page of the watchlist', async ({ page }) => {
+test('going back from a film keeps the search, filters and page of the watchlist', async ({
+  page,
+}) => {
   const listUrl = /\/watchlist\?q=a&watched=false&sort=title&page=2$/
   await page.goto('/watchlist?q=a&watched=false&sort=title&page=2')
   await page.getByRole('link', { name: 'Perfect Days', exact: true }).click()
@@ -237,7 +249,10 @@ test('going back from a film keeps the search, filters and page of the watchlist
   await expect(page).toHaveURL(listUrl)
   await expect(page.getByLabel('Search by title')).toHaveValue('a')
   await expect(page.getByLabel('Show')).toHaveValue('false')
-  await expect(page.getByRole('columnheader', { name: 'Title' })).toHaveAttribute('aria-sort', 'ascending')
+  await expect(page.getByRole('columnheader', { name: 'Title' })).toHaveAttribute(
+    'aria-sort',
+    'ascending',
+  )
 
   // Cancel on the edit page leads back to the same list
   await page.getByRole('link', { name: 'Perfect Days', exact: true }).click()
@@ -252,7 +267,10 @@ test('a film title opens its details page with links and an Edit button', async 
   await expect(page).toHaveURL(/\/watchlist\/1$/)
   await expect(page).toHaveTitle('Film details · Watchlist Roulette')
   await expect(page.getByRole('heading', { level: 1, name: 'Perfect Days' })).toBeVisible()
-  await expect(page.getByRole('link', { name: /Letterboxd/ })).toHaveAttribute('href', 'https://boxd.it/1')
+  await expect(page.getByRole('link', { name: /Letterboxd/ })).toHaveAttribute(
+    'href',
+    'https://boxd.it/1',
+  )
   await expect(page.getByRole('link', { name: /The Movie Database/ })).toHaveAttribute(
     'href',
     'https://www.themoviedb.org/movie/10',
@@ -264,7 +282,9 @@ test('a film title opens its details page with links and an Edit button', async 
   await expect(page).toHaveURL(/\/watchlist\/1\/edit$/)
 })
 
-test('the details page marks a film as watched and links to the TMDB match of an ambiguous one', async ({ page }) => {
+test('the details page marks a film as watched and links to the TMDB match of an ambiguous one', async ({
+  page,
+}) => {
   await page.goto('/watchlist/1')
   await expect(page.getByText('Not watched yet')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Choose TMDB match' })).toHaveCount(0)
@@ -279,7 +299,9 @@ test('the details page marks a film as watched and links to the TMDB match of an
   await expect(page).toHaveURL(/\/watchlist\/3\/match$/)
 })
 
-test('the details page tabs through the actions in order and toggles the watched state', async ({ page }) => {
+test('the details page tabs through the actions in order and toggles the watched state', async ({
+  page,
+}) => {
   await page.goto('/watchlist/3')
   const mark = page.getByRole('button', { name: 'Mark as watched' })
   await mark.focus()
@@ -295,7 +317,9 @@ test('the details page tabs through the actions in order and toggles the watched
 
 test('the details page shows an alert when marking a film fails', async ({ page }) => {
   await page.route('**/api/films/1', (route) =>
-    route.request().method() === 'PATCH' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"x"}' }) : route.fallback(),
+    route.request().method() === 'PATCH'
+      ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"x"}' })
+      : route.fallback(),
   )
   await page.goto('/watchlist/1')
   await page.getByRole('button', { name: 'Mark as watched' }).click()
@@ -422,9 +446,13 @@ test('the pagination and the empty watchlist fit a 320 px screen', async ({ page
   await page.goto('/watchlist')
   await expect(page.getByRole('navigation', { name: 'Pagination, bottom' })).toBeVisible()
   const fitsNow = () =>
-    page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
+    page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    )
   expect(await fitsNow()).toBe(true)
-  for (const button of await page.locator('nav[aria-label="Pagination, bottom"] .icon-button').all()) {
+  for (const button of await page
+    .locator('nav[aria-label="Pagination, bottom"] .icon-button')
+    .all()) {
     const box = (await button.boundingBox())!
     expect(box.x).toBeGreaterThanOrEqual(0)
     expect(box.x + box.width).toBeLessThanOrEqual(320)
@@ -468,7 +496,8 @@ test('a tooltip stays while the pointer moves onto it, Esc closes it without foc
   const link = page.getByRole('link', { name: 'Edit film: Perfect Days' })
   const tip = link.locator('.icon-button__tip')
   const button = (await link.boundingBox())!
-  const overButton = () => page.mouse.move(button.x + button.width / 2, button.y + button.height / 2)
+  const overButton = () =>
+    page.mouse.move(button.x + button.width / 2, button.y + button.height / 2)
 
   await overButton()
   await expect(tip).toBeVisible()
@@ -499,12 +528,17 @@ test('wide screens sort by the column headers, narrow screens by the list', asyn
   await expect(page.getByLabel('Sort by')).toHaveCount(0)
   const year = page.getByRole('button', { name: 'Year', exact: true })
   const yearHeader = page.getByRole('columnheader', { name: 'Year' })
-  await expect(page.getByRole('columnheader', { name: 'Added' })).toHaveAttribute('aria-sort', 'descending')
+  await expect(page.getByRole('columnheader', { name: 'Added' })).toHaveAttribute(
+    'aria-sort',
+    'descending',
+  )
   await year.click()
   await expect(page).toHaveURL(/sort=year-desc$/)
   await expect(yearHeader).toHaveAttribute('aria-sort', 'descending')
   await expect(year).toBeFocused()
-  await expect(page.getByRole('status').filter({ hasText: 'Sorted by release year, newest first' })).toBeAttached()
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Sorted by release year, newest first' }),
+  ).toBeAttached()
   await year.click()
   await expect(page).toHaveURL(/sort=year-asc$/)
   await expect(yearHeader).toHaveAttribute('aria-sort', 'ascending')
@@ -517,7 +551,9 @@ test('wide screens sort by the column headers, narrow screens by the list', asyn
   await expect(page).toHaveURL(/sort=title-desc$/)
 })
 
-test('a long watchlist has a compact pager above the table and the full one below', async ({ page }) => {
+test('a long watchlist has a compact pager above the table and the full one below', async ({
+  page,
+}) => {
   await page.route('**/api/films?*', (route) =>
     route.fulfill({
       contentType: 'application/json',
@@ -527,11 +563,15 @@ test('a long watchlist has a compact pager above the table and the full one belo
   await page.goto('/watchlist')
   const top = page.getByRole('navigation', { name: 'Pagination, top' })
   await expect(top).toContainText('Page 1 of 3')
-  await expect(page.getByRole('navigation', { name: 'Pagination, bottom' })).toContainText('Showing 1–50 of 120')
+  await expect(page.getByRole('navigation', { name: 'Pagination, bottom' })).toContainText(
+    'Showing 1–50 of 120',
+  )
   await top.getByRole('link', { name: 'Next page' }).click()
   await expect(page).toHaveURL(/page=2$/)
   await page.setViewportSize({ width: 320, height: 800 })
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
   await expectAccessible(page)
 })
 
@@ -580,9 +620,9 @@ test('the styled file chooser shows the file name, a focus ring and fits 320 px'
     buffer: Buffer.from('Date,Name,Year,Letterboxd URI\n'),
   })
   await expect(name).toContainText('very-long-file-name-')
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-  ).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
   // The input is visually hidden but not removed: it is 1 px big, focusable, and the styled button shows the ring
   const box = (await page.locator('#csv').boundingBox())!
   expect(box.width).toBeLessThanOrEqual(1)
@@ -602,13 +642,20 @@ test('the styled file chooser shows the file name, a focus ring and fits 320 px'
 async function dropFiles(page: Page, files: { name: string; type: string }[]) {
   await page.locator('.filepick').evaluate((zone, list) => {
     const transfer = new DataTransfer()
-    for (const f of list) transfer.items.add(new File(['Date,Name,Year,Letterboxd URI\n'], f.name, { type: f.type }))
-    zone.dispatchEvent(new DragEvent('dragenter', { dataTransfer: transfer, bubbles: true, cancelable: true }))
-    zone.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }))
+    for (const f of list)
+      transfer.items.add(new File(['Date,Name,Year,Letterboxd URI\n'], f.name, { type: f.type }))
+    zone.dispatchEvent(
+      new DragEvent('dragenter', { dataTransfer: transfer, bubbles: true, cancelable: true }),
+    )
+    zone.dispatchEvent(
+      new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }),
+    )
   }, files)
 }
 
-test('dropping a CSV on the import page chooses it, and a refused drop says why', async ({ page }) => {
+test('dropping a CSV on the import page chooses it, and a refused drop says why', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await page.goto('/import')
   await expect(page.locator('.filepick')).toContainText('or drop a CSV file here')
@@ -623,15 +670,17 @@ test('dropping a CSV on the import page chooses it, and a refused drop says why'
   await dropFiles(page, [{ name: 'dropped.csv', type: 'text/csv' }])
   await expect(page.locator('#csv-name')).toHaveText('dropped.csv')
   await expect(page.locator('.import__chosen')).toHaveText(/Chosen file: dropped\.csv \(\d+ B\)/)
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-  ).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
   await expectAccessible(page)
   await page.getByRole('button', { name: 'Check file' }).click()
   await expect(page.getByRole('heading', { name: 'Check result' })).toBeFocused()
 })
 
-test('the drop zone changes its border and text while a file is dragged over it', async ({ page }) => {
+test('the drop zone changes its border and text while a file is dragged over it', async ({
+  page,
+}) => {
   await page.goto('/import')
   const zone = page.locator('.filepick')
   const border = () => zone.evaluate((el) => getComputedStyle(el).borderTopStyle)
@@ -639,7 +688,9 @@ test('the drop zone changes its border and text while a file is dragged over it'
   await zone.evaluate((el) => {
     const transfer = new DataTransfer()
     transfer.items.add(new File(['x'], 'a.csv', { type: 'text/csv' }))
-    el.dispatchEvent(new DragEvent('dragenter', { dataTransfer: transfer, bubbles: true, cancelable: true }))
+    el.dispatchEvent(
+      new DragEvent('dragenter', { dataTransfer: transfer, bubbles: true, cancelable: true }),
+    )
   })
   expect(await border()).toBe('solid')
   await expect(zone).toContainText('Drop to choose this file')
@@ -667,7 +718,9 @@ test('importing a CSV: check, confirm the removal, import', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Import finished' })).toBeVisible()
 })
 
-test('importing a CSV: the box to delete watched films checks again and keeps the focus', async ({ page }) => {
+test('importing a CSV: the box to delete watched films checks again and keeps the focus', async ({
+  page,
+}) => {
   await page.goto('/import')
   await page.getByLabel('CSV file').setInputFiles({
     name: 'watchlist.csv',
@@ -711,9 +764,9 @@ test('the favicon files are served and the header shows the logo', async ({ page
     expect(response.ok(), path).toBe(true)
     expect(response.headers()['content-type']).toContain(type)
   }
-  const links = await page.locator('head link[rel~="icon"], head link[rel="apple-touch-icon"]').evaluateAll(
-    (els) => els.map((el) => el.getAttribute('href')),
-  )
+  const links = await page
+    .locator('head link[rel~="icon"], head link[rel="apple-touch-icon"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('href')))
   expect(links).toEqual(['/favicon.svg', '/favicon.ico', '/apple-touch-icon.png'])
   await expect(page.locator('header svg[aria-hidden="true"]').first()).toBeVisible()
   await expect(page.locator('header')).toContainText('Watchlist Roulette')

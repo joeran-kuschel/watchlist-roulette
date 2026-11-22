@@ -19,6 +19,11 @@ const server = app.listen(port, () => {
 
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, () => {
-    server.close(() => void getPool().end().finally(() => process.exit(0)))
+    server.close(
+      () =>
+        void getPool()
+          .end()
+          .finally(() => process.exit(0)),
+    )
   })
 }

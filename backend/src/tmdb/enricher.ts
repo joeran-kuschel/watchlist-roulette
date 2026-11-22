@@ -1,5 +1,12 @@
 import { isUniqueViolation } from '../errors.js'
-import { loadFilmToEnrich, loadPendingFilms, saveMovie, setStatus, type PendingFilm, type TmdbStatus } from '../models/tmdb.js'
+import {
+  loadFilmToEnrich,
+  loadPendingFilms,
+  saveMovie,
+  setStatus,
+  type PendingFilm,
+  type TmdbStatus,
+} from '../models/tmdb.js'
 import { TmdbError, type TmdbClient, type TmdbMovie } from './client.js'
 import { chooseMatch } from './match.js'
 import { tvToMovie } from './tv.js'
@@ -51,9 +58,14 @@ const TRANSIENT_FAILURES_BEFORE_STOP = 3
 const isAuthFailure = (error: unknown) => error instanceof TmdbError && error.status === 401
 // TMDB or the network is having trouble: the film stays pending and is tried again in a later run
 const isTransient = (error: unknown) =>
-  error instanceof TmdbError && (error.status === undefined || error.status === 429 || error.status >= 500)
+  error instanceof TmdbError &&
+  (error.status === undefined || error.status === 429 || error.status >= 500)
 
-async function fetchTitle(client: TmdbClient, film: PendingFilm, tmdbId: number): Promise<TmdbMovie | null> {
+async function fetchTitle(
+  client: TmdbClient,
+  film: PendingFilm,
+  tmdbId: number,
+): Promise<TmdbMovie | null> {
   if (film.mediaType === 'movie') return client.getMovie(tmdbId)
   const show = await client.getTv(tmdbId)
   return show && tvToMovie(show)
@@ -194,7 +206,10 @@ function oneAtATime(work: (options: RunOptions) => Promise<void>) {
 
 export function createEnricher(
   client: TmdbClient | null,
-  { delayMs = 150, log = (message, error) => console.error(message, error) }: { delayMs?: number; log?: Log } = {},
+  {
+    delayMs = 150,
+    log = (message, error) => console.error(message, error),
+  }: { delayMs?: number; log?: Log } = {},
 ): Enricher {
   const exclusively = serially()
   let total = 0
@@ -228,6 +243,7 @@ export function createEnricher(
     enabled: client !== null,
     trigger: (options = {}) => (client ? runs.schedule(options) : Promise.resolve()),
     status: () => ({ enabled: client !== null, running: runs.busy(), total, done, lastRun }),
-    lookup: (filmId) => (client ? exclusively(() => lookupFilm(client, filmId, log)) : Promise.resolve('done')),
+    lookup: (filmId) =>
+      client ? exclusively(() => lookupFilm(client, filmId, log)) : Promise.resolve('done'),
   }
 }

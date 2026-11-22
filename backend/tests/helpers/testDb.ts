@@ -17,7 +17,9 @@ export async function createTestPool(): Promise<Pool> {
     implementation: (value: string) => value.trim(),
   })
   const { Pool: MemPool } = db.adapters.createPg()
-  for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()) {
+  for (const file of readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()) {
     db.public.none(readFileSync(join(migrationsDir, file), 'utf8'))
   }
   const pool = new MemPool() as Pool

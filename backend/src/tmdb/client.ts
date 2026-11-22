@@ -62,7 +62,11 @@ export class TmdbError extends Error {
 const BASE_URL = 'https://api.themoviedb.org/3'
 
 /** Minimal TMDB v3 client authenticated with the API Read Access Token (sent as a bearer header, never in the URL). */
-export function createTmdbClient(accessToken: string, language: string, fetchFn: typeof fetch = fetch): TmdbClient {
+export function createTmdbClient(
+  accessToken: string,
+  language: string,
+  fetchFn: typeof fetch = fetch,
+): TmdbClient {
   async function get<T>(path: string, params: Record<string, string>): Promise<T | null> {
     const url = `${BASE_URL}${path}?${new URLSearchParams({ language, ...params })}`
     let response: Response

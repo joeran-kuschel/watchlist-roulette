@@ -10,7 +10,13 @@ vi.mock('../../api', async (importOriginal) => ({
 }))
 const mocked = vi.mocked(api)
 
-const state = (enabled: boolean): TmdbCheck => ({ enabled, running: false, total: 0, done: 0, lastRun: null })
+const state = (enabled: boolean): TmdbCheck => ({
+  enabled,
+  running: false,
+  total: 0,
+  done: 0,
+  lastRun: null,
+})
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -50,7 +56,9 @@ describe('tmdb store', () => {
   })
 
   it('asks again on the next call after a failed request', async () => {
-    mocked.getTmdbCheck.mockRejectedValueOnce(new api.ApiError(503, 'down')).mockResolvedValue(state(false))
+    mocked.getTmdbCheck
+      .mockRejectedValueOnce(new api.ApiError(503, 'down'))
+      .mockResolvedValue(state(false))
     const store = useTmdbStore()
     await store.load()
     await store.load()

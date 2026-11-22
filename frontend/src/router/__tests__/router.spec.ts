@@ -10,7 +10,9 @@ import { createAppRouter, routes } from '..'
 
 vi.stubGlobal(
   'fetch',
-  vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [], total: 0, page: 1, pageSize: 50 })))),
+  vi.fn(() =>
+    Promise.resolve(new Response(JSON.stringify({ items: [], total: 0, page: 1, pageSize: 50 }))),
+  ),
 )
 
 afterEach(() => {
@@ -43,7 +45,10 @@ describe('router', () => {
   it('sets the document title and moves focus to the content after navigating', async () => {
     const router = createAppRouter(createMemoryHistory())
     await router.push('/import')
-    const wrapper = mount(App, { global: { plugins: [createPinia(), router] }, attachTo: document.body })
+    const wrapper = mount(App, {
+      global: { plugins: [createPinia(), router] },
+      attachTo: document.body,
+    })
     await flushPromises()
     expect(document.title).toBe('Import · Watchlist Roulette')
 
@@ -73,7 +78,10 @@ describe('router: edge cases', () => {
     )
     const router = createAppRouter(createMemoryHistory())
     await router.push(path)
-    const wrapper = mount(App, { global: { plugins: [createPinia(), router] }, attachTo: document.body })
+    const wrapper = mount(App, {
+      global: { plugins: [createPinia(), router] },
+      attachTo: document.body,
+    })
     await flushPromises()
     return { router, wrapper }
   }
@@ -133,7 +141,10 @@ describe('router: hash links', () => {
     vi.mocked(fetch).mockImplementation(() => Promise.resolve(new Response('{}', { status: 404 })))
     const router = createAppRouter(createMemoryHistory())
     await router.push('/watchlist/new')
-    const wrapper = mount(App, { global: { plugins: [createPinia(), router] }, attachTo: document.body })
+    const wrapper = mount(App, {
+      global: { plugins: [createPinia(), router] },
+      attachTo: document.body,
+    })
     await flushPromises()
     const field = document.getElementById('film-title') as HTMLElement
     field.focus()

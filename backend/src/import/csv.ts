@@ -29,7 +29,14 @@ export interface ParsedCsv {
 }
 
 const LETTERBOXD = { date: 'date', name: 'name', year: 'year', url: 'letterboxd uri' } as const
-const IMDB = { id: 'const', title: 'title', url: 'url', year: 'year', created: 'created', type: 'title type' } as const
+const IMDB = {
+  id: 'const',
+  title: 'title',
+  url: 'url',
+  year: 'year',
+  created: 'created',
+  type: 'title type',
+} as const
 
 const NOT_SUPPORTED =
   'Use a Letterboxd export (Date, Name, Year, Letterboxd URI) or an IMDb export (Const, Title, Year, Created, URL)'
@@ -38,12 +45,16 @@ const NOT_SUPPORTED =
 function readHeader(header: string[]): { names: string[]; source: ImportSource } {
   const names = header.map((name) => name.trim().toLowerCase())
   if (names.includes(IMDB.id) && !names.includes(LETTERBOXD.url)) {
-    if (!names.includes(IMDB.title)) throw new HttpError(400, `The CSV is missing the column(s): ${IMDB.title}`)
+    if (!names.includes(IMDB.title))
+      throw new HttpError(400, `The CSV is missing the column(s): ${IMDB.title}`)
     return { names, source: 'imdb' }
   }
   const missing = Object.values(LETTERBOXD).filter((name) => !names.includes(name))
   if (missing.length > 0) {
-    throw new HttpError(400, `The CSV is missing the column(s): ${missing.join(', ')}. ${NOT_SUPPORTED}`)
+    throw new HttpError(
+      400,
+      `The CSV is missing the column(s): ${missing.join(', ')}. ${NOT_SUPPORTED}`,
+    )
   }
   return { names, source: 'letterboxd' }
 }
@@ -55,7 +66,8 @@ type Parsed = ImportRow | RejectedRow
 function readYear(text: string): { year: number | null } | { error: string } {
   if (text === '') return { year: null }
   const parsed = releaseYear.safeParse(Number(text))
-  if (!/^\d{1,4}$/.test(text) || !parsed.success) return { error: `Year "${text}" is not a year between 1888 and 2100` }
+  if (!/^\d{1,4}$/.test(text) || !parsed.success)
+    return { error: `Year "${text}" is not a year between 1888 and 2100` }
   return { year: parsed.data as number }
 }
 
@@ -84,7 +96,9 @@ const imdbLink = (id: string) => `https://www.imdb.com/title/${id}/`
 function imdbRow(fields: Fields, line: number): Parsed {
   // the title id identifies the film; it comes from Const, or from the URL when Const is empty
   const constText = fields[IMDB.id]?.trim() ?? ''
-  const id = IMDB_CONST.test(constText) ? constText : IMDB_URL_ID.exec(fields[IMDB.url]?.trim() ?? '')?.[1]
+  const id = IMDB_CONST.test(constText)
+    ? constText
+    : IMDB_URL_ID.exec(fields[IMDB.url]?.trim() ?? '')?.[1]
   const link = id ? imdbLink(id) : undefined
   const reject = (reason: string): RejectedRow => ({ line, reason, letterboxdUrl: link })
 
@@ -92,21 +106,32 @@ function imdbRow(fields: Fields, line: number): Parsed {
   if (!title) return reject('Title is empty')
   if (title.length > 500) return reject('Title is longer than 500 characters')
   if (!link) return reject('Const is missing or not an IMDb title id (tt1234567)')
-  if (fields[IMDB.type]?.replace(/[\s_-]/g, '').toLowerCase() === 'tvepisode') return reject('TV episodes are not imported')
+  if (fields[IMDB.type]?.replace(/[\s_-]/g, '').toLowerCase() === 'tvepisode')
+    return reject('TV episodes are not imported')
 
   const created = fields[IMDB.created]?.trim() ?? ''
-  if (created !== '' && !parseIsoDate(created).success) return reject(`Created "${created}" is not a valid YYYY-MM-DD date`)
+  if (created !== '' && !parseIsoDate(created).success)
+    return reject(`Created "${created}" is not a valid YYYY-MM-DD date`)
 
   const year = readYear(fields[IMDB.year]?.trim() ?? '')
   if ('error' in year) return reject(year.error)
-  return { line, title, releaseYear: year.year, letterboxdUrl: link, addedAt: created === '' ? null : created }
+  return {
+    line,
+    title,
+    releaseYear: year.year,
+    letterboxdUrl: link,
+    addedAt: created === '' ? null : created,
+  }
 }
 
 const MAX_ROWS = 20_000
 
 type CsvRecord = { record: Fields; info: { lines: number } }
 
-function readRecords(file: Buffer, rejected: RejectedRow[]): { records: CsvRecord[]; source: ImportSource } {
+function readRecords(
+  file: Buffer,
+  rejected: RejectedRow[],
+): { records: CsvRecord[]; source: ImportSource } {
   let source: ImportSource | undefined
   let records: CsvRecord[]
   try {
@@ -152,7 +177,10 @@ export function parseWatchlistCsv(file: Buffer): ParsedCsv {
     }
     const first = firstLineOfUrl.get(result.letterboxdUrl)
     if (first !== undefined) {
-      rejected.push({ line: result.line, reason: `Duplicate ${duplicate} (first seen in line ${first})` })
+      rejected.push({
+        line: result.line,
+        reason: `Duplicate ${duplicate} (first seen in line ${first})`,
+      })
       continue
     }
     firstLineOfUrl.set(result.letterboxdUrl, result.line)

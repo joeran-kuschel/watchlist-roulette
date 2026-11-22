@@ -17,7 +17,14 @@ beforeEach(async () => {
 })
 
 const list = (overrides: Partial<ListQuery> = {}) =>
-  listFilms({ watched: 'all', sort: 'added_at', order: 'desc', page: 1, pageSize: 50, ...overrides })
+  listFilms({
+    watched: 'all',
+    sort: 'added_at',
+    order: 'desc',
+    page: 1,
+    pageSize: 50,
+    ...overrides,
+  })
 
 describe('createFilm / getFilm', () => {
   it('stores a film and reads it back with defaults', async () => {
@@ -126,7 +133,9 @@ describe('listFilms', () => {
     await pool.query(`INSERT INTO genres (id, name) VALUES (18, 'Drama'), (35, 'Comedy')`)
     await pool.query(`INSERT INTO film_genres VALUES ($1, 18), ($1, 35)`, [id])
     await pool.query(`INSERT INTO people (id, name) VALUES (1, 'Dir'), (2, 'Actor')`)
-    await pool.query(`INSERT INTO film_credits VALUES ($1, 1, 'director', 0), ($1, 2, 'cast', 0)`, [id])
+    await pool.query(`INSERT INTO film_credits VALUES ($1, 1, 'director', 0), ($1, 2, 'cast', 0)`, [
+      id,
+    ])
 
     const result = await list({ genre: 18 })
     expect(result.items).toHaveLength(1)
@@ -146,16 +155,19 @@ describe('listFilms', () => {
     expect((await list({ tmdbStatus: 'ambiguous' })).items.map((f) => f.title)).toEqual(['Beta'])
   })
 
-  it.each(['pending', 'matched', 'ambiguous', 'not_found', 'error'])('returns only the films with TMDB status %s', async (status) => {
-    await pool.query('DELETE FROM films')
-    for (const s of ['pending', 'matched', 'ambiguous', 'not_found', 'error']) {
-      const film = await createFilm({ title: `Film ${s}` })
-      await pool.query(`UPDATE films SET tmdb_status = $1 WHERE id = $2`, [s, film.id])
-    }
-    const result = await list({ tmdbStatus: status as ListQuery['tmdbStatus'] })
-    expect(result.items.map((f) => f.title)).toEqual([`Film ${status}`])
-    expect(result.total).toBe(1)
-  })
+  it.each(['pending', 'matched', 'ambiguous', 'not_found', 'error'])(
+    'returns only the films with TMDB status %s',
+    async (status) => {
+      await pool.query('DELETE FROM films')
+      for (const s of ['pending', 'matched', 'ambiguous', 'not_found', 'error']) {
+        const film = await createFilm({ title: `Film ${s}` })
+        await pool.query(`UPDATE films SET tmdb_status = $1 WHERE id = $2`, [s, film.id])
+      }
+      const result = await list({ tmdbStatus: status as ListQuery['tmdbStatus'] })
+      expect(result.items.map((f) => f.title)).toEqual([`Film ${status}`])
+      expect(result.total).toBe(1)
+    },
+  )
 
   it('returns an empty page when no film has the TMDB status', async () => {
     expect(await list({ tmdbStatus: 'error' })).toMatchObject({ items: [], total: 0 })
@@ -200,8 +212,14 @@ describe('randomFilm', () => {
     const long = await createFilm({ title: 'Long' })
     await pool.query(`INSERT INTO genres (id, name) VALUES (18, 'Drama')`)
     await pool.query(`INSERT INTO film_genres VALUES ($1, 18), ($2, 18)`, [short.id, long.id])
-    await pool.query(`UPDATE films SET runtime_minutes = 80, countries = ARRAY['FR'] WHERE id = $1`, [short.id])
-    await pool.query(`UPDATE films SET runtime_minutes = 200, countries = ARRAY['US'] WHERE id = $1`, [long.id])
+    await pool.query(
+      `UPDATE films SET runtime_minutes = 80, countries = ARRAY['FR'] WHERE id = $1`,
+      [short.id],
+    )
+    await pool.query(
+      `UPDATE films SET runtime_minutes = 200, countries = ARRAY['US'] WHERE id = $1`,
+      [long.id],
+    )
 
     expect((await randomFilm({ genre: 18, maxRuntime: 100 }, () => 0)).id).toBe(short.id)
     expect((await randomFilm({ country: 'US' }, () => 0)).id).toBe(long.id)

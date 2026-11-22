@@ -15,7 +15,8 @@ onMounted(async () => {
     <AppIcon name="alert" :size="20" />
     <p role="status">
       <template v-if="announced"
-        >TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.</template
+        >TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and
+        restart the app.</template
       >
     </p>
   </div>

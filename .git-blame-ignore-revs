@@ -1,0 +1,5 @@
+# Commits that only changed formatting. GitHub skips them in git blame; locally run:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Format the code with Prettier
+9aadc8de52e6cdc7c7e7f1319f7d51150ff503d2

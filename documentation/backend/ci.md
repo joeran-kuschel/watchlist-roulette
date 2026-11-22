@@ -6,9 +6,17 @@ GitHub Actions checks every pull request and every push to `main`. The workflows
 
 | Job | What it runs |
 |---|---|
-| Backend (Node 26) | `npm ci`, type-check, `npm test`, build. A throwaway PostgreSQL 17 service is started and passed as `TEST_DATABASE_URL`, so the real-PostgreSQL tests run instead of being skipped. |
-| Frontend (Node 26) | `npm ci`, type-check, `oxlint` and `eslint` (check only, without `--fix`), unit tests, build |
+| Backend (Node 26) | `npm ci`, type-check, `oxlint` and the Prettier check (check only, without `--fix` or `--write`), `npm test`, build. A throwaway PostgreSQL 17 service is started and passed as `TEST_DATABASE_URL`, so the real-PostgreSQL tests run instead of being skipped. |
+| Frontend (Node 26) | `npm ci`, type-check, `oxlint`, `eslint` and the Prettier check (check only, without `--fix` or `--write`), unit tests, build |
 | Docker images | builds the backend and frontend images and validates `docker-compose.yml` on its own and merged with `docker-compose.dev.yml` |
+
+## Formatting and linting
+
+- **Prettier** (one `.prettierrc.json` in the repo root: no semicolons, single quotes, 100 columns) formats the code of both packages: `ts`, `mts`, `js` and `mjs` files in the backend, and also `vue` and `css` files in the frontend (the globs are in the `format` scripts). `npm run format` writes the changes, `npm run format:check` is what CI runs. Markdown, JSON and YAML are not checked.
+- **oxlint** runs in both packages (`.oxlintrc.json` in each, rule category `correctness` as error). `npm run lint` fixes what it can; CI runs `npx oxlint .` without `--fix`.
+- **ESLint** (with the Vue, Playwright and Vitest plugins) runs in the frontend only. The backend has no ESLint: `typescript-eslint` does not support TypeScript 7 yet (its peer range ends below 6.1), and the backend uses TypeScript 7. Add it when it does.
+- The check steps are inside the existing CI jobs, so the job names and the required status checks of `main` are unchanged.
+- The commit that formatted all existing code is listed in `.git-blame-ignore-revs`, so `git blame` skips it. GitHub honors the file; locally run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once.
 
 The Node version is set in `.nvmrc`, in `engines` of both `package.json` files (and lock files), in both Dockerfiles and in `ci.yml`. `backend/tests/node-version.test.ts` fails when they differ, so a Node upgrade changes all of them together.
 

@@ -72,12 +72,17 @@ describe('Letterboxd links only for web addresses', () => {
   })
 
   it('does not render a javascript: address as a link in the film card', () => {
-    const wrapper = mount(FilmCard, { props: { film: makeFilm({ letterboxdUrl: 'javascript:alert(1)' }) } })
+    const wrapper = mount(FilmCard, {
+      props: { film: makeFilm({ letterboxdUrl: 'javascript:alert(1)' }) },
+    })
     expect(wrapper.find('a').exists()).toBe(false)
   })
 
   it('names the film card link after its site', () => {
-    const card = (url: string) => mount(FilmCard, { props: { film: makeFilm({ letterboxdUrl: url }) } }).get('a').text()
+    const card = (url: string) =>
+      mount(FilmCard, { props: { film: makeFilm({ letterboxdUrl: url }) } })
+        .get('a')
+        .text()
     expect(card('https://boxd.it/x')).toContain('Open on Letterboxd')
     expect(card('https://www.imdb.com/title/tt0113277/')).toContain('Open on IMDb')
   })
@@ -98,7 +103,12 @@ describe('Letterboxd links only for web addresses', () => {
 describe('Watchlist: tooltip names', () => {
   it('shows a tooltip that is part of the accessible name (WCAG 2.5.3)', async () => {
     mocked.listFilms.mockResolvedValue({
-      items: [makeFilm({ title: 'Cléo', tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null } })],
+      items: [
+        makeFilm({
+          title: 'Cléo',
+          tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
+        }),
+      ],
       total: 1,
       page: 1,
       pageSize: 50,
@@ -112,7 +122,11 @@ describe('Watchlist: tooltip names', () => {
   it('has a name that contains the tooltip text on every icon button of the table (WCAG 2.5.3)', async () => {
     mocked.listFilms.mockResolvedValue({
       items: [
-        makeFilm({ id: 1, title: 'Cléo', tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null } }),
+        makeFilm({
+          id: 1,
+          title: 'Cléo',
+          tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
+        }),
         makeFilm({ id: 2, title: 'Aftersun', watchedAt: '2025-03-04T10:00:00.000Z' }),
         makeFilm({ id: 3, title: 'Joy' }),
       ],
@@ -131,7 +145,12 @@ describe('Watchlist: tooltip names', () => {
   })
 
   it('keeps the film title at the end of the row button names, after the action', async () => {
-    mocked.listFilms.mockResolvedValue({ items: [makeFilm({ title: 'Perfect Days' })], total: 1, page: 1, pageSize: 50 })
+    mocked.listFilms.mockResolvedValue({
+      items: [makeFilm({ title: 'Perfect Days' })],
+      total: 1,
+      page: 1,
+      pageSize: 50,
+    })
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     const row = wrapper.get('tbody tr')
     expect(row.findAll('.icon-button').map((b) => b.attributes('aria-label'))).toEqual([
@@ -153,9 +172,15 @@ describe('Watchlist: tooltip names', () => {
 
 describe('Film form', () => {
   it('uses the shared year limits in its message', () => {
-    const { errors } = validateFilmForm({ ...emptyFilmForm(), title: 'x', releaseYear: String(MAX_YEAR + 1) })
+    const { errors } = validateFilmForm({
+      ...emptyFilmForm(),
+      title: 'x',
+      releaseYear: String(MAX_YEAR + 1),
+    })
     expect(errors.releaseYear).toBe(`Enter a year between ${MIN_YEAR} and ${MAX_YEAR}.`)
-    expect(validateFilmForm({ ...emptyFilmForm(), title: 'x', releaseYear: String(MIN_YEAR) }).errors).toEqual({})
+    expect(
+      validateFilmForm({ ...emptyFilmForm(), title: 'x', releaseYear: String(MIN_YEAR) }).errors,
+    ).toEqual({})
   })
 
   it('disables "Yes, delete it" while the delete is running, so it cannot be sent twice', async () => {

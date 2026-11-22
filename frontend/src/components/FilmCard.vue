@@ -9,7 +9,9 @@ const props = defineProps<{ film: Film }>()
 
 const credits = computed(() =>
   [
-    props.film.directors.length ? `${directorLabel(props.film)} ${joinNames(props.film.directors)}` : '',
+    props.film.directors.length
+      ? `${directorLabel(props.film)} ${joinNames(props.film.directors)}`
+      : '',
     joinNames(props.film.genres),
   ]
     .filter(Boolean)
@@ -33,7 +35,8 @@ const credits = computed(() =>
         <template v-if="film.letterboxdUrl && isHttpUrl(film.letterboxdUrl)">
           ·
           <a :href="film.letterboxdUrl" target="_blank" rel="noopener noreferrer"
-            >Open on {{ linkSite(film.letterboxdUrl) }}<span class="sr-only"> (opens in a new tab)</span></a
+            >Open on {{ linkSite(film.letterboxdUrl)
+            }}<span class="sr-only"> (opens in a new tab)</span></a
           >
         </template>
       </p>

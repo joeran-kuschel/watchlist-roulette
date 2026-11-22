@@ -10,7 +10,8 @@ const dateFormat = new Intl.DateTimeFormat('en-GB', {
 /** `2025-03-12` or an ISO timestamp -> `12 Mar 2025`. */
 export const formatDate = (iso: string) => dateFormat.format(new Date(iso))
 
-export const formatRuntime = (minutes: number | null) => (minutes === null ? null : `${minutes} min`)
+export const formatRuntime = (minutes: number | null) =>
+  minutes === null ? null : `${minutes} min`
 
 /** 1234 -> "1.2 KB"; whole numbers drop the decimal. */
 export function formatFileSize(bytes: number) {
@@ -33,7 +34,8 @@ export function isHttpUrl(text: string) {
 }
 
 /** Names the site a film's link points to; only IMDb gets its own name, every other link is a Letterboxd one. */
-export const linkSite = (url: string) => (/^https?:\/\/([\w-]+\.)*imdb\.com(\/|$)/i.test(url) ? 'IMDb' : 'Letterboxd')
+export const linkSite = (url: string) =>
+  /^https?:\/\/([\w-]+\.)*imdb\.com(\/|$)/i.test(url) ? 'IMDb' : 'Letterboxd'
 
 export const joinNames = (people: { name: string }[]) => people.map((p) => p.name).join(', ')
 
@@ -44,10 +46,14 @@ export interface Fact {
 
 /** Year, runtime, rating and country of a film, without the ones it does not have. `detailed` adds the vote count. */
 export function filmFacts(film: Film, detailed = false): Fact[] {
-  const votes = detailed && film.voteCount ? ` (${film.voteCount.toLocaleString('en-GB')} votes)` : ''
+  const votes =
+    detailed && film.voteCount ? ` (${film.voteCount.toLocaleString('en-GB')} votes)` : ''
   const facts: { label: string; value: string | number | null }[] = [
     { label: 'Year', value: film.releaseYear },
-    { label: film.tmdb.mediaType === 'tv' ? 'Episode runtime' : 'Runtime', value: formatRuntime(film.runtimeMinutes) },
+    {
+      label: film.tmdb.mediaType === 'tv' ? 'Episode runtime' : 'Runtime',
+      value: formatRuntime(film.runtimeMinutes),
+    },
     {
       label: detailed ? 'TMDB rating' : 'Rating',
       value: film.voteAverage === null ? null : `${film.voteAverage.toFixed(1)} / 10${votes}`,
@@ -58,7 +64,8 @@ export function filmFacts(film: Film, detailed = false): Fact[] {
 }
 
 /** TMDB lists the creators of a show where it lists the director of a movie. */
-export const directorLabel = (film: Film) => (film.tmdb.mediaType === 'tv' ? 'Created by' : 'Directed by')
+export const directorLabel = (film: Film) =>
+  film.tmdb.mediaType === 'tv' ? 'Created by' : 'Directed by'
 
 /** The badge text of a film whose TMDB status needs a fix (no match, several matches, failed lookup); `undefined` otherwise. */
 export const tmdbBadge = (film: Film): string | undefined =>
@@ -71,7 +78,8 @@ export const tmdbBadge = (film: Film): string | undefined =>
   )[film.tmdb.status]
 
 /** Whether a TMDB look-up can be started for this film: it is waiting, failed or was not found. */
-export const canLookUp = (film: Film) => ['pending', 'error', 'not_found'].includes(film.tmdb.status)
+export const canLookUp = (film: Film) =>
+  ['pending', 'error', 'not_found'].includes(film.tmdb.status)
 
 /** Whether the user should choose the TMDB match for this film. */
 export const needsMatch = (film: Film) => Boolean(tmdbBadge(film))

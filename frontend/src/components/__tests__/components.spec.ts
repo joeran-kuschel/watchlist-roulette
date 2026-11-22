@@ -21,7 +21,10 @@ afterEach(() => {
 
 describe('IconButton', () => {
   it('is a button named by its label, with the icon hidden from assistive technology', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Spin again', icon: 'spin' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Spin again', icon: 'spin' },
+      attachTo: document.body,
+    })
     const button = wrapper.get('button')
     expect(button.attributes('aria-label')).toBe('Spin again')
     expect(button.attributes('type')).toBe('button')
@@ -39,7 +42,10 @@ describe('IconButton', () => {
   })
 
   it('hides the tooltip on Esc and shows it again on the next hover or focus', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     const tip = () => wrapper.get('.icon-button__tip')
     expect(tip().isVisible()).toBe(true)
     await wrapper.get('button').trigger('keydown', { key: 'Escape' })
@@ -52,9 +58,15 @@ describe('IconButton', () => {
   })
 
   it('passes disabled and click through to the button', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Next page', icon: 'right' }, attrs: { disabled: true } })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Next page', icon: 'right' },
+      attrs: { disabled: true },
+    })
     expect(wrapper.get('button').attributes('disabled')).toBeDefined()
-    const clicked = mount(IconButton, { props: { label: 'Go', icon: 'plus' }, attrs: { onClick: () => 'x' } })
+    const clicked = mount(IconButton, {
+      props: { label: 'Go', icon: 'plus' },
+      attrs: { onClick: () => 'x' },
+    })
     await clicked.get('button').trigger('click')
   })
 
@@ -134,7 +146,9 @@ describe('PosterImage', () => {
 
 describe('FilmCard', () => {
   it('says "Created by" and "Episode runtime" for a TV show', () => {
-    const show = makeFilm({ tmdb: { id: 1396, mediaType: 'tv', status: 'matched', syncedAt: null } })
+    const show = makeFilm({
+      tmdb: { id: 1396, mediaType: 'tv', status: 'matched', syncedAt: null },
+    })
     const text = mount(FilmCard, { props: { film: show } }).text()
     expect(text).toContain('Created by Wim Wenders')
     expect(text).not.toContain('Directed by')
@@ -183,7 +197,9 @@ describe('FilmCard', () => {
   })
 
   it('shows when the film was watched', () => {
-    const wrapper = mount(FilmCard, { props: { film: makeFilm({ watchedAt: '2026-01-05T10:00:00.000Z' }) } })
+    const wrapper = mount(FilmCard, {
+      props: { film: makeFilm({ watchedAt: '2026-01-05T10:00:00.000Z' }) },
+    })
     expect(wrapper.text()).toContain('Watched 5 Jan 2026')
   })
 })
@@ -243,7 +259,11 @@ describe('AppLayout', () => {
     const { wrapper } = await mountWithApp(AppLayout, '/watchlist')
     const current = wrapper.findAll('nav a[aria-current="page"]')
     expect(current.map((a) => a.text())).toEqual(['Watchlist'])
-    expect(wrapper.findAll('nav a').map((a) => a.text())).toEqual(['Roulette', 'Watchlist', 'Import'])
+    expect(wrapper.findAll('nav a').map((a) => a.text())).toEqual([
+      'Roulette',
+      'Watchlist',
+      'Import',
+    ])
   })
 
   it('highlights the section for nested pages without calling them the current page', async () => {
@@ -277,9 +297,15 @@ describe('ImportSummary', () => {
 
   it('marks a removed film that was watched', () => {
     const wrapper = mount(ImportSummary, {
-      props: { report: report({ removed: [{ id: 8, title: 'Stalker', releaseYear: 1979, watched: true }] }) },
+      props: {
+        report: report({
+          removed: [{ id: 8, title: 'Stalker', releaseYear: 1979, watched: true }],
+        }),
+      },
     })
-    expect(wrapper.get('#removed-heading').element.parentElement?.textContent).toContain('Stalker (1979) (watched)')
+    expect(wrapper.get('#removed-heading').element.parentElement?.textContent).toContain(
+      'Stalker (1979) (watched)',
+    )
   })
 
   it('lists counts, removals, kept films and rejected rows for a check', async () => {
@@ -303,28 +329,50 @@ describe('ImportSummary', () => {
     const letterboxd = mount(ImportSummary, { props: { report: report() } })
     expect(letterboxd.text()).toContain('Detected: Letterboxd export.')
     expect(letterboxd.text()).not.toContain('IMDb')
-    const imdb = mount(ImportSummary, { props: { report: report({ source: 'imdb' }) }, attachTo: document.body })
+    const imdb = mount(ImportSummary, {
+      props: { report: report({ source: 'imdb' }) },
+      attachTo: document.body,
+    })
     expect(imdb.text()).toContain('Detected: IMDb export.')
     expect(imdb.text()).toContain('Only films that came from IMDb can be removed by this file.')
     await expectNoA11yViolations(imdb.element)
   })
 
   it('lists the rows that were skipped because the film is already on the list, and shows nothing without any', async () => {
-    expect(mount(ImportSummary, { props: { report: report() } }).text()).not.toContain('already on your list')
+    expect(mount(ImportSummary, { props: { report: report() } }).text()).not.toContain(
+      'already on your list',
+    )
     const skipped = [
-      { line: 7, title: 'HEAT', releaseYear: 1995, existing: { id: 3, title: 'Heat', releaseYear: 1995 } },
+      {
+        line: 7,
+        title: 'HEAT',
+        releaseYear: 1995,
+        existing: { id: 3, title: 'Heat', releaseYear: 1995 },
+      },
     ]
-    const one = mount(ImportSummary, { props: { report: report({ skipped }) }, attachTo: document.body })
+    const one = mount(ImportSummary, {
+      props: { report: report({ skipped }) },
+      attachTo: document.body,
+    })
     expect(one.get('#skipped-heading').text()).toBe('1 film is already on your list')
     expect(one.text()).toContain('HEAT (1995) (line 7) is already on your list as Heat (1995)')
     expect(one.text()).toContain('a film with the same title and year came from the other export')
     await expectNoA11yViolations(one.element)
-    const two = mount(ImportSummary, { props: { report: report({ skipped: [...skipped, { ...skipped[0]!, line: 9 }] }) } })
+    const two = mount(ImportSummary, {
+      props: { report: report({ skipped: [...skipped, { ...skipped[0]!, line: 9 }] }) },
+    })
     expect(two.get('#skipped-heading').text()).toBe('2 films are already on your list')
   })
 
   it('shows a skipped row and its existing film without a year as a plain title', () => {
-    const skipped = [{ line: 4, title: 'Heat', releaseYear: null, existing: { id: 3, title: 'Heat', releaseYear: null } }]
+    const skipped = [
+      {
+        line: 4,
+        title: 'Heat',
+        releaseYear: null,
+        existing: { id: 3, title: 'Heat', releaseYear: null },
+      },
+    ]
     const text = mount(ImportSummary, { props: { report: report({ skipped }) } }).text()
     expect(text).toContain('Heat (line 4) is already on your list as Heat')
     expect(text).not.toContain('null')
@@ -339,12 +387,25 @@ describe('ImportSummary', () => {
 
   it('hides the sections that are empty', () => {
     const wrapper = mount(ImportSummary, {
-      props: { report: report({ removed: [], keptWatched: [], rejected: [{ line: 1, reason: 'a' }, { line: 2, reason: 'b' }] }) },
+      props: {
+        report: report({
+          removed: [],
+          keptWatched: [],
+          rejected: [
+            { line: 1, reason: 'a' },
+            { line: 2, reason: 'b' },
+          ],
+        }),
+      },
     })
     expect(wrapper.find('#removed-heading').exists()).toBe(false)
     expect(wrapper.find('#kept-heading').exists()).toBe(false)
     expect(wrapper.text()).toContain('2 rows were rejected')
-    expect(mount(ImportSummary, { props: { report: report({ rejected: [] }) } }).find('table').exists()).toBe(false)
+    expect(
+      mount(ImportSummary, { props: { report: report({ rejected: [] }) } })
+        .find('table')
+        .exists(),
+    ).toBe(false)
   })
 
   it('shows a film without a year by title only', () => {
@@ -356,7 +417,14 @@ describe('ImportSummary', () => {
   it('shows a header-only file (nothing to do) as zero counts without sections', async () => {
     const wrapper = mount(ImportSummary, {
       props: {
-        report: report({ inserted: 0, updated: 0, unchanged: 0, removed: [], keptWatched: [], rejected: [] }),
+        report: report({
+          inserted: 0,
+          updated: 0,
+          unchanged: 0,
+          removed: [],
+          keptWatched: [],
+          rejected: [],
+        }),
       },
       attachTo: document.body,
     })
@@ -367,21 +435,46 @@ describe('ImportSummary', () => {
 
   it('lists every rejected row with its line number and keeps non-ASCII reasons', () => {
     const wrapper = mount(ImportSummary, {
-      props: { report: report({ rejected: [{ line: 2, reason: 'Jahr ungültig: 日本' }, { line: 40, reason: 'Name is empty' }] }) },
+      props: {
+        report: report({
+          rejected: [
+            { line: 2, reason: 'Jahr ungültig: 日本' },
+            { line: 40, reason: 'Name is empty' },
+          ],
+        }),
+      },
     })
-    expect(wrapper.findAll('tbody tr').map((tr) => tr.text())).toEqual(['2Jahr ungültig: 日本', '40Name is empty'])
+    expect(wrapper.findAll('tbody tr').map((tr) => tr.text())).toEqual([
+      '2Jahr ungültig: 日本',
+      '40Name is empty',
+    ])
     expect(wrapper.findAll('thead th').length).toBeGreaterThan(0)
   })
 
   it('has no axe violations after the import with every section', async () => {
-    const wrapper = mount(ImportSummary, { props: { report: report({ applied: true }) }, attachTo: document.body })
+    const wrapper = mount(ImportSummary, {
+      props: { report: report({ applied: true }) },
+      attachTo: document.body,
+    })
     expect(wrapper.findAll('section')).toHaveLength(3)
     await expectNoA11yViolations(wrapper.element)
   })
 })
 
 describe('AppIcon', () => {
-  const names = ['spin', 'eye', 'eye-off', 'pencil', 'match', 'plus', 'left', 'right', 'chevron-down', 'x', 'alert'] as const
+  const names = [
+    'spin',
+    'eye',
+    'eye-off',
+    'pencil',
+    'match',
+    'plus',
+    'left',
+    'right',
+    'chevron-down',
+    'x',
+    'alert',
+  ] as const
 
   it.each(names)('draws the %s icon, hidden from assistive technology', (name) => {
     const svg = mount(AppIcon, { props: { name } }).get('svg')
@@ -391,8 +484,16 @@ describe('AppIcon', () => {
   })
 
   it('is 24 px by default and takes a custom size', () => {
-    expect(mount(AppIcon, { props: { name: 'plus' } }).get('svg').attributes()).toMatchObject({ width: '24', height: '24' })
-    expect(mount(AppIcon, { props: { name: 'plus', size: 16 } }).get('svg').attributes()).toMatchObject({
+    expect(
+      mount(AppIcon, { props: { name: 'plus' } })
+        .get('svg')
+        .attributes(),
+    ).toMatchObject({ width: '24', height: '24' })
+    expect(
+      mount(AppIcon, { props: { name: 'plus', size: 16 } })
+        .get('svg')
+        .attributes(),
+    ).toMatchObject({
       width: '16',
       height: '16',
     })
@@ -405,14 +506,18 @@ describe('AppIcon', () => {
   })
 
   it('draws a different shape for every icon', () => {
-    const shapes = names.map((name) => mount(AppIcon, { props: { name } }).get('path').attributes('d'))
+    const shapes = names.map((name) =>
+      mount(AppIcon, { props: { name } }).get('path').attributes('d'),
+    )
     expect(new Set(shapes).size).toBe(names.length)
   })
 })
 
 describe('IconButton: edge cases', () => {
   it('hides the tooltip on Esc for the link variant too, and keeps focus where it was', async () => {
-    const { wrapper } = await mountWithApp(IconButton, '/', { props: { label: 'Edit Joy', icon: 'pencil', to: '/watchlist/1/edit' } })
+    const { wrapper } = await mountWithApp(IconButton, '/', {
+      props: { label: 'Edit Joy', icon: 'pencil', to: '/watchlist/1/edit' },
+    })
     const link = wrapper.get('a')
     ;(link.element as HTMLElement).focus()
     await link.trigger('keydown', { key: 'Escape' })
@@ -421,7 +526,10 @@ describe('IconButton: edge cases', () => {
   })
 
   it('does not hide the tooltip for other keys', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('keydown', { key: 'Enter' })
     expect(wrapper.get('.icon-button__tip').isVisible()).toBe(true)
   })
@@ -442,7 +550,10 @@ describe('IconButton: edge cases', () => {
   })
 
   it('can be a submit button of another form', () => {
-    const wrapper = mount(IconButton, { props: { label: 'Spin', icon: 'spin' }, attrs: { type: 'submit', form: 'f' } })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Spin', icon: 'spin' },
+      attrs: { type: 'submit', form: 'f' },
+    })
     expect(wrapper.get('button').attributes()).toMatchObject({ type: 'submit', form: 'f' })
   })
 
@@ -465,7 +576,10 @@ describe('PosterImage: edge cases', () => {
   })
 
   it('hides the placeholder text from assistive technology and has no axe violations', async () => {
-    const wrapper = mount(PosterImage, { props: { filmId: 5, hasPoster: false }, attachTo: document.body })
+    const wrapper = mount(PosterImage, {
+      props: { filmId: 5, hasPoster: false },
+      attachTo: document.body,
+    })
     expect(wrapper.get('span').attributes('aria-hidden')).toBe('true')
     await expectNoA11yViolations(wrapper.element)
   })
@@ -504,11 +618,17 @@ describe('FormField: edge cases', () => {
 describe('FilmCard: edge cases', () => {
   it('shows a long title and a non-ASCII title unchanged', () => {
     const title = '千と千尋の神隠し '.repeat(30).trim()
-    expect(mount(FilmCard, { props: { film: makeFilm({ title }) } }).get('h2').text()).toBe(title)
+    expect(
+      mount(FilmCard, { props: { film: makeFilm({ title }) } })
+        .get('h2')
+        .text(),
+    ).toBe(title)
   })
 
   it('shows a rating of 0 and a runtime of 0 instead of hiding them', () => {
-    const text = mount(FilmCard, { props: { film: makeFilm({ voteAverage: 0, runtimeMinutes: 0 }) } }).text()
+    const text = mount(FilmCard, {
+      props: { film: makeFilm({ voteAverage: 0, runtimeMinutes: 0 }) },
+    }).text()
     expect(text).toContain('0.0 / 10')
     expect(text).toContain('0 min')
   })
@@ -518,8 +638,14 @@ describe('FilmCard: edge cases', () => {
       props: {
         film: makeFilm({
           countries: ['JP', 'FR'],
-          directors: [{ id: 1, name: 'A' }, { id: 2, name: 'B' }],
-          genres: [{ id: 18, name: 'Drama' }, { id: 35, name: 'Comedy' }],
+          directors: [
+            { id: 1, name: 'A' },
+            { id: 2, name: 'B' },
+          ],
+          genres: [
+            { id: 18, name: 'Drama' },
+            { id: 35, name: 'Comedy' },
+          ],
         }),
       },
     }).text()
@@ -571,11 +697,19 @@ describe('FilmFacts', () => {
 
   it('is inline by default and a grid on request', () => {
     expect(mount(FilmFacts, { props: { facts } }).get('dl').classes()).toContain('facts--inline')
-    expect(mount(FilmFacts, { props: { facts, layout: 'grid' } }).get('dl').classes()).toContain('facts--grid')
+    expect(
+      mount(FilmFacts, { props: { facts, layout: 'grid' } })
+        .get('dl')
+        .classes(),
+    ).toContain('facts--grid')
   })
 
   it('renders nothing for an empty list, so no empty <dl> reaches assistive technology', () => {
-    expect(mount(FilmFacts, { props: { facts: [] } }).find('dl').exists()).toBe(false)
+    expect(
+      mount(FilmFacts, { props: { facts: [] } })
+        .find('dl')
+        .exists(),
+    ).toBe(false)
   })
 })
 
@@ -594,7 +728,11 @@ describe('BrandMark', () => {
     expect(svg.attributes('aria-hidden')).toBe('true')
     expect(svg.attributes('focusable')).toBe('false')
     expect(svg.attributes()).toMatchObject({ width: '32', height: '32' })
-    expect(mount(BrandMark, { props: { size: 48 } }).get('svg').attributes()).toMatchObject({ width: '48', height: '48' })
+    expect(
+      mount(BrandMark, { props: { size: 48 } })
+        .get('svg')
+        .attributes(),
+    ).toMatchObject({ width: '48', height: '48' })
   })
 
   it('is shown in the page header next to the app name, with the name as the only text', async () => {
@@ -610,7 +748,10 @@ describe('IconButton tooltip (WCAG 1.4.13)', () => {
   const tipOf = (wrapper: ReturnType<typeof mount>) => wrapper.get('.icon-button__tip')
 
   it('is dismissed with Esc while only the pointer is on the button, without focus', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('mouseenter')
     expect(document.activeElement).not.toBe(wrapper.get('button').element)
     esc()
@@ -619,7 +760,10 @@ describe('IconButton tooltip (WCAG 1.4.13)', () => {
   })
 
   it('comes back on the next hover after it was dismissed', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('mouseenter')
     esc()
     await wrapper.get('button').trigger('mouseleave')
@@ -628,7 +772,10 @@ describe('IconButton tooltip (WCAG 1.4.13)', () => {
   })
 
   it('ignores keys other than Esc while hovered', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('mouseenter')
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
     await wrapper.vm.$nextTick()
@@ -637,7 +784,10 @@ describe('IconButton tooltip (WCAG 1.4.13)', () => {
 
   it('stops listening for Esc when the pointer leaves, and when the button is removed', async () => {
     const remove = vi.spyOn(window, 'removeEventListener')
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('mouseenter')
     await wrapper.get('button').trigger('mouseleave')
     expect(remove).toHaveBeenCalledWith('keydown', expect.any(Function))
@@ -659,7 +809,10 @@ describe('IconButton tooltip (WCAG 1.4.13)', () => {
 
   it('does nothing when the tooltip itself is clicked', async () => {
     let clicks = 0
-    const wrapper = mount(IconButton, { props: { label: 'Go', icon: 'plus' }, attrs: { onClick: () => clicks++ } })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Go', icon: 'plus' },
+      attrs: { onClick: () => clicks++ },
+    })
     await tipOf(wrapper).trigger('click')
     expect(clicks).toBe(0)
     await wrapper.get('button').trigger('click')
@@ -678,7 +831,10 @@ describe('IconButton tooltip (WCAG 1.4.13)', () => {
 
   it('registers a single Esc listener when the pointer enters twice, and one leave removes it', async () => {
     const add = vi.spyOn(window, 'addEventListener')
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('mouseenter')
     await wrapper.get('button').trigger('mouseenter')
     const calls = add.mock.calls.filter(([type]) => type === 'keydown')
@@ -701,14 +857,20 @@ describe('IconButton tooltip (WCAG 1.4.13)', () => {
   })
 
   it('does not react to Esc after it was removed while hovered', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('mouseenter')
     wrapper.unmount()
     expect(() => esc()).not.toThrow()
   })
 
   it('shows the tooltip again on focus after Esc dismissed it, and Esc on the focused button dismisses it', async () => {
-    const wrapper = mount(IconButton, { props: { label: 'Edit', icon: 'pencil' }, attachTo: document.body })
+    const wrapper = mount(IconButton, {
+      props: { label: 'Edit', icon: 'pencil' },
+      attachTo: document.body,
+    })
     await wrapper.get('button').trigger('mouseenter')
     esc()
     await wrapper.get('button').trigger('mouseleave')

@@ -15,7 +15,9 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
     viewport: { width: 1280, height: 800 },
     baseURL: 'http://localhost:4173',
-    launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
+    launchOptions: process.env.PW_CHROMIUM_PATH
+      ? { executablePath: process.env.PW_CHROMIUM_PATH }
+      : {},
   },
   webServer: {
     command: 'npm run build-only && npm run preview -- --port 4173 --strictPort',

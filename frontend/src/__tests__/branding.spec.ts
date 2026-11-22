@@ -67,9 +67,10 @@ function decodePng(png: Buffer) {
   expect([2, 6]).toContain(colorType)
   const bpp = colorType === 6 ? 4 : 3
   const data: Buffer[] = []
-  for (let at = 8; at < png.length; ) {
+  for (let at = 8; at < png.length;) {
     const length = png.readUInt32BE(at)
-    if (png.subarray(at + 4, at + 8).toString('latin1') === 'IDAT') data.push(png.subarray(at + 8, at + 8 + length))
+    if (png.subarray(at + 4, at + 8).toString('latin1') === 'IDAT')
+      data.push(png.subarray(at + 8, at + 8 + length))
     at += 12 + length
   }
   const raw = inflateSync(Buffer.concat(data))
@@ -101,7 +102,13 @@ const icoImages = () => {
     const entry = 6 + 16 * i
     const offset = ico.readUInt32LE(entry + 12)
     const length = ico.readUInt32LE(entry + 8)
-    return { width: ico.readUInt8(entry), height: ico.readUInt8(entry + 1), offset, length, png: ico.subarray(offset, offset + length) }
+    return {
+      width: ico.readUInt8(entry),
+      height: ico.readUInt8(entry + 1),
+      offset,
+      length,
+      png: ico.subarray(offset, offset + length),
+    }
   })
 }
 
@@ -145,7 +152,12 @@ describe('favicon.ico in depth', () => {
   it('draws the orange dot in the middle of every image', () => {
     for (const image of icoImages()) {
       const decoded = decodePng(image.png)
-      expect(decoded.pixel(decoded.width / 2, decoded.height / 2)).toMatchObject({ r: 0xff, g: 0x6b, b: 0x47, a: 255 })
+      expect(decoded.pixel(decoded.width / 2, decoded.height / 2)).toMatchObject({
+        r: 0xff,
+        g: 0x6b,
+        b: 0x47,
+        a: 255,
+      })
     }
   })
 })
@@ -213,7 +225,9 @@ describe('index.html', () => {
   })
 
   it('links only icon files that exist in public/', () => {
-    const hrefs = [...html.matchAll(/<link rel="(?:icon|apple-touch-icon)" href="\/([^"]+)"/g)].map((m) => m[1]!)
+    const hrefs = [...html.matchAll(/<link rel="(?:icon|apple-touch-icon)" href="\/([^"]+)"/g)].map(
+      (m) => m[1]!,
+    )
     expect([...hrefs].sort()).toEqual(['apple-touch-icon.png', 'favicon.ico', 'favicon.svg'])
     for (const href of hrefs) expect(() => read(`public/${href}`)).not.toThrow()
   })
@@ -234,7 +248,9 @@ describe('icon script', () => {
   const brandMark = read('src/components/BrandMark.vue').toString()
   const svg = read('public/favicon.svg').toString()
   const geometry = (name: string) => {
-    const m = new RegExp(`const ${name} = \\{ sw: (\\d+), dash: '([^']+)', dot: (\\d+) \\}`).exec(script)
+    const m = new RegExp(`const ${name} = \\{ sw: (\\d+), dash: '([^']+)', dot: (\\d+) \\}`).exec(
+      script,
+    )
     expect(m).not.toBeNull()
     return { sw: m![1]!, dash: m![2]!, dot: m![3]! }
   }
@@ -273,8 +289,13 @@ describe('icon script', () => {
   })
 
   it('has dash patterns that close the ring with whole perforations (12 full, 8 small)', () => {
-    for (const [name, count] of [['FULL', 12], ['SMALL', 8]] as const) {
-      const period = geometry(name).dash.split(' ').reduce((sum, n) => sum + Number(n), 0)
+    for (const [name, count] of [
+      ['FULL', 12],
+      ['SMALL', 8],
+    ] as const) {
+      const period = geometry(name)
+        .dash.split(' ')
+        .reduce((sum, n) => sum + Number(n), 0)
       expect(period * count).toBeCloseTo(2 * Math.PI * 24, 0)
     }
   })
@@ -293,7 +314,9 @@ describe('official TMDB logo', () => {
   const OFFICIAL_SHA256 = '8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c'
 
   it('is the official file, byte for byte', () => {
-    expect(createHash('sha256').update(read('public/tmdb-logo.svg')).digest('hex')).toBe(OFFICIAL_SHA256)
+    expect(createHash('sha256').update(read('public/tmdb-logo.svg')).digest('hex')).toBe(
+      OFFICIAL_SHA256,
+    )
   })
 
   it('is referenced from the footer by its path in public/', () => {
