@@ -22,11 +22,11 @@
   "dependencies": {
     "pinia": "^4.1.0",
     "vue": "^3.5.45",
-    "vue-router": "^5.3.1"
+    "vue-router": "^5.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.0",
-    "@tsconfig/node24": "^24.0.5",
+    "@playwright/test": "^1.65.1",
+    "@tsconfig/node24": "^24.0.6",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^6.0.8",
@@ -35,7 +35,7 @@
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/test-utils": "^2.5.0",
     "@vue/tsconfig": "^0.9.1",
-    "axe-core": "^4.14.0",
+    "axe-core": "^4.14.1",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.93.0",
@@ -47,7 +47,7 @@
     "oxlint": "~1.93.0",
     "prettier": "3.9.10",
     "typescript": "~6.0.0",
-    "vite": "^8.3.5",
+    "vite": "^8.3.8",
     "vite-plugin-vue-devtools": "^8.2.1",
     "vitest": "^5.1.0",
     "vue-eslint-parser": "^10.4.1",
