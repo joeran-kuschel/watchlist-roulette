@@ -69,7 +69,7 @@ The database volume lives inside the Docker Desktop node. A Docker Desktop updat
 ```bash
 ./k8s/backup-db.sh                      # dump to ~/WatchlistRouletteBackups (newest 168 are kept)
 ./k8s/install-backup-job.sh             # hourly launchd job that runs it (--uninstall removes it)
-./k8s/restore-db.sh <backup.sql.gz>     # replaces all data; stops the backend meanwhile
+./k8s/restore-db.sh <backup.sql.gz>     # replaces all data; stops the backend meanwhile; fails if the stream is cut off (a cut before the end is rolled back)
 ```
 
 `BACKUP_DIR`, `BACKUP_KEEP`, `KUBE_CONTEXT` and `NAMESPACE` override the defaults.

@@ -4,6 +4,7 @@ All notable changes to Watchlist Roulette. The format follows [Keep a Changelog]
 
 ## Unreleased
 
+- Restoring a backup on Kubernetes (`k8s/restore-db.sh`) can no longer report success after the data stream was cut off: it now checks that the backup is whole first, restores inside one transaction that is only committed when the whole dump has arrived, tells you when it failed and shows how many films and other rows came back. Before, a cut-off restore could leave the database empty or only partly filled and still say "Restored".
 - On Kubernetes, the app is now also served over HTTPS at https://watchlist.local:8443, with a local certificate from mkcert that `./k8s/deploy.sh` makes the first time (the plain address http://watchlist.local still works). You need mkcert and its authority once (`brew install mkcert && mkcert -install`). To save changes from the HTTPS address, add it to `CORS_ORIGIN` in your git-ignored `k8s/.env.local`; the deploy tells you how.
 - On Kubernetes, settings that differ on your machine, such as `CORS_ORIGIN` for another port, can now go into the git-ignored file `k8s/.env.local`. The next `./k8s/deploy.sh` applies them on top of the shared settings, and removes them again when the file is gone.
 - On Kubernetes, `./k8s/deploy.sh` now removes the old images of this app from the cluster node after a successful deploy, and checks the node's free disk space before it builds (it stops with a hint when less than 2 GiB is free). The images of the last two versions stay, so you can go back. Other apps' images are never touched.

@@ -59,6 +59,16 @@ docker volume ls            # volumes nothing uses
 
 Look before you delete a volume: a volume can hold a database. Do not use Docker Desktop's "Clean / Purge data": it deletes the database volumes of every app. To remove the unused images of all apps on the node at once, `docker exec desktop-control-plane crictl rmi --prune` works, but it prints many `DeadlineExceeded` errors when it removes about a hundred large images at the same time. The deletions still complete in the background; check with `docker exec desktop-control-plane df -h /` after a minute. That command also removes other apps' unused images (they have to be rebuilt by their next deploy).
 
+## Restoring a backup
+
+`k8s/restore-db.sh <backup.sql.gz>` replaces all data with a dump from `backup-db.sh` (it asks you to type `restore`; `--yes` skips that). It stops the backend meanwhile and starts it again afterwards, also when the restore fails.
+
+- **Before it touches anything** it checks that the file is a whole backup: a valid gzip archive whose last lines hold the line `pg_dump` writes last. A damaged or cut-off file is refused.
+- **The dump goes through `kubectl exec -i`, which can cut the stream off partway** (seen after the Docker Desktop upgrade of 20 November 2026; the first restore then reported success and left the database empty, [#102](https://github.com/joeran-kuschel/watchlist-roulette/issues/102)). With `psql --single-transaction`, a cut that falls on a statement boundary is committed as if it were the whole dump. So the script sends `BEGIN;`, the dump, `COMMIT;` and then `SELECT 'restore-complete';` by itself, and only reports success when `restore-complete` is the last thing psql answers. A stream that is cut anywhere before `COMMIT` is rolled back when the connection ends (this relies on the connection ending `psql`'s input, which is what a cut `kubectl exec` does), so the database is unchanged; an error in the dump stops it too (`ON_ERROR_STOP`).
+- **A cut between `COMMIT` and the marker** has committed everything and still reports a failure. That is harmless: run it again, a restore replaces all data every time.
+- **What came back** is printed after a successful restore (rows in `films`, `film_credits`, `genres` and `people`), so a restore that brought in nothing is visible.
+- Tests: `backend/tests/k8s-scripts.test.ts` (a fake `kubectl` that cuts the stream at several places).
+
 ## Known limits
 
 - The database volume is lost on a Docker Desktop reset: use the [backups](../../k8s/README.md#backups).
