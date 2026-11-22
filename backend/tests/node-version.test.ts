@@ -21,10 +21,9 @@ describe('Node version', () => {
   it.each(dockerfiles)('%s uses the .nvmrc major in every stage', (file) => {
     const images = [...read(file).matchAll(/^FROM (\S+)/gm)].map((m) => m[1])
     expect(images.length).toBeGreaterThan(0)
-    for (const image of images) {
-      if (image!.startsWith('node:')) expect(image).toMatch(new RegExp(`^node:${nvmrc}-alpine$`))
-    }
-    expect(images.some((i) => i!.startsWith('node:'))).toBe(true)
+    const nodeImages = images.filter((image) => image!.startsWith('node:'))
+    expect(nodeImages.length).toBeGreaterThan(0)
+    for (const image of nodeImages) expect(image).toMatch(new RegExp(`^node:${nvmrc}-alpine$`))
   })
 
   it('is the version CI runs backend and frontend on', () => {

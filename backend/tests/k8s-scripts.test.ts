@@ -274,7 +274,7 @@ describe('deploy.sh', () => {
 
   it('is valid shell', () => {
     for (const file of ['deploy.sh', 'backup-db.sh', 'restore-db.sh', 'install-backup-job.sh', 'generate-init-scripts.sh']) {
-      expect(spawnSync('bash', ['-n', join(k8sDir, file)]).status, file).toBe(0)
+      expect({ file, status: spawnSync('bash', ['-n', join(k8sDir, file)]).status }).toEqual({ file, status: 0 })
     }
   })
 })

@@ -47,10 +47,10 @@ describe.skipIf(!url)('real PostgreSQL', () => {
   })
 
   it('enforces the title, link and rating constraints', async () => {
-    await expect(pool.query(`INSERT INTO films (title) VALUES ('   ')`)).rejects.toThrow()
+    await expect(pool.query(`INSERT INTO films (title) VALUES ('   ')`)).rejects.toThrow(/check constraint/)
     await expect(
       pool.query(`INSERT INTO films (title, letterboxd_url) VALUES ('A', 'ftp://x')`),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/check constraint/)
   })
 
   it('rolls back the whole import when a statement fails halfway', async () => {

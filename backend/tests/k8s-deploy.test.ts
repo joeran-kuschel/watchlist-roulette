@@ -179,7 +179,7 @@ describe('deploy.sh: HTTPS', () => {
     expect(result.stderr).toContain('mkcert could not make a certificate for watchlist.local.')
     expect(log('docker.log')).not.toContain('build')
     expect(log('created-all.yaml')).not.toContain('watchlist-tls')
-    for (const file of log('mkcert-files').split('\n').filter(Boolean)) expect(existsSync(file), file).toBe(false)
+    for (const file of log('mkcert-files').split('\n').filter(Boolean)) expect({ file, exists: existsSync(file) }).toEqual({ file, exists: false })
   })
 
   it('keeps an existing Secret, without needing mkcert at all', () => {

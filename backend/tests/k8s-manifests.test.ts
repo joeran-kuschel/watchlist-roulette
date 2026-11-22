@@ -219,15 +219,18 @@ describe('network policy for the database', () => {
   it('keeps every script off the network: the database is only reached through kubectl exec', () => {
     const scripts = readdirSync(k8sDir).filter((f) => f.endsWith('.sh'))
     expect(scripts).toEqual(expect.arrayContaining(['backup-db.sh', 'restore-db.sh', 'db-common.sh']))
+    // The scripts that break a rule, by name, so a failure says which one
+    const offenders: string[] = []
     for (const file of scripts) {
       const code = read(file)
         .split('\n')
         .filter((line) => !line.trim().startsWith('#'))
         .join('\n')
       // no way for a pod of ours or the Mac to open a connection to the database over the network
-      expect(code, file).not.toMatch(/port-forward|\bkubectl\b(\s+-{1,2}[A-Za-z][\w-]*(=\S+)?(\s+[^\s-]\S*)?)*\s+(run|debug|attach)\b/)
-      expect(code, file).not.toMatch(/\b(psql|pg_dump|pg_isready)\b[^\n|]*(\s-h[\s=]|--host|postgres(ql)?:\/\/)/)
+      if (/port-forward|\bkubectl\b(\s+-{1,2}[A-Za-z][\w-]*(=\S+)?(\s+[^\s-]\S*)?)*\s+(run|debug|attach)\b/.test(code)) offenders.push(file)
+      if (/\b(psql|pg_dump|pg_isready)\b[^\n|]*(\s-h[\s=]|--host|postgres(ql)?:\/\/)/.test(code)) offenders.push(file)
     }
+    expect(offenders).toEqual([])
     expect(read('db-common.sh')).toMatch(/kubectl[^\n]* exec -i deploy\/postgres /)
   })
 

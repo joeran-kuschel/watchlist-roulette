@@ -43,7 +43,7 @@ describe('parseWatchlistCsv', () => {
   })
 
   it('rejects an empty file', () => {
-    expect(() => csv('')).toThrow()
+    expect(() => csv('')).toThrow('The CSV file is empty')
   })
 
   it.each([

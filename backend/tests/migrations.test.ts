@@ -9,19 +9,19 @@ beforeEach(async () => {
 
 describe('migrations', () => {
   it('create a films table that rejects a blank title', async () => {
-    await expect(pool.query(`INSERT INTO films (title) VALUES ('  ')`)).rejects.toThrow()
+    await expect(pool.query(`INSERT INTO films (title) VALUES ('  ')`)).rejects.toThrow(/check constraint/)
   })
 
   it('reject a letterboxd link that is not http(s)', async () => {
     await expect(
       pool.query(`INSERT INTO films (title, letterboxd_url) VALUES ('A', 'javascript:alert(1)')`),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/check constraint/)
   })
 
   it('reject a duplicate letterboxd link', async () => {
     const sql = `INSERT INTO films (title, letterboxd_url) VALUES ('A', 'https://boxd.it/1')`
     await pool.query(sql)
-    await expect(pool.query(sql)).rejects.toThrow()
+    await expect(pool.query(sql)).rejects.toThrow(/duplicate key|unique constraint/)
   })
 
   it('start new films as unwatched with a pending TMDB status', async () => {
