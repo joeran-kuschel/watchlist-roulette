@@ -10,8 +10,8 @@
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
     "lint": "oxlint . --fix",
-    "format": "prettier --write \"**/*.{ts,js,mjs}\"",
-    "format:check": "prettier --check \"**/*.{ts,js,mjs}\"",
+    "format": "prettier --write \"**/*.{ts,mts,js,mjs}\"",
+    "format:check": "prettier --check \"**/*.{ts,mts,js,mjs}\"",
     "test": "vitest run",
     "test:watch": "vitest"
   },

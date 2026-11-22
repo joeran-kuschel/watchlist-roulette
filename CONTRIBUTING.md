@@ -9,11 +9,11 @@ Use Node 26 (`nvm use` reads `.nvmrc`). How to run the app, the dev servers and 
 ## Making a change
 
 1. Branch off `main`; do not commit to `main` directly.
-2. Keep the change small and focused. Match the style of the surrounding code and avoid unrelated refactoring.
+2. Keep the change small and focused. Match the style of the surrounding code and avoid unrelated refactoring. The code is formatted with Prettier (`npm run format` in `backend/` and `frontend/`) and checked by CI. Once, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`, so `git blame` skips the commit that formatted everything.
 3. Add tests for what you change. Run the tests that your change affects; the whole suite runs before a merge:
    ```sh
-   cd backend  && npm test && npm run type-check
-   cd frontend && npm run test:unit -- --run && npm run type-check && npm run lint
+   cd backend  && npm test && npm run type-check && npm run lint && npm run format:check
+   cd frontend && npm run test:unit -- --run && npm run type-check && npm run lint && npm run format:check
    ```
 4. Document the change in `documentation/`, and add a line to `Unreleased` in [CHANGELOG.md](CHANGELOG.md), written for the app's user.
 5. Open a pull request and describe what changed and why.

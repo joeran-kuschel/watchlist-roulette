@@ -43,6 +43,9 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run type-check
+      # Check only: `npm run lint` and `npm run format` fix the files.
+      - run: npx oxlint .
+      - run: npm run format:check
       - run: npm test
       - run: npm run build
 
@@ -64,6 +67,7 @@ jobs:
       # Check only: the lint scripts of package.json use --fix.
       - run: npx oxlint .
       - run: npx eslint .
+      - run: npm run format:check
       - run: npm run test:unit -- --run
       - run: npm run build-only
 
