@@ -3,7 +3,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { expectNoA11yViolations } from '../../__tests__/helpers'
 import TmdbOffNotice from '../TmdbOffNotice.vue'
 
-const TEXT = 'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
+const TEXT =
+  'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
 const mountNotice = () => mount(TmdbOffNotice, { attachTo: document.body })
 
 describe('TmdbOffNotice', () => {

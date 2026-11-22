@@ -8,13 +8,25 @@ beforeEach(async () => {
   pool = await createTestPool()
 })
 
-const add = (title: string, extra: object = {}) => testApp().post('/api/films').send({ title, ...extra })
+const add = (title: string, extra: object = {}) =>
+  testApp()
+    .post('/api/films')
+    .send({ title, ...extra })
 
 describe('POST /api/films', () => {
   it('creates a film', async () => {
-    const res = await add('Joy', { releaseYear: 2015, letterboxdUrl: 'https://boxd.it/1', addedAt: '2020-01-12' })
+    const res = await add('Joy', {
+      releaseYear: 2015,
+      letterboxdUrl: 'https://boxd.it/1',
+      addedAt: '2020-01-12',
+    })
     expect(res.status).toBe(201)
-    expect(res.body).toMatchObject({ title: 'Joy', releaseYear: 2015, addedAt: '2020-01-12', watchedAt: null })
+    expect(res.body).toMatchObject({
+      title: 'Joy',
+      releaseYear: 2015,
+      addedAt: '2020-01-12',
+      watchedAt: null,
+    })
   })
 
   it.each([
@@ -36,7 +48,10 @@ describe('POST /api/films', () => {
   })
 
   it('answers 400 for a body that is not JSON', async () => {
-    const res = await testApp().post('/api/films').set('Content-Type', 'application/json').send('{nope')
+    const res = await testApp()
+      .post('/api/films')
+      .set('Content-Type', 'application/json')
+      .send('{nope')
     expect(res.status).toBe(400)
   })
 })
@@ -51,15 +66,20 @@ describe('GET /api/films', () => {
     expect(res.body.items[0].title).toBe('Alpha')
   })
 
-  it.each(['pending', 'matched', 'ambiguous', 'not_found', 'error'])('accepts tmdbStatus=%s and filters by it', async (status) => {
-    const { id } = (await add('Tagged')).body
-    await add('Other')
-    await pool.query(`UPDATE films SET tmdb_status = $1 WHERE id = $2`, [status, id])
-    const res = await testApp().get(`/api/films?tmdbStatus=${status}`)
-    expect(res.status).toBe(200)
-    expect(res.body.items.map((f: { title: string }) => f.title)).toContain('Tagged')
-    expect(res.body.items.every((f: { tmdb: { status: string } }) => f.tmdb.status === status)).toBe(true)
-  })
+  it.each(['pending', 'matched', 'ambiguous', 'not_found', 'error'])(
+    'accepts tmdbStatus=%s and filters by it',
+    async (status) => {
+      const { id } = (await add('Tagged')).body
+      await add('Other')
+      await pool.query(`UPDATE films SET tmdb_status = $1 WHERE id = $2`, [status, id])
+      const res = await testApp().get(`/api/films?tmdbStatus=${status}`)
+      expect(res.status).toBe(200)
+      expect(res.body.items.map((f: { title: string }) => f.title)).toContain('Tagged')
+      expect(
+        res.body.items.every((f: { tmdb: { status: string } }) => f.tmdb.status === status),
+      ).toBe(true)
+    },
+  )
 
   it('answers 400 for an unknown tmdbStatus', async () => {
     expect((await testApp().get('/api/films?tmdbStatus=nope')).status).toBe(400)
@@ -165,12 +185,18 @@ describe('POST /api/tmdb/sync', () => {
     expect(res.body).toEqual({ started: true })
   })
 
-  it.each([true, false])('retries the unmatched films when includeUnmatched is %s', async (includeUnmatched) => {
-    const enricher = fakeEnricher()
-    const res = await testApp(enricher).post('/api/tmdb/sync').send({ includeUnmatched })
-    expect(res.status).toBe(202)
-    expect(enricher.trigger).toHaveBeenCalledWith({ retryErrors: true, retryUnmatched: includeUnmatched })
-  })
+  it.each([true, false])(
+    'retries the unmatched films when includeUnmatched is %s',
+    async (includeUnmatched) => {
+      const enricher = fakeEnricher()
+      const res = await testApp(enricher).post('/api/tmdb/sync').send({ includeUnmatched })
+      expect(res.status).toBe(202)
+      expect(enricher.trigger).toHaveBeenCalledWith({
+        retryErrors: true,
+        retryUnmatched: includeUnmatched,
+      })
+    },
+  )
 
   it('treats an empty JSON object like no body', async () => {
     const enricher = fakeEnricher()
@@ -193,7 +219,10 @@ describe('POST /api/tmdb/sync', () => {
     const enricher = fakeEnricher(false)
     const res = await testApp(enricher).post('/api/tmdb/sync').send({ includeUnmatched: true })
     expect(res.status).toBe(503)
-    expect(res.body).toMatchObject({ code: 'tmdb_unavailable', error: expect.stringContaining('TMDB_ACCESS_TOKEN') })
+    expect(res.body).toMatchObject({
+      code: 'tmdb_unavailable',
+      error: expect.stringContaining('TMDB_ACCESS_TOKEN'),
+    })
     expect(enricher.trigger).not.toHaveBeenCalled()
   })
 })
@@ -206,7 +235,14 @@ describe('GET /api/tmdb/sync', () => {
       running: true,
       total: 10,
       done: 4,
-      lastRun: { matched: 1, notFound: 2, ambiguous: 0, error: 0, stopped: null, finishedAt: '2026-10-16T10:00:00.000Z' },
+      lastRun: {
+        matched: 1,
+        notFound: 2,
+        ambiguous: 0,
+        error: 0,
+        stopped: null,
+        finishedAt: '2026-10-16T10:00:00.000Z',
+      },
     }
     enricher.status.mockReturnValue(status)
     const res = await testApp(enricher).get('/api/tmdb/sync')
@@ -234,7 +270,9 @@ describe('POST /api/films/:id/tmdb-lookup', () => {
     const id = await addOne()
     const enricher = fakeEnricher()
     enricher.lookup.mockImplementation(async (filmId: number) => {
-      await pool.query(`UPDATE films SET tmdb_status = 'matched', tmdb_id = 100 WHERE id = $1`, [filmId])
+      await pool.query(`UPDATE films SET tmdb_status = 'matched', tmdb_id = 100 WHERE id = $1`, [
+        filmId,
+      ])
       return 'done'
     })
     const res = await testApp(enricher).post(`/api/films/${id}/tmdb-lookup`)
@@ -267,7 +305,10 @@ describe('POST /api/films/:id/tmdb-lookup', () => {
     const enricher = fakeEnricher(false)
     const res = await testApp(enricher).post(`/api/films/${id}/tmdb-lookup`)
     expect(res.status).toBe(503)
-    expect(res.body).toEqual({ error: 'TMDB is not configured. Set TMDB_ACCESS_TOKEN.', code: 'tmdb_unavailable' })
+    expect(res.body).toEqual({
+      error: 'TMDB is not configured. Set TMDB_ACCESS_TOKEN.',
+      code: 'tmdb_unavailable',
+    })
     expect(enricher.lookup).not.toHaveBeenCalled()
   })
 
@@ -310,9 +351,13 @@ describe('app', () => {
   })
 
   it('allows only the configured CORS origins', async () => {
-    const allowed = await testApp(fakeEnricher(), 'http://localhost:5173').get('/health').set('Origin', 'http://localhost:5173')
+    const allowed = await testApp(fakeEnricher(), 'http://localhost:5173')
+      .get('/health')
+      .set('Origin', 'http://localhost:5173')
     expect(allowed.headers['access-control-allow-origin']).toBe('http://localhost:5173')
-    const other = await testApp(fakeEnricher(), 'http://localhost:5173').get('/health').set('Origin', 'http://evil.example')
+    const other = await testApp(fakeEnricher(), 'http://localhost:5173')
+      .get('/health')
+      .set('Origin', 'http://evil.example')
     expect(other.headers['access-control-allow-origin']).toBeUndefined()
     const none = await testApp().get('/health').set('Origin', 'http://localhost:5173')
     expect(none.headers['access-control-allow-origin']).toBeUndefined()
@@ -320,12 +365,15 @@ describe('app', () => {
 })
 
 describe('dates', () => {
-  it.each(['2020-13-01', '2020-00-10', '2020-04-31', '2021-02-29', 'yesterday', ''])('answers 400, not 500, for the date %s', async (addedAt) => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const res = await add('A', { addedAt })
-    spy.mockRestore()
-    expect(res.status).toBe(400)
-  })
+  it.each(['2020-13-01', '2020-00-10', '2020-04-31', '2021-02-29', 'yesterday', ''])(
+    'answers 400, not 500, for the date %s',
+    async (addedAt) => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const res = await add('A', { addedAt })
+      spy.mockRestore()
+      expect(res.status).toBe(400)
+    },
+  )
 
   it('accepts 29 February in a leap year', async () => {
     expect((await add('A', { addedAt: '2020-02-29' })).status).toBe(201)
@@ -333,7 +381,8 @@ describe('dates', () => {
 })
 
 describe('PATCH /api/films/:id edge cases', () => {
-  const patch = (id: number | string, body: object) => testApp().patch(`/api/films/${id}`).send(body)
+  const patch = (id: number | string, body: object) =>
+    testApp().patch(`/api/films/${id}`).send(body)
 
   it.each([
     ['title', { title: null }],
@@ -351,11 +400,15 @@ describe('PATCH /api/films/:id edge cases', () => {
   ])('answers 400 for %s and changes nothing', async (_name, body) => {
     const { id } = (await add('Joy', { releaseYear: 2015 })).body
     expect((await patch(id, body)).status).toBe(400)
-    expect((await testApp().get(`/api/films/${id}`)).body).toMatchObject({ title: 'Joy', releaseYear: 2015 })
+    expect((await testApp().get(`/api/films/${id}`)).body).toMatchObject({
+      title: 'Joy',
+      releaseYear: 2015,
+    })
   })
 
   it('clears the year and the link with null', async () => {
-    const { id } = (await add('Joy', { releaseYear: 2015, letterboxdUrl: 'https://boxd.it/1' })).body
+    const { id } = (await add('Joy', { releaseYear: 2015, letterboxdUrl: 'https://boxd.it/1' }))
+      .body
     const res = await patch(id, { releaseYear: null, letterboxdUrl: null })
     expect(res.body).toMatchObject({ releaseYear: null, letterboxdUrl: null })
   })
@@ -363,7 +416,9 @@ describe('PATCH /api/films/:id edge cases', () => {
   it('applies a TMDB id together with other fields', async () => {
     const enricher = fakeEnricher()
     const { id } = (await add('Joy')).body
-    const res = await testApp(enricher).patch(`/api/films/${id}`).send({ tmdbId: 7, title: 'Joy!', watched: true })
+    const res = await testApp(enricher)
+      .patch(`/api/films/${id}`)
+      .send({ tmdbId: 7, title: 'Joy!', watched: true })
     expect(res.status).toBe(200)
     expect(res.body).toMatchObject({ title: 'Joy!', tmdb: { id: 7, status: 'pending' } })
     expect(res.body.watchedAt).not.toBeNull()
@@ -436,24 +491,33 @@ describe('GET /api/films paging and filters', () => {
     ['release_year', 'desc'],
     ['title', 'asc'],
     ['added_at', 'desc'],
-  ])('shows every film exactly once when paging through ties sorted by %s %s', async (sort, order) => {
-    for (let i = 0; i < 7; i++) {
-      await add(`Same`, { releaseYear: i < 4 ? 2000 : null, addedAt: '2020-01-01' })
-    }
-    const seen: number[] = []
-    for (let page = 1; page <= 4; page++) {
-      seen.push(...ids(await testApp().get(`/api/films?sort=${sort}&order=${order}&page=${page}&pageSize=2`)))
-    }
-    expect(seen).toHaveLength(7)
-    expect(new Set(seen).size).toBe(7)
-  })
+  ])(
+    'shows every film exactly once when paging through ties sorted by %s %s',
+    async (sort, order) => {
+      for (let i = 0; i < 7; i++) {
+        await add(`Same`, { releaseYear: i < 4 ? 2000 : null, addedAt: '2020-01-01' })
+      }
+      const seen: number[] = []
+      for (let page = 1; page <= 4; page++) {
+        seen.push(
+          ...ids(
+            await testApp().get(`/api/films?sort=${sort}&order=${order}&page=${page}&pageSize=2`),
+          ),
+        )
+      }
+      expect(seen).toHaveLength(7)
+      expect(new Set(seen).size).toBe(7)
+    },
+  )
 
   it('puts films without a year last in both directions', async () => {
     await add('None')
     await add('Old', { releaseYear: 1950 })
     await add('New', { releaseYear: 2020 })
     const title = (order: string) =>
-      testApp().get(`/api/films?sort=release_year&order=${order}`).then((r) => r.body.items.map((f: { title: string }) => f.title))
+      testApp()
+        .get(`/api/films?sort=release_year&order=${order}`)
+        .then((r) => r.body.items.map((f: { title: string }) => f.title))
     expect(await title('asc')).toEqual(['Old', 'New', 'None'])
     expect(await title('desc')).toEqual(['New', 'Old', 'None'])
   })
@@ -463,7 +527,9 @@ describe('GET /api/films paging and filters', () => {
     await add('Alpha two')
     await add('Beta')
     await testApp().patch(`/api/films/${a.id}`).send({ watched: true })
-    const res = await testApp().get('/api/films?q=alpha&watched=false&tmdbStatus=pending&pageSize=1')
+    const res = await testApp().get(
+      '/api/films?q=alpha&watched=false&tmdbStatus=pending&pageSize=1',
+    )
     expect(res.body).toMatchObject({ total: 1 })
     expect(res.body.items[0].title).toBe('Alpha two')
   })
@@ -476,9 +542,18 @@ describe('GET /api/films paging and filters', () => {
 
 describe('GET /api/films/random with combined filters', () => {
   const setup = async () => {
-    const film = async (title: string, year: number | null, runtime: number | null, countries: string[]) => {
+    const film = async (
+      title: string,
+      year: number | null,
+      runtime: number | null,
+      countries: string[],
+    ) => {
       const { id } = (await add(title, year === null ? {} : { releaseYear: year })).body
-      await pool.query(`UPDATE films SET runtime_minutes = $1, countries = $2 WHERE id = $3`, [runtime, countries, id])
+      await pool.query(`UPDATE films SET runtime_minutes = $1, countries = $2 WHERE id = $3`, [
+        runtime,
+        countries,
+        id,
+      ])
       return id as number
     }
     await film('Short US 1990', 1990, 80, ['US'])
@@ -497,7 +572,9 @@ describe('GET /api/films/random with combined filters', () => {
 
   it('only picks films that satisfy every filter', async () => {
     await setup()
-    expect(await titles('yearFrom=2000&yearTo=2000&country=us&maxRuntime=200')).toEqual(['Long US 2000'])
+    expect(await titles('yearFrom=2000&yearTo=2000&country=us&maxRuntime=200')).toEqual([
+      'Long US 2000',
+    ])
     expect(await titles('yearFrom=1990&maxRuntime=100')).toEqual(['Short FR 2000', 'Short US 1990'])
   })
 
@@ -517,20 +594,29 @@ describe('GET /api/films/random with combined filters', () => {
   it('answers 404 when the only matching film is watched', async () => {
     await setup()
     await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Long US 2000'`)
-    expect((await testApp().get('/api/films/random?yearFrom=2000&country=US&maxRuntime=200')).status).toBe(404)
+    expect(
+      (await testApp().get('/api/films/random?yearFrom=2000&country=US&maxRuntime=200')).status,
+    ).toBe(404)
   })
 
-  it.each(['yearFrom=1700', 'yearTo=2200', 'maxRuntime=0', 'maxRuntime=-5', 'genre=abc', 'country=U'])(
-    'answers 400 for %s',
-    async (query) => {
-      expect((await testApp().get(`/api/films/random?${query}`)).status).toBe(400)
-    },
-  )
+  it.each([
+    'yearFrom=1700',
+    'yearTo=2200',
+    'maxRuntime=0',
+    'maxRuntime=-5',
+    'genre=abc',
+    'country=U',
+  ])('answers 400 for %s', async (query) => {
+    expect((await testApp().get(`/api/films/random?${query}`)).status).toBe(400)
+  })
 })
 
 describe('CORS', () => {
   const origin = (list: string | undefined, from: string) =>
-    testApp(fakeEnricher(), list).get('/health').set('Origin', from).then((r) => r.headers['access-control-allow-origin'])
+    testApp(fakeEnricher(), list)
+      .get('/health')
+      .set('Origin', from)
+      .then((r) => r.headers['access-control-allow-origin'])
 
   it('allows every origin of a comma-separated list, with spaces around the commas', async () => {
     const list = 'http://localhost:5173 , http://localhost:8080,'
@@ -566,7 +652,10 @@ describe('cross-site writes', () => {
   const app = (origin = 'http://localhost:8080') => testApp(fakeEnricher(), origin)
 
   it('rejects a write from a page on another origin with 403 and changes nothing', async () => {
-    const res = await app().post('/api/films').set('Origin', 'http://evil.example').send({ title: 'Evil' })
+    const res = await app()
+      .post('/api/films')
+      .set('Origin', 'http://evil.example')
+      .send({ title: 'Evil' })
     expect(res.status).toBe(403)
     expect((await testApp().get('/api/films')).body.total).toBe(0)
   })
@@ -580,17 +669,26 @@ describe('cross-site writes', () => {
   })
 
   it.each(['patch', 'delete'] as const)('rejects %s from another origin', async (method) => {
-    const res = await app()[method]('/api/films/1').set('Origin', 'http://evil.example').send({ title: 'x' })
+    const res = await app()
+      [method]('/api/films/1')
+      .set('Origin', 'http://evil.example')
+      .send({ title: 'x' })
     expect(res.status).toBe(403)
   })
 
   it('allows writes from the configured origin and from clients without an Origin', async () => {
-    expect((await app().post('/api/films').set('Origin', 'http://localhost:8080').send({ title: 'A' })).status).toBe(201)
+    expect(
+      (await app().post('/api/films').set('Origin', 'http://localhost:8080').send({ title: 'A' }))
+        .status,
+    ).toBe(201)
     expect((await testApp().post('/api/films').send({ title: 'B' })).status).toBe(201)
   })
 
   it('rejects every write with an Origin when no origin is configured', async () => {
-    const res = await testApp().post('/api/films').set('Origin', 'http://localhost:8080').send({ title: 'A' })
+    const res = await testApp()
+      .post('/api/films')
+      .set('Origin', 'http://localhost:8080')
+      .send({ title: 'A' })
     expect(res.status).toBe(403)
   })
 

@@ -47,7 +47,9 @@ describe('rate limit', () => {
     await app.post('/api/films').send({ title: 'Blocked' })
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(Date.now() + 61_000)
-    expect((await app.get('/api/films')).body).toEqual(expect.objectContaining({ items: [], total: 0 }))
+    expect((await app.get('/api/films')).body).toEqual(
+      expect.objectContaining({ items: [], total: 0 }),
+    )
   })
 
   it('serves requests again after the one-minute window', async () => {
@@ -112,7 +114,8 @@ describe('rate limit', () => {
 
     it('answers 429 instead of 403 for a write from a foreign origin once the budget is gone', async () => {
       const app = testApp(undefined, origin, undefined, 2)
-      const foreign = () => app.post('/api/films').set('Origin', 'http://evil.example').send({ title: 'Evil' })
+      const foreign = () =>
+        app.post('/api/films').set('Origin', 'http://evil.example').send({ title: 'Evil' })
       expect((await foreign()).status).toBe(403)
       expect((await foreign()).status).toBe(403)
       expect((await foreign()).status).toBe(429)

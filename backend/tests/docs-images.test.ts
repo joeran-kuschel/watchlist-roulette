@@ -8,17 +8,24 @@ const imagesDir = join(root, 'documentation/ui/images')
 const markdownFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
     entry.isDirectory()
-      ? entry.name === 'node_modules' || entry.name.startsWith('.') ? [] : markdownFiles(join(dir, entry.name))
-      : entry.name.endsWith('.md') ? [join(dir, entry.name)] : [],
+      ? entry.name === 'node_modules' || entry.name.startsWith('.')
+        ? []
+        : markdownFiles(join(dir, entry.name))
+      : entry.name.endsWith('.md')
+        ? [join(dir, entry.name)]
+        : [],
   )
 
-const images = [join(root, 'README.md'), ...markdownFiles(join(root, 'documentation'))].flatMap((file) =>
-  [...readFileSync(file, 'utf8').matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g)].map(([, alt, target]) => ({
-    file: relative(root, file),
-    alt: alt!,
-    target: target!,
-    path: resolve(dirname(file), target!),
-  })),
+const images = [join(root, 'README.md'), ...markdownFiles(join(root, 'documentation'))].flatMap(
+  (file) =>
+    [...readFileSync(file, 'utf8').matchAll(/!\[([^\]]*)\]\(([^)\s]+)\)/g)].map(
+      ([, alt, target]) => ({
+        file: relative(root, file),
+        alt: alt!,
+        target: target!,
+        path: resolve(dirname(file), target!),
+      }),
+    ),
 )
 
 describe('screenshots in the documentation', () => {
@@ -41,8 +48,13 @@ describe('screenshots in the documentation', () => {
 
   it('has no unused image files, and keeps each one small', () => {
     for (const name of readdirSync(imagesDir)) {
-      expect(images.some((i) => i.path === join(imagesDir, name)), `${name} is not used`).toBe(true)
-      expect(statSync(join(imagesDir, name)).size, `${name} is larger than 400 KB`).toBeLessThan(400 * 1024)
+      expect(
+        images.some((i) => i.path === join(imagesDir, name)),
+        `${name} is not used`,
+      ).toBe(true)
+      expect(statSync(join(imagesDir, name)).size, `${name} is larger than 400 KB`).toBeLessThan(
+        400 * 1024,
+      )
     }
   })
 

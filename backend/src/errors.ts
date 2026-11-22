@@ -11,4 +11,5 @@ export class HttpError extends Error {
 export const notFound = (what = 'Film') => new HttpError(404, `${what} not found`)
 
 const UNIQUE_VIOLATION = '23505'
-export const isUniqueViolation = (error: unknown) => (error as { code?: string } | null)?.code === UNIQUE_VIOLATION
+export const isUniqueViolation = (error: unknown) =>
+  (error as { code?: string } | null)?.code === UNIQUE_VIOLATION

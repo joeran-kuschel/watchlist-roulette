@@ -9,12 +9,20 @@ describe('parseWatchlistCsv', () => {
     const { rows, rejected } = csv(`${HEADER}2020-01-12,Joy,2015,https://boxd.it/8kEU\n`)
     expect(rejected).toEqual([])
     expect(rows).toEqual([
-      { line: 2, title: 'Joy', releaseYear: 2015, letterboxdUrl: 'https://boxd.it/8kEU', addedAt: '2020-01-12' },
+      {
+        line: 2,
+        title: 'Joy',
+        releaseYear: 2015,
+        letterboxdUrl: 'https://boxd.it/8kEU',
+        addedAt: '2020-01-12',
+      },
     ])
   })
 
   it('handles a BOM, CRLF line endings and header case', () => {
-    const { rows } = csv('﻿date,NAME,year,letterboxd uri\r\n2020-01-12,Joy,2015,https://boxd.it/1\r\n')
+    const { rows } = csv(
+      '﻿date,NAME,year,letterboxd uri\r\n2020-01-12,Joy,2015,https://boxd.it/1\r\n',
+    )
     expect(rows).toHaveLength(1)
   })
 
@@ -57,7 +65,9 @@ describe('parseWatchlistCsv', () => {
   ])('reports a row with %s with its line number', (_name, row, reason) => {
     const { rows, rejected } = csv(`${HEADER}2020-01-12,Ok,2000,https://boxd.it/0\n${row}\n`)
     expect(rows).toHaveLength(1)
-    expect(rejected).toEqual([expect.objectContaining({ line: 3, reason: expect.stringMatching(reason) })])
+    expect(rejected).toEqual([
+      expect.objectContaining({ line: 3, reason: expect.stringMatching(reason) }),
+    ])
   })
 
   it('remembers the link of a rejected row that has a usable one', () => {
@@ -80,7 +90,10 @@ describe('parseWatchlistCsv', () => {
   })
 
   it('reads a large file', () => {
-    const lines = Array.from({ length: 5000 }, (_, i) => `2020-01-12,Film ${i},2000,https://boxd.it/${i}`)
+    const lines = Array.from(
+      { length: 5000 },
+      (_, i) => `2020-01-12,Film ${i},2000,https://boxd.it/${i}`,
+    )
     expect(csv(`${HEADER}${lines.join('\n')}\n`).rows).toHaveLength(5000)
   })
 })
@@ -94,7 +107,13 @@ describe('parseWatchlistCsv edge cases', () => {
     )
     expect(rejected).toEqual([])
     expect(rows).toEqual([
-      { line: 2, title: 'Joy', releaseYear: 2015, letterboxdUrl: 'https://boxd.it/1', addedAt: '2020-01-12' },
+      {
+        line: 2,
+        title: 'Joy',
+        releaseYear: 2015,
+        letterboxdUrl: 'https://boxd.it/1',
+        addedAt: '2020-01-12',
+      },
     ])
   })
 
@@ -119,23 +138,36 @@ describe('parseWatchlistCsv edge cases', () => {
     expect(rejected.map((r) => r.line)).toEqual([3, 4, 5])
   })
 
-  it.each(['2020-13-01', '2020-00-10', '2020-02-30', '2020-01-12 10:00', '12/01/2020', '2020-1-2', '', 'yesterday'])(
-    'rejects the date "%s" without throwing',
-    (date) => {
-      const { rows, rejected } = parse(`${HEADER}${date},Joy,2015,https://boxd.it/1\n`)
+  it.each([
+    '2020-13-01',
+    '2020-00-10',
+    '2020-02-30',
+    '2020-01-12 10:00',
+    '12/01/2020',
+    '2020-1-2',
+    '',
+    'yesterday',
+  ])('rejects the date "%s" without throwing', (date) => {
+    const { rows, rejected } = parse(`${HEADER}${date},Joy,2015,https://boxd.it/1\n`)
+    expect(rows).toEqual([])
+    expect(rejected).toEqual([
+      expect.objectContaining({ line: 2, reason: expect.stringContaining('date') }),
+    ])
+  })
+
+  it.each(['1887', '2101', '20.15', 'abc', '1e3', '0x7C0', '-2015'])(
+    'rejects the year "%s"',
+    (year) => {
+      const { rows, rejected } = parse(`${HEADER}2020-01-12,Joy,${year},https://boxd.it/1\n`)
       expect(rows).toEqual([])
-      expect(rejected).toEqual([expect.objectContaining({ line: 2, reason: expect.stringContaining('date') })])
+      expect(rejected).toHaveLength(1)
     },
   )
 
-  it.each(['1887', '2101', '20.15', 'abc', '1e3', '0x7C0', '-2015'])('rejects the year "%s"', (year) => {
-    const { rows, rejected } = parse(`${HEADER}2020-01-12,Joy,${year},https://boxd.it/1\n`)
-    expect(rows).toEqual([])
-    expect(rejected).toHaveLength(1)
-  })
-
   it('trims spaces around every field and accepts the year limits', () => {
-    const { rows } = parse(`${HEADER} 2020-01-12 , Joy , 1888 , https://boxd.it/1 \n2020-01-12,Late,2100,https://boxd.it/2\n`)
+    const { rows } = parse(
+      `${HEADER} 2020-01-12 , Joy , 1888 , https://boxd.it/1 \n2020-01-12,Late,2100,https://boxd.it/2\n`,
+    )
     expect(rows.map((r) => [r.title, r.releaseYear, r.letterboxdUrl])).toEqual([
       ['Joy', 1888, 'https://boxd.it/1'],
       ['Late', 2100, 'https://boxd.it/2'],
@@ -149,7 +181,9 @@ describe('parseWatchlistCsv edge cases', () => {
   })
 
   it('rejects links that are not http(s) and does not protect a film by such a link', () => {
-    const { rows, rejected } = parse(`${HEADER}2020-01-12,Joy,2015,javascript:alert(1)\n2020-01-12,Two,2015,ftp://boxd.it/2\n`)
+    const { rows, rejected } = parse(
+      `${HEADER}2020-01-12,Joy,2015,javascript:alert(1)\n2020-01-12,Two,2015,ftp://boxd.it/2\n`,
+    )
     expect(rows).toEqual([])
     expect(rejected).toHaveLength(2)
     expect(rejected.every((r) => r.letterboxdUrl === undefined)).toBe(true)
@@ -157,7 +191,11 @@ describe('parseWatchlistCsv edge cases', () => {
 
   it('reads a last line without a line break and a header-only file with BOM and CRLF', () => {
     expect(parse(`${HEADER}2020-01-12,Joy,2015,https://boxd.it/1`).rows).toHaveLength(1)
-    expect(parse('﻿Date,Name,Year,Letterboxd URI\r\n')).toEqual({ source: 'letterboxd', rows: [], rejected: [] })
+    expect(parse('﻿Date,Name,Year,Letterboxd URI\r\n')).toEqual({
+      source: 'letterboxd',
+      rows: [],
+      rejected: [],
+    })
   })
 
   it('rejects a file whose only content is blank lines', () => {
@@ -170,14 +208,17 @@ describe('parseWatchlistCsv edge cases', () => {
 })
 
 describe('row limit', () => {
-  const rows = (n: number) => Array.from({ length: n }, (_, i) => `2020-01-12,Film ${i},2000,https://boxd.it/${i}`).join('\n')
+  const rows = (n: number) =>
+    Array.from({ length: n }, (_, i) => `2020-01-12,Film ${i},2000,https://boxd.it/${i}`).join('\n')
 
   it('accepts 20,000 rows', () => {
     expect(csv(`${HEADER}${rows(20_000)}\n`).rows).toHaveLength(20_000)
   })
 
   it('rejects more than 20,000 rows with 413', () => {
-    expect(() => csv(`${HEADER}${rows(20_001)}\n`)).toThrowError(expect.objectContaining({ status: 413 }))
+    expect(() => csv(`${HEADER}${rows(20_001)}\n`)).toThrowError(
+      expect.objectContaining({ status: 413 }),
+    )
   })
 })
 
@@ -185,14 +226,24 @@ describe('parseWatchlistCsv with an IMDb export', () => {
   const IMDB_HEADER =
     'Position,Const,Created,Modified,Description,Title,URL,Title Type,IMDb Rating,Runtime (mins),Year,Genres,Num Votes,Release Date,Directors\n'
   const imdb = (...lines: string[]) => csv(IMDB_HEADER + lines.join('\n') + '\n')
-  const movie = (id: string, title = 'Heat', extra: { created?: string; year?: string; type?: string; url?: string } = {}) =>
+  const movie = (
+    id: string,
+    title = 'Heat',
+    extra: { created?: string; year?: string; type?: string; url?: string } = {},
+  ) =>
     `1,${id},${extra.created ?? '2022-03-14'},2022-03-14,,${title},${extra.url ?? `https://www.imdb.com/title/${id}/`},${extra.type ?? 'movie'},8.3,170,${extra.year ?? '1995'},"Crime, Drama",700000,1995-12-15,Michael Mann`
 
   it('is detected from the Const column and reads title, year, date and the canonical link', () => {
     expect(imdb(movie('tt0113277'))).toEqual({
       source: 'imdb',
       rows: [
-        { line: 2, title: 'Heat', releaseYear: 1995, letterboxdUrl: 'https://www.imdb.com/title/tt0113277/', addedAt: '2022-03-14' },
+        {
+          line: 2,
+          title: 'Heat',
+          releaseYear: 1995,
+          letterboxdUrl: 'https://www.imdb.com/title/tt0113277/',
+          addedAt: '2022-03-14',
+        },
       ],
       rejected: [],
     })
@@ -236,7 +287,9 @@ describe('parseWatchlistCsv with an IMDb export', () => {
   it('rejects a second row with the same title id', () => {
     const result = imdb(movie('tt0113277'), movie('tt0113277', 'Heat again'))
     expect(result.rows).toHaveLength(1)
-    expect(result.rejected).toEqual([{ line: 3, reason: 'Duplicate IMDb title id (first seen in line 2)' }])
+    expect(result.rejected).toEqual([
+      { line: 3, reason: 'Duplicate IMDb title id (first seen in line 2)' },
+    ])
   })
 
   it('handles a BOM, CRLF and the header in any case and order', () => {
@@ -270,17 +323,24 @@ describe('parseWatchlistCsv with an IMDb export', () => {
   })
 
   it('lets Const win over the URL, and a Const that is no id fall back to the URL', () => {
-    expect(imdb(movie('tt0000001', 'A', { url: 'https://www.imdb.com/title/tt0000002/' })).rows[0]?.letterboxdUrl).toBe(
-      'https://www.imdb.com/title/tt0000001/',
-    )
-    expect(imdb(movie('n/a', 'B', { url: 'https://www.imdb.com/title/tt0000002/' })).rows[0]?.letterboxdUrl).toBe(
-      'https://www.imdb.com/title/tt0000002/',
-    )
+    expect(
+      imdb(movie('tt0000001', 'A', { url: 'https://www.imdb.com/title/tt0000002/' })).rows[0]
+        ?.letterboxdUrl,
+    ).toBe('https://www.imdb.com/title/tt0000001/')
+    expect(
+      imdb(movie('n/a', 'B', { url: 'https://www.imdb.com/title/tt0000002/' })).rows[0]
+        ?.letterboxdUrl,
+    ).toBe('https://www.imdb.com/title/tt0000002/')
   })
 
   it('reads a row as a duplicate when Const and URL spell the same id differently', () => {
-    const result = imdb(movie('tt0113277'), movie('', 'Again', { url: 'https://m.imdb.com/title/tt0113277/?ref_=x' }))
-    expect(result.rejected).toEqual([{ line: 3, reason: 'Duplicate IMDb title id (first seen in line 2)' }])
+    const result = imdb(
+      movie('tt0113277'),
+      movie('', 'Again', { url: 'https://m.imdb.com/title/tt0113277/?ref_=x' }),
+    )
+    expect(result.rejected).toEqual([
+      { line: 3, reason: 'Duplicate IMDb title id (first seen in line 2)' },
+    ])
   })
 
   it('recognises tvEpisode in any case and keeps other title types', () => {
@@ -298,7 +358,11 @@ describe('parseWatchlistCsv with an IMDb export', () => {
     const result = csv(`Const,Title\ntt0113277,Heat\ntt0000002,${'x'.repeat(501)}\n`)
     expect(result.rows).toHaveLength(1)
     expect(result.rejected).toEqual([
-      { line: 3, reason: 'Title is longer than 500 characters', letterboxdUrl: 'https://www.imdb.com/title/tt0000002/' },
+      {
+        line: 3,
+        reason: 'Title is longer than 500 characters',
+        letterboxdUrl: 'https://www.imdb.com/title/tt0000002/',
+      },
     ])
   })
 
@@ -315,11 +379,16 @@ describe('parseWatchlistCsv with an IMDb export', () => {
   })
 
   it('imports a film with a date in the future as given', () => {
-    expect(imdb(movie('tt0000001', 'A', { created: '2999-01-01' })).rows[0]?.addedAt).toBe('2999-01-01')
+    expect(imdb(movie('tt0000001', 'A', { created: '2999-01-01' })).rows[0]?.addedAt).toBe(
+      '2999-01-01',
+    )
   })
 
   it('still reads a file with both a Const and a Letterboxd URI column as Letterboxd', () => {
-    expect(csv('Date,Name,Year,Letterboxd URI,Const\n2020-01-12,Joy,2015,https://boxd.it/1,tt1\n').source).toBe('letterboxd')
+    expect(
+      csv('Date,Name,Year,Letterboxd URI,Const\n2020-01-12,Joy,2015,https://boxd.it/1,tt1\n')
+        .source,
+    ).toBe('letterboxd')
   })
 
   it('rejects the type "TV Episode" written with a space, and takes ids only from a /title/ link or a clean Const', () => {

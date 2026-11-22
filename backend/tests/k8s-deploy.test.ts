@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -145,7 +153,8 @@ const run = (env: Record<string, string> = {}, { withoutMkcert = false } = {}) =
     },
   })
 }
-const log = (name: string) => (existsSync(join(work, name)) ? readFileSync(join(work, name), 'utf8') : '')
+const log = (name: string) =>
+  existsSync(join(work, name)) ? readFileSync(join(work, name), 'utf8') : ''
 const lines = (name: string) => log(name).split('\n').filter(Boolean).sort()
 const newTag = () => /--tag watchlist-backend:(\d{14}) /.exec(log('docker.log'))![1]
 
@@ -155,8 +164,12 @@ describe('deploy.sh: HTTPS', () => {
 
     expect(result.status).toBe(0)
     expect(log('mkcert.log')).toContain('watchlist.local')
-    expect(result.stdout).toContain('Created the watchlist-tls Secret with a certificate for watchlist.local.')
-    expect(log('calls.log')).toContain('-n watchlist-roulette create secret tls watchlist-tls --cert')
+    expect(result.stdout).toContain(
+      'Created the watchlist-tls Secret with a certificate for watchlist.local.',
+    )
+    expect(log('calls.log')).toContain(
+      '-n watchlist-roulette create secret tls watchlist-tls --cert',
+    )
     const calls = log('calls.log')
     expect(calls.indexOf('create secret tls')).toBeLessThan(calls.indexOf('docker build'))
     expect(log('created-all.yaml')).toContain('tls.crt: CERTIFICATE-')
@@ -169,7 +182,9 @@ describe('deploy.sh: HTTPS', () => {
     expect(existsSync(key)).toBe(false)
     expect(existsSync(key.replace(/tls\.key$/, ''))).toBe(false)
     const keyText = /tls\.key: (PRIVATE-KEY-\d+)/.exec(log('created-all.yaml'))![1]!
-    expect(result.stdout + result.stderr + log('calls.log') + log('docker.log') + log('mkcert.log')).not.toContain(keyText)
+    expect(
+      result.stdout + result.stderr + log('calls.log') + log('docker.log') + log('mkcert.log'),
+    ).not.toContain(keyText)
   })
 
   it('stops before building, creates no Secret and leaves no temporary directory when mkcert cannot make the certificate', () => {
@@ -179,7 +194,8 @@ describe('deploy.sh: HTTPS', () => {
     expect(result.stderr).toContain('mkcert could not make a certificate for watchlist.local.')
     expect(log('docker.log')).not.toContain('build')
     expect(log('created-all.yaml')).not.toContain('watchlist-tls')
-    for (const file of log('mkcert-files').split('\n').filter(Boolean)) expect({ file, exists: existsSync(file) }).toEqual({ file, exists: false })
+    for (const file of log('mkcert-files').split('\n').filter(Boolean))
+      expect({ file, exists: existsSync(file) }).toEqual({ file, exists: false })
   })
 
   it('keeps an existing Secret, without needing mkcert at all', () => {
@@ -208,19 +224,23 @@ describe('deploy.sh: HTTPS', () => {
     expect(log('mkcert.log')).not.toContain('watchlist.local')
   })
 
-  it('checks https://watchlist.local:8443 against mkcert\'s own authority, and says where to open the app', () => {
+  it("checks https://watchlist.local:8443 against mkcert's own authority, and says where to open the app", () => {
     const result = run()
 
     expect(result.status).toBe(0)
     const curl = log('curl.log')
     expect(curl).toContain(`--cacert ${join(work, 'ca', 'rootCA.pem')}`)
-    expect(curl).toContain('--resolve watchlist.local:8443:127.0.0.1 https://watchlist.local:8443/health')
+    expect(curl).toContain(
+      '--resolve watchlist.local:8443:127.0.0.1 https://watchlist.local:8443/health',
+    )
     expect(result.stdout).toContain('Open https://watchlist.local:8443')
   })
 
   it('reminds you of CORS_ORIGIN only when the local file does not name the HTTPS address', () => {
     const without = run()
-    expect(without.stdout).toContain('add CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443 to')
+    expect(without.stdout).toContain(
+      'add CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443 to',
+    )
 
     const file = join(work, 'local.env')
     writeFileSync(file, 'CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443\n')
@@ -230,7 +250,10 @@ describe('deploy.sh: HTTPS', () => {
   })
 
   it('still succeeds, with a warning, when only the plain HTTP address answers', () => {
-    writeExecutable(join(work, 'bin', 'curl'), '#!/bin/bash\ncase "$*" in *https://*) exit 60 ;; *) exit 0 ;; esac\n')
+    writeExecutable(
+      join(work, 'bin', 'curl'),
+      '#!/bin/bash\ncase "$*" in *https://*) exit 60 ;; *) exit 0 ;; esac\n',
+    )
     const result = run()
 
     expect(result.status).toBe(0)
@@ -241,7 +264,10 @@ describe('deploy.sh: HTTPS', () => {
 
   it('does not take a commented-out or foreign line for the HTTPS origin in the local file', () => {
     const file = join(work, 'local.env')
-    writeFileSync(file, '# CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443\nOTHER=https://watchlistXlocal:8443\n')
+    writeFileSync(
+      file,
+      '# CORS_ORIGIN=http://watchlist.local,https://watchlist.local:8443\nOTHER=https://watchlistXlocal:8443\n',
+    )
     expect(run({ LOCAL_ENV_FILE: file }).stdout).toContain('add CORS_ORIGIN=')
   })
 
@@ -264,15 +290,21 @@ describe('deploy.sh: local overrides', () => {
     expect(result.status).toBe(0)
     expect(result.stdout).toContain(`Applied local overrides from ${file}.`)
     const calls = log('calls.log')
-    expect(calls).toContain(`-n watchlist-roulette create configmap watchlist-local --from-env-file=${file}`)
-    expect(calls.indexOf('create configmap watchlist-local')).toBeLessThan(calls.indexOf('docker build'))
+    expect(calls).toContain(
+      `-n watchlist-roulette create configmap watchlist-local --from-env-file=${file}`,
+    )
+    expect(calls.indexOf('create configmap watchlist-local')).toBeLessThan(
+      calls.indexOf('docker build'),
+    )
   })
 
   it('removes a ConfigMap left over from an earlier deploy when there is no file', () => {
     const result = run({ LOCAL_ENV_FILE: join(work, 'missing.env') })
 
     expect(result.status).toBe(0)
-    expect(log('calls.log')).toContain('-n watchlist-roulette delete configmap watchlist-local --ignore-not-found')
+    expect(log('calls.log')).toContain(
+      '-n watchlist-roulette delete configmap watchlist-local --ignore-not-found',
+    )
     expect(log('calls.log')).not.toContain('create configmap watchlist-local')
   })
 
@@ -283,7 +315,9 @@ describe('deploy.sh: local overrides', () => {
 
     const calls = log('calls.log')
     expect(calls.indexOf('apply -f k8s/namespace.yaml')).toBeGreaterThan(-1)
-    expect(calls.indexOf('apply -f k8s/namespace.yaml')).toBeLessThan(calls.indexOf('create configmap watchlist-local'))
+    expect(calls.indexOf('apply -f k8s/namespace.yaml')).toBeLessThan(
+      calls.indexOf('create configmap watchlist-local'),
+    )
     expect(calls).not.toContain('delete configmap watchlist-local')
   })
 
@@ -297,7 +331,9 @@ describe('deploy.sh: local overrides', () => {
   })
 
   it('is git-ignored in its default place, so overrides never reach the repo', () => {
-    const ignored = spawnSync('git', ['check-ignore', '-q', 'k8s/.env.local'], { cwd: join(k8sDir, '..') })
+    const ignored = spawnSync('git', ['check-ignore', '-q', 'k8s/.env.local'], {
+      cwd: join(k8sDir, '..'),
+    })
     expect(ignored.status).toBe(0)
   })
 })
@@ -345,8 +381,13 @@ describe('deploy.sh: old images and the node disk', () => {
       'sha256:ref-of-d2',
       'sha256:ref-of-d4',
     ])
-    expect(lines('removed-host')).toEqual(['watchlist-backend:20261001100000', 'watchlist-frontend:20261001100000'])
-    expect(result.stdout).toContain('Removed docker.io/library/watchlist-backend:20261001100000 from the node.')
+    expect(lines('removed-host')).toEqual([
+      'watchlist-backend:20261001100000',
+      'watchlist-frontend:20261001100000',
+    ])
+    expect(result.stdout).toContain(
+      'Removed docker.io/library/watchlist-backend:20261001100000 from the node.',
+    )
     expect(result.stdout).toContain('Removed sha256:ref-of-d1 from the node.')
   })
 
@@ -359,7 +400,11 @@ describe('deploy.sh: old images and the node disk', () => {
   })
 
   it('keeps the new tag, the tag the app ran before, and every tag a pod uses, on the node and the host', () => {
-    run({ ...env, PODS_IMAGES: 'watchlist-backend:20261010100000\nwatchlist-frontend:20261010100000\npostgres:17-alpine\n' })
+    run({
+      ...env,
+      PODS_IMAGES:
+        'watchlist-backend:20261010100000\nwatchlist-frontend:20261010100000\npostgres:17-alpine\n',
+    })
 
     const removed = `${log('removed-node')}${log('removed-host')}`
     expect(removed).not.toContain('20261014114253')
@@ -390,7 +435,14 @@ describe('deploy.sh: old images and the node disk', () => {
     run(env)
 
     const removed = `${log('removed-node')}${log('removed-host')}`
-    for (const kept of ['dinner-planner', 'ref-of-w1', 'postgres', 'watchlist-backend:dev', 'sha256:dev', 'sha256:pg']) {
+    for (const kept of [
+      'dinner-planner',
+      'ref-of-w1',
+      'postgres',
+      'watchlist-backend:dev',
+      'sha256:dev',
+      'sha256:pg',
+    ]) {
       expect(removed).not.toContain(kept)
     }
   })
@@ -407,29 +459,40 @@ describe('deploy.sh: old images and the node disk', () => {
     run(env)
     const calls = log('calls.log')
     expect(calls.indexOf('rollout status deployment/')).toBeGreaterThan(-1)
-    expect(calls.indexOf('images rm')).toBeGreaterThan(calls.lastIndexOf('rollout status deployment/'))
+    expect(calls.indexOf('images rm')).toBeGreaterThan(
+      calls.lastIndexOf('rollout status deployment/'),
+    )
   })
 
   it('only warns when an image cannot be removed: the deploy still succeeds', () => {
     const result = run({ ...env, FAIL_RM: '1' })
 
     expect(result.status).toBe(0)
-    expect(result.stderr).toContain('Warning: could not remove docker.io/library/watchlist-backend:20261001100000 from the node.')
-    expect(result.stderr).toContain('Warning: could not remove watchlist-backend:20261001100000 from the host.')
+    expect(result.stderr).toContain(
+      'Warning: could not remove docker.io/library/watchlist-backend:20261001100000 from the node.',
+    )
+    expect(result.stderr).toContain(
+      'Warning: could not remove watchlist-backend:20261001100000 from the host.',
+    )
     expect(result.stdout).toContain('Open https://watchlist.local:8443')
   })
 
   it.each([
     ['the pods cannot be read', { FAIL_PODS: '1' }],
     ['a Deployment cannot be read', { FAIL_DEPLOY_GET: '1' }],
-  ])('removes nothing when %s, since it cannot tell what a pod might need (and still deploys)', (_what, fail) => {
-    const result = run({ ...env, ...fail })
+  ])(
+    'removes nothing when %s, since it cannot tell what a pod might need (and still deploys)',
+    (_what, fail) => {
+      const result = run({ ...env, ...fail })
 
-    expect(result.status).toBe(0)
-    expect(log('removed-node')).toBe('')
-    expect(log('removed-host')).toBe('')
-    expect(result.stderr).toContain('could not tell which images are in use, so no old images were removed')
-  })
+      expect(result.status).toBe(0)
+      expect(log('removed-node')).toBe('')
+      expect(log('removed-host')).toBe('')
+      expect(result.stderr).toContain(
+        'could not tell which images are in use, so no old images were removed',
+      )
+    },
+  )
 
   it('has no rollback tag on the first deploy (nothing answers) and still removes only stale ones', () => {
     const result = run({ ...env, DEPLOYED_BACKEND_IMAGE: '', DEPLOYED_FRONTEND_IMAGE: '' })
@@ -448,8 +511,10 @@ describe('deploy.sh: old images and the node disk', () => {
     expect(first('get deployment backend -o jsonpath')).toBeGreaterThan(-1)
     expect(first('get nodes -o jsonpath')).toBeLessThan(first('apply -f'))
     expect(first('get deployment frontend -o jsonpath')).toBeLessThan(first('apply -f'))
-    for (const call of calls.filter((c) => !c.startsWith('docker '))) expect(call).toMatch(/^--context docker-desktop /)
-    for (const call of calls.filter((c) => c.startsWith('docker exec'))) expect(call).toContain(' desktop-control-plane ')
+    for (const call of calls.filter((c) => !c.startsWith('docker ')))
+      expect(call).toMatch(/^--context docker-desktop /)
+    for (const call of calls.filter((c) => c.startsWith('docker exec')))
+      expect(call).toContain(' desktop-control-plane ')
   })
 
   describe('free space', () => {
@@ -461,7 +526,9 @@ describe('deploy.sh: old images and the node disk', () => {
 
       expect(result.status).toBe(0)
       const calls = log('calls.log')
-      expect(calls.includes('images rm') && calls.indexOf('images rm') < calls.indexOf('docker build')).toBe(prunes)
+      expect(
+        calls.includes('images rm') && calls.indexOf('images rm') < calls.indexOf('docker build'),
+      ).toBe(prunes)
     })
 
     it('stops when it removed images but the free space can no longer be read', () => {
@@ -511,7 +578,12 @@ describe('deploy.sh: old images and the node disk', () => {
     })
 
     it('does not remove anything before the build when it cannot tell what is in use, and then stops if the space is short', () => {
-      const result = run({ ...env, FAKE_FREE_KB: '500000', FAKE_FREE_AFTER_KB: '5000000', FAIL_PODS: '1' })
+      const result = run({
+        ...env,
+        FAKE_FREE_KB: '500000',
+        FAKE_FREE_AFTER_KB: '5000000',
+        FAIL_PODS: '1',
+      })
 
       expect(result.status).toBe(1)
       expect(log('removed-node')).toBe('')
@@ -523,7 +595,9 @@ describe('deploy.sh: old images and the node disk', () => {
       const result = run({ ...env, FAKE_FREE_KB: '500000', FAKE_FREE_AFTER_KB: '800000' })
 
       expect(result.status).toBe(1)
-      expect(result.stderr).toContain('Not enough disk space on the node: 781 MB free, 2048 MB needed. Nothing was deployed.')
+      expect(result.stderr).toContain(
+        'Not enough disk space on the node: 781 MB free, 2048 MB needed. Nothing was deployed.',
+      )
       expect(result.stderr).toContain('docker builder prune')
       expect(result.stderr).toContain('docker volume ls')
       expect(log('docker.log')).not.toContain('build')
@@ -542,13 +616,19 @@ describe('deploy.sh: old images and the node disk', () => {
 
 describe('image-cleanup.sh functions', () => {
   const bash = (code: string, input: string) =>
-    spawnSync('bash', ['-c', `source "${join(k8sDir, 'image-cleanup.sh')}"; ${code}`], { encoding: 'utf8', input })
+    spawnSync('bash', ['-c', `source "${join(k8sDir, 'image-cleanup.sh')}"; ${code}`], {
+      encoding: 'utf8',
+      input,
+    })
       .stdout.split('\n')
       .filter(Boolean)
 
   describe('orphan_refs', () => {
     const orphans = (digests: string[], listing: string[]) =>
-      bash(`orphan_refs ${digests.join(' ')}`, ['REF TYPE DIGEST SIZE', ...listing].join('\n') + '\n')
+      bash(
+        `orphan_refs ${digests.join(' ')}`,
+        ['REF TYPE DIGEST SIZE', ...listing].join('\n') + '\n',
+      )
 
     it('selects the sha256 reference of a removed digest that no tag shares, and only that', () => {
       expect(
@@ -563,12 +643,15 @@ describe('image-cleanup.sh functions', () => {
           ],
         ),
       ).toEqual([])
-      expect(orphans(['sha256:a'], ['sha256:one idx sha256:a 1MiB', 'sha256:three idx sha256:c 1MiB'])).toEqual(['sha256:one'])
+      expect(
+        orphans(['sha256:a'], ['sha256:one idx sha256:a 1MiB', 'sha256:three idx sha256:c 1MiB']),
+      ).toEqual(['sha256:one'])
     })
   })
 
   describe('stale_images', () => {
-    const stale = (keep: string[], refs: string[]) => bash(`stale_images ${keep.join(' ')}`, refs.join('\n') + '\n')
+    const stale = (keep: string[], refs: string[]) =>
+      bash(`stale_images ${keep.join(' ')}`, refs.join('\n') + '\n')
 
     it("keeps the tags it is given, and matches only this project's timestamp tags, with or without the registry prefix", () => {
       expect(
@@ -580,7 +663,10 @@ describe('image-cleanup.sh functions', () => {
             'watchlist-backend:20261014114253',
           ],
         ),
-      ).toEqual(['watchlist-backend:20261001100000', 'docker.io/library/watchlist-frontend:20261001100000'])
+      ).toEqual([
+        'watchlist-backend:20261001100000',
+        'docker.io/library/watchlist-frontend:20261001100000',
+      ])
     })
 
     it.each([
@@ -599,7 +685,9 @@ describe('image-cleanup.sh functions', () => {
     })
 
     it('selects everything stale when it is given no tag', () => {
-      expect(stale([], ['watchlist-backend:20261001100000'])).toEqual(['watchlist-backend:20261001100000'])
+      expect(stale([], ['watchlist-backend:20261001100000'])).toEqual([
+        'watchlist-backend:20261001100000',
+      ])
     })
   })
 })

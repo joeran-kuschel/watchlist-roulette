@@ -20,16 +20,18 @@ describe.skipIf(!url)('real PostgreSQL', () => {
 
   beforeEach(async () => {
     await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public')
-    for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()) {
+    for (const file of readdirSync(migrationsDir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()) {
       await pool.query(readFileSync(join(migrationsDir, file), 'utf8'))
     }
     setPool(pool)
   })
 
   const search = async (q: string) =>
-    (await listFilms({ q, watched: 'all', sort: 'title', order: 'asc', page: 1, pageSize: 50 })).items.map(
-      (f) => f.title,
-    )
+    (
+      await listFilms({ q, watched: 'all', sort: 'title', order: 'asc', page: 1, pageSize: 50 })
+    ).items.map((f) => f.title)
 
   it('treats % and _ in the title search as plain characters', async () => {
     await createFilm({ title: '100% Gamma_x' })
@@ -41,13 +43,20 @@ describe.skipIf(!url)('real PostgreSQL', () => {
 
   it('returns genres, dates and countries in their real types', async () => {
     const { id } = await createFilm({ title: 'Joy', addedAt: '2020-01-12' })
-    await pool.query(`UPDATE films SET countries = ARRAY['US','GB'], vote_average = 7.5 WHERE id = $1`, [id])
-    const [film] = (await listFilms({ watched: 'all', sort: 'title', order: 'asc', page: 1, pageSize: 5 })).items
+    await pool.query(
+      `UPDATE films SET countries = ARRAY['US','GB'], vote_average = 7.5 WHERE id = $1`,
+      [id],
+    )
+    const [film] = (
+      await listFilms({ watched: 'all', sort: 'title', order: 'asc', page: 1, pageSize: 5 })
+    ).items
     expect(film).toMatchObject({ addedAt: '2020-01-12', countries: ['US', 'GB'], voteAverage: 7.5 })
   })
 
   it('enforces the title, link and rating constraints', async () => {
-    await expect(pool.query(`INSERT INTO films (title) VALUES ('   ')`)).rejects.toThrow(/check constraint/)
+    await expect(pool.query(`INSERT INTO films (title) VALUES ('   ')`)).rejects.toThrow(
+      /check constraint/,
+    )
     await expect(
       pool.query(`INSERT INTO films (title, letterboxd_url) VALUES ('A', 'ftp://x')`),
     ).rejects.toThrow(/check constraint/)
@@ -65,7 +74,9 @@ describe.skipIf(!url)('real PostgreSQL', () => {
   it('stores TMDB data, genres, credits and countries', async () => {
     const { id } = await createFilm({ title: 'Joy', releaseYear: 2015 })
     const client = {
-      searchMovie: async () => [{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }],
+      searchMovie: async () => [
+        { id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' },
+      ],
       getTv: async () => null,
       getMovie: async () => ({
         id: 100,
@@ -75,7 +86,10 @@ describe.skipIf(!url)('real PostgreSQL', () => {
         vote_average: 6.6,
         genres: [{ id: 18, name: 'Drama' }],
         production_countries: [{ iso_3166_1: 'US' }, { iso_3166_1: 'GB' }],
-        credits: { cast: [{ id: 1, name: 'First', order: 0 }], crew: [{ id: 9, name: 'Dir', job: 'Director' }] },
+        credits: {
+          cast: [{ id: 1, name: 'First', order: 0 }],
+          crew: [{ id: 9, name: 'Dir', job: 'Director' }],
+        },
       }),
     }
     await createEnricher(client, { delayMs: 0 }).trigger()
@@ -95,7 +109,9 @@ describe.skipIf(!url)('real PostgreSQL', () => {
 
     it('answers 400, not 500, for a TMDB id above the INTEGER range', async () => {
       const { id } = await createFilm({ title: 'Joy' })
-      const res = await testApp().patch(`/api/films/${id}`).send({ tmdbId: 2 ** 31 })
+      const res = await testApp()
+        .patch(`/api/films/${id}`)
+        .send({ tmdbId: 2 ** 31 })
       expect(res.status).toBe(400)
     })
 
@@ -107,7 +123,9 @@ describe.skipIf(!url)('real PostgreSQL', () => {
 
     it('answers 404 or 400, not 500, for a maxRuntime above the SMALLINT range', async () => {
       await createFilm({ title: 'Joy' })
-      expect([400, 404]).toContain((await testApp().get('/api/films/random?maxRuntime=100000')).status)
+      expect([400, 404]).toContain(
+        (await testApp().get('/api/films/random?maxRuntime=100000')).status,
+      )
     })
 
     it('answers 404, not 500, for a film id above the BIGINT range', async () => {
@@ -115,7 +133,9 @@ describe.skipIf(!url)('real PostgreSQL', () => {
     })
 
     it('rejects an added date in year 0000 with 400, not 500', async () => {
-      expect((await testApp().post('/api/films').send({ title: 'A', addedAt: '0000-01-01' })).status).toBe(400)
+      expect(
+        (await testApp().post('/api/films').send({ title: 'A', addedAt: '0000-01-01' })).status,
+      ).toBe(400)
     })
   })
 
@@ -131,8 +151,22 @@ describe.skipIf(!url)('real PostgreSQL', () => {
   describe('import removals with watched films', () => {
     const csv = `${HEADER}2020-01-01,Film 1,2000,https://boxd.it/1\n2020-01-02,Film 2,2002,https://boxd.it/2\n`
     const planFor = (id: number, watched: boolean) => ({
-      toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], removableCount: 1,
-      toRemove: [{ id, title: 'Film 2', releaseYear: 2002, letterboxdUrl: 'https://boxd.it/2', addedAt: '2020-01-02', watched }],
+      toInsert: [],
+      toUpdate: [],
+      toSkip: [],
+      unchanged: 0,
+      keptWatched: [],
+      removableCount: 1,
+      toRemove: [
+        {
+          id,
+          title: 'Film 2',
+          releaseYear: 2002,
+          letterboxdUrl: 'https://boxd.it/2',
+          addedAt: '2020-01-02',
+          watched,
+        },
+      ],
     })
     const seed = async () => {
       await testApp().post('/api/films/import').attach('file', Buffer.from(csv), 'w.csv')
@@ -154,7 +188,10 @@ describe.skipIf(!url)('real PostgreSQL', () => {
       const id = await seed()
       await pool.query('UPDATE films SET watched_at = now() WHERE id = $1', [id])
       const file = Buffer.from(`${HEADER}2020-01-01,Film 1,2000,https://boxd.it/1\n`)
-      const preview = await testApp().post('/api/films/import?dryRun=true').field('deleteWatched', 'true').attach('file', file, 'w.csv')
+      const preview = await testApp()
+        .post('/api/films/import?dryRun=true')
+        .field('deleteWatched', 'true')
+        .attach('file', file, 'w.csv')
       const res = await testApp()
         .post('/api/films/import')
         .field('deleteWatched', 'true')
@@ -167,7 +204,10 @@ describe.skipIf(!url)('real PostgreSQL', () => {
 
   describe('TMDB media type (migration 003)', () => {
     const insert = (title: string, type: string) =>
-      pool.query(`INSERT INTO films (title, tmdb_id, tmdb_media_type) VALUES ($1, 5, $2)`, [title, type])
+      pool.query(`INSERT INTO films (title, tmdb_id, tmdb_media_type) VALUES ($1, 5, $2)`, [
+        title,
+        type,
+      ])
 
     it('lets a movie and a TV show share a TMDB id but not two films of the same type', async () => {
       await insert('A movie', 'movie')
@@ -187,11 +227,19 @@ describe.skipIf(!url)('real PostgreSQL', () => {
 
     it('applies to a database that already holds matched films and keeps them as movies', async () => {
       await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public')
-      const files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()
-      for (const file of files.filter((f) => f < '003')) await pool.query(readFileSync(join(migrationsDir, file), 'utf8'))
-      await pool.query(`INSERT INTO films (title, tmdb_id, tmdb_status) VALUES ('Joy', 262543, 'matched'), ('Plain', NULL, 'pending')`)
-      for (const file of files.filter((f) => f >= '003')) await pool.query(readFileSync(join(migrationsDir, file), 'utf8'))
-      const { rows } = await pool.query(`SELECT title, tmdb_id, tmdb_media_type FROM films ORDER BY id`)
+      const files = readdirSync(migrationsDir)
+        .filter((f) => f.endsWith('.sql'))
+        .sort()
+      for (const file of files.filter((f) => f < '003'))
+        await pool.query(readFileSync(join(migrationsDir, file), 'utf8'))
+      await pool.query(
+        `INSERT INTO films (title, tmdb_id, tmdb_status) VALUES ('Joy', 262543, 'matched'), ('Plain', NULL, 'pending')`,
+      )
+      for (const file of files.filter((f) => f >= '003'))
+        await pool.query(readFileSync(join(migrationsDir, file), 'utf8'))
+      const { rows } = await pool.query(
+        `SELECT title, tmdb_id, tmdb_media_type FROM films ORDER BY id`,
+      )
       expect(rows).toEqual([
         { title: 'Joy', tmdb_id: 262543, tmdb_media_type: 'movie' },
         { title: 'Plain', tmdb_id: null, tmdb_media_type: 'movie' },
@@ -202,7 +250,9 @@ describe.skipIf(!url)('real PostgreSQL', () => {
       const a = await createFilm({ title: 'A' })
       const b = await createFilm({ title: 'B' })
       await testApp().patch(`/api/films/${a.id}`).send({ tmdbId: 5, tmdbMediaType: 'tv' })
-      const res = await testApp().patch(`/api/films/${b.id}`).send({ tmdbId: 5, tmdbMediaType: 'tv' })
+      const res = await testApp()
+        .patch(`/api/films/${b.id}`)
+        .send({ tmdbId: 5, tmdbMediaType: 'tv' })
       expect(res.status).toBe(409)
     })
   })

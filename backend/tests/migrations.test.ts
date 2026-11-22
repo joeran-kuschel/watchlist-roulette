@@ -9,7 +9,9 @@ beforeEach(async () => {
 
 describe('migrations', () => {
   it('create a films table that rejects a blank title', async () => {
-    await expect(pool.query(`INSERT INTO films (title) VALUES ('  ')`)).rejects.toThrow(/check constraint/)
+    await expect(pool.query(`INSERT INTO films (title) VALUES ('  ')`)).rejects.toThrow(
+      /check constraint/,
+    )
   })
 
   it('reject a letterboxd link that is not http(s)', async () => {

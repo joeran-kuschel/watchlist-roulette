@@ -39,7 +39,11 @@ export const poster = (fetchPoster: PosterFetcher) => async (req: Request, res: 
   }
   if (!image) throw notFound('Poster')
   res
-    .set({ 'Content-Type': image.contentType, 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' })
+    .set({
+      'Content-Type': image.contentType,
+      'Cache-Control': 'public, max-age=3600',
+      'X-Content-Type-Options': 'nosniff',
+    })
     .send(image.body)
 }
 
@@ -86,6 +90,7 @@ export const lookupTmdb = (enricher: Enricher) => async (req: Request, res: Resp
   }
   const result = await enricher.lookup(id)
   if (result === 'no_such_film') throw notFound()
-  if (result === 'unreachable' || result === 'token_rejected') throw new HttpError(502, LOOKUP_FAILURES[result], TMDB_UNAVAILABLE)
+  if (result === 'unreachable' || result === 'token_rejected')
+    throw new HttpError(502, LOOKUP_FAILURES[result], TMDB_UNAVAILABLE)
   res.json(await films.getFilm(id))
 }

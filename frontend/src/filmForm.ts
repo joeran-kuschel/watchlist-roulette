@@ -44,10 +44,14 @@ export function validateFilmForm(values: FilmFormValues) {
   if (title === '') errors.title = 'Enter a title.'
   else if (title.length > 500) errors.title = 'The title can have at most 500 characters.'
 
-  if (year !== '' && !(Number.isInteger(Number(year)) && Number(year) >= MIN_YEAR && Number(year) <= MAX_YEAR)) {
+  if (
+    year !== '' &&
+    !(Number.isInteger(Number(year)) && Number(year) >= MIN_YEAR && Number(year) <= MAX_YEAR)
+  ) {
     errors.releaseYear = `Enter a year between ${MIN_YEAR} and ${MAX_YEAR}.`
   }
-  if (url !== '' && !isHttpUrl(url)) errors.letterboxdUrl = 'Enter a link that starts with https://.'
+  if (url !== '' && !isHttpUrl(url))
+    errors.letterboxdUrl = 'Enter a link that starts with https://.'
   if (values.addedAt !== '' && !isRealDate(values.addedAt)) errors.addedAt = 'Enter a real date.'
 
   const payload: FilmInput = {

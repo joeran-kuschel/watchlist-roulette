@@ -71,7 +71,9 @@ describe('TmdbCheckPanel', () => {
     it('has no axe violations idle and while running', async () => {
       const wrapper = mountPanel()
       await expectNoA11yViolations(wrapper.element)
-      mocked.getTmdbCheck.mockResolvedValueOnce(state()).mockResolvedValue(state({ running: true, total: 5, done: 2 }))
+      mocked.getTmdbCheck
+        .mockResolvedValueOnce(state())
+        .mockResolvedValue(state({ running: true, total: 5, done: 2 }))
       await button(wrapper).trigger('click')
       await flushPromises()
       expect(button(wrapper).text()).toBe('Checking… 2 of 5')
@@ -81,7 +83,9 @@ describe('TmdbCheckPanel', () => {
 
     it('has no axe violations with a summary or an error', async () => {
       const wrapper = mountPanel()
-      mocked.getTmdbCheck.mockResolvedValueOnce(state()).mockResolvedValue(state({ total: 5, done: 5, lastRun: NEW }))
+      mocked.getTmdbCheck
+        .mockResolvedValueOnce(state())
+        .mockResolvedValue(state({ total: 5, done: 5, lastRun: NEW }))
       await button(wrapper).trigger('click')
       await flushPromises()
       expect(notice(wrapper)).toContain('TMDB check finished')
@@ -112,7 +116,9 @@ describe('TmdbCheckPanel', () => {
   })
 
   it('shows the progress in the button, marks it aria-disabled and disables the option', async () => {
-    mocked.getTmdbCheck.mockResolvedValueOnce(state()).mockResolvedValue(state({ running: true, total: 12, done: 4 }))
+    mocked.getTmdbCheck
+      .mockResolvedValueOnce(state())
+      .mockResolvedValue(state({ running: true, total: 12, done: 4 }))
     const wrapper = mountPanel()
     await click(wrapper)
     expect(button(wrapper).text()).toBe('Checking… 4 of 12')
@@ -158,7 +164,9 @@ describe('TmdbCheckPanel', () => {
     mocked.getTmdbCheck
       .mockResolvedValueOnce(state({ lastRun: OLD }))
       .mockResolvedValueOnce(state({ running: true, total: 4, done: 2 }))
-      .mockResolvedValue(state({ total: 4, done: 4, lastRun: run({ matched: 2, notFound: 1, ambiguous: 1 }) }))
+      .mockResolvedValue(
+        state({ total: 4, done: 4, lastRun: run({ matched: 2, notFound: 1, ambiguous: 1 }) }),
+      )
     const wrapper = mountPanel()
     await click(wrapper)
     expect(wrapper.emitted('finished')).toBeUndefined()
@@ -175,10 +183,14 @@ describe('TmdbCheckPanel', () => {
   it('says "need review" for several films and mentions failures only when there are some', async () => {
     mocked.getTmdbCheck
       .mockResolvedValueOnce(state())
-      .mockResolvedValue(state({ total: 6, done: 6, lastRun: run({ matched: 1, ambiguous: 2, error: 3 }) }))
+      .mockResolvedValue(
+        state({ total: 6, done: 6, lastRun: run({ matched: 1, ambiguous: 2, error: 3 }) }),
+      )
     const wrapper = mountPanel()
     await click(wrapper)
-    expect(notice(wrapper)).toBe('TMDB check finished: 1 matched, 0 not found, 2 need review, 3 failed.')
+    expect(notice(wrapper)).toBe(
+      'TMDB check finished: 1 matched, 0 not found, 2 need review, 3 failed.',
+    )
   })
 
   it('says nothing was to check when the run had no films', async () => {
@@ -202,7 +214,9 @@ describe('TmdbCheckPanel', () => {
       .mockResolvedValue(state({ total: 3, done: 3, lastRun: run({ matched: 1, unreachable: 2 }) }))
     const wrapper = mountPanel()
     await click(wrapper)
-    expect(notice(wrapper)).toBe('TMDB check finished: 1 matched, 0 not found, 0 need review, 2 could not be reached.')
+    expect(notice(wrapper)).toBe(
+      'TMDB check finished: 1 matched, 0 not found, 0 need review, 2 could not be reached.',
+    )
   })
 
   it.each([
@@ -214,7 +228,9 @@ describe('TmdbCheckPanel', () => {
       .mockResolvedValue(state({ total: 9, done: 2, lastRun: run({ matched: 2, stopped }) }))
     const wrapper = mountPanel()
     await click(wrapper)
-    expect(notice(wrapper)).toBe(`TMDB check finished: 2 matched, 0 not found, 0 need review. ${sentence}`)
+    expect(notice(wrapper)).toBe(
+      `TMDB check finished: 2 matched, 0 not found, 0 need review. ${sentence}`,
+    )
   })
 
   it('reports a stopped run even when it found no film to look up', async () => {
@@ -233,7 +249,9 @@ describe('TmdbCheckPanel', () => {
     )
     const wrapper = mountPanel()
     await click(wrapper)
-    expect(wrapper.get('[role="alert"]').text()).toContain('TMDB is not configured. Set TMDB_ACCESS_TOKEN.')
+    expect(wrapper.get('[role="alert"]').text()).toContain(
+      'TMDB is not configured. Set TMDB_ACCESS_TOKEN.',
+    )
     expect(notice(wrapper)).toBe('')
     expect(button(wrapper).text()).toBe('Check TMDB again')
     expect(wrapper.emitted('finished')).toBeUndefined()

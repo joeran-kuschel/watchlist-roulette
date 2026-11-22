@@ -25,7 +25,10 @@ const report = (patch: Partial<ImportReport> = {}): ImportReport => ({
   requiresLargeRemovalConfirmation: false,
   ...patch,
 })
-const removal = { removed: [{ id: 7, title: 'Metropolis', releaseYear: 1927, watched: false }], removalToken: 'tok' }
+const removal = {
+  removed: [{ id: 7, title: 'Metropolis', releaseYear: 1927, watched: false }],
+  removalToken: 'tok',
+}
 const file = new File(['Date,Name'], 'watchlist.csv', { type: 'text/csv' })
 
 async function choose(wrapper: VueWrapper) {
@@ -52,7 +55,9 @@ describe('ImportView', () => {
   it('starts with the upload form and the expected columns', async () => {
     const { wrapper } = await mountWithApp(ImportView, '/import')
     expect(wrapper.get('h1').text()).toBe('Import from CSV')
-    expect(wrapper.text()).toContain('Letterboxd: Date, Name, Year, Letterboxd URI. IMDb: Const, Title, Year, Created, URL')
+    expect(wrapper.text()).toContain(
+      'Letterboxd: Date, Name, Year, Letterboxd URI. IMDb: Const, Title, Year, Created, URL',
+    )
     expect(wrapper.get('#csv').attributes('accept')).toBe('.csv,text/csv')
     expect(wrapper.find('#result-heading').exists()).toBe(false)
     await expectNoA11yViolations(wrapper.element)
@@ -176,10 +181,14 @@ describe('ImportView', () => {
     expect(mocked.previewImport).toHaveBeenCalledWith(file)
     expect(wrapper.get('#result-heading').text()).toBe('Check result')
     expect(document.activeElement).toBe(wrapper.get('#result-heading').element)
-    expect(wrapper.get('[role="status"]').text()).toBe('Check finished. Nothing has been changed yet.')
+    expect(wrapper.get('[role="status"]').text()).toBe(
+      'Check finished. Nothing has been changed yet.',
+    )
     expect(wrapper.text()).toContain('Will be added2')
     // nothing to remove: no confirmation needed
-    expect(confirmForm(wrapper).findAll('input[type="checkbox"]:not(#delete-watched)')).toHaveLength(0)
+    expect(
+      confirmForm(wrapper).findAll('input[type="checkbox"]:not(#delete-watched)'),
+    ).toHaveLength(0)
     expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeUndefined()
     await expectNoA11yViolations(wrapper.element)
   })
@@ -199,7 +208,11 @@ describe('ImportView', () => {
     await check(wrapper)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: undefined, confirmLargeRemoval: false, deleteWatched: false })
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, {
+      removalToken: undefined,
+      confirmLargeRemoval: false,
+      deleteWatched: false,
+    })
     expect(wrapper.get('#result-heading').text()).toBe('Import finished')
     expect(wrapper.find('.import__confirm').exists()).toBe(false)
     expect(wrapper.get('a[href="/watchlist"]').text()).toBe('Go to your watchlist')
@@ -220,12 +233,18 @@ describe('ImportView', () => {
     expect(button.attributes('disabled')).toBeUndefined()
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'tok', confirmLargeRemoval: false, deleteWatched: false })
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, {
+      removalToken: 'tok',
+      confirmLargeRemoval: false,
+      deleteWatched: false,
+    })
     expect(wrapper.get('#result-heading').text()).toBe('Import finished')
   })
 
   it('needs a second confirmation when more than half would be removed', async () => {
-    mocked.previewImport.mockResolvedValue(report({ ...removal, requiresLargeRemovalConfirmation: true }))
+    mocked.previewImport.mockResolvedValue(
+      report({ ...removal, requiresLargeRemovalConfirmation: true }),
+    )
     mocked.applyImport.mockResolvedValue(report({ applied: true }))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
@@ -236,7 +255,11 @@ describe('ImportView', () => {
     await boxes[1]!.setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'tok', confirmLargeRemoval: true, deleteWatched: false })
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, {
+      removalToken: 'tok',
+      confirmLargeRemoval: true,
+      deleteWatched: false,
+    })
     await expectNoA11yViolations(wrapper.element)
   })
 
@@ -248,7 +271,9 @@ describe('ImportView', () => {
     await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toMatch(/nothing was imported\. Check the file again/)
+    expect(wrapper.get('[role="alert"]').text()).toMatch(
+      /nothing was imported\. Check the file again/,
+    )
     expect(wrapper.find('#result-heading').exists()).toBe(false)
   })
 
@@ -264,7 +289,9 @@ describe('ImportView', () => {
   })
 
   it('shows a rejected file, for example a missing header', async () => {
-    mocked.previewImport.mockRejectedValue(new api.ApiError(400, 'The CSV is missing the column "Name"'))
+    mocked.previewImport.mockRejectedValue(
+      new api.ApiError(400, 'The CSV is missing the column "Name"'),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     expect(wrapper.get('[role="alert"]').text()).toContain('missing the column "Name"')
@@ -365,7 +392,12 @@ describe('ImportView: edge cases', () => {
     await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect((confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').element as HTMLInputElement).checked).toBe(false)
+    expect(
+      (
+        confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)')
+          .element as HTMLInputElement
+      ).checked,
+    ).toBe(false)
     expect(confirmForm(wrapper).get('button').attributes('disabled')).toBeDefined()
   })
 
@@ -386,7 +418,11 @@ describe('ImportView: edge cases', () => {
     await confirmForm(wrapper).get('input[type="checkbox"]:not(#delete-watched)').setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenLastCalledWith(file, { removalToken: 'new', confirmLargeRemoval: false, deleteWatched: false })
+    expect(mocked.applyImport).toHaveBeenLastCalledWith(file, {
+      removalToken: 'new',
+      confirmLargeRemoval: false,
+      deleteWatched: false,
+    })
   })
 
   it('clears the error of a failed apply when the next apply works', async () => {
@@ -444,7 +480,12 @@ describe('ImportView: edge cases', () => {
 
   it('reports rejected rows and still allows the import of the valid ones', async () => {
     mocked.previewImport.mockResolvedValue(
-      report({ rejected: [{ line: 3, reason: 'Year is not a number' }, { line: 9, reason: 'Name is empty' }] }),
+      report({
+        rejected: [
+          { line: 3, reason: 'Year is not a number' },
+          { line: 9, reason: 'Name is empty' },
+        ],
+      }),
     )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
@@ -462,9 +503,15 @@ describe('ImportView: edge cases', () => {
   })
 
   it('shows what was kept and what was removed after the import', async () => {
-    mocked.previewImport.mockResolvedValue(report({ ...removal, keptWatched: [{ id: 8, title: 'Stalker', releaseYear: 1979 }] }))
+    mocked.previewImport.mockResolvedValue(
+      report({ ...removal, keptWatched: [{ id: 8, title: 'Stalker', releaseYear: 1979 }] }),
+    )
     mocked.applyImport.mockResolvedValue(
-      report({ ...removal, applied: true, keptWatched: [{ id: 8, title: 'Stalker', releaseYear: 1979 }] }),
+      report({
+        ...removal,
+        applied: true,
+        keptWatched: [{ id: 8, title: 'Stalker', releaseYear: 1979 }],
+      }),
     )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
@@ -487,7 +534,9 @@ describe('ImportView: edge cases', () => {
   })
 
   it('names the checkboxes by their text', async () => {
-    mocked.previewImport.mockResolvedValue(report({ ...removal, requiresLargeRemovalConfirmation: true }))
+    mocked.previewImport.mockResolvedValue(
+      report({ ...removal, requiresLargeRemovalConfirmation: true }),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     expect(wrapper.findAll('label.import__check').map((l) => l.text())).toEqual([
@@ -501,7 +550,9 @@ describe('ImportView: edge cases', () => {
     mocked.previewImport.mockResolvedValue(report(removal))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
-    expect(wrapper.findAll('label.import__check')[1]!.text()).toBe('I understand that 1 film will be removed from my list.')
+    expect(wrapper.findAll('label.import__check')[1]!.text()).toBe(
+      'I understand that 1 film will be removed from my list.',
+    )
   })
 })
 
@@ -703,9 +754,13 @@ describe('ImportView: choosing a file while a request runs', () => {
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await choose(wrapper)
     await wrapper.get('form').trigger('submit')
-    await wrapper.get('.filepick').trigger('drop', { dataTransfer: { files: [], types: ['text/plain'] } })
+    await wrapper
+      .get('.filepick')
+      .trigger('drop', { dataTransfer: { files: [], types: ['text/plain'] } })
     expect(wrapper.get('.import__chosen').text()).not.toContain('Wait until')
-    await wrapper.get('.filepick').trigger('drop', { dataTransfer: { files: [file], types: ['Files'] } })
+    await wrapper
+      .get('.filepick')
+      .trigger('drop', { dataTransfer: { files: [file], types: ['Files'] } })
     expect(wrapper.get('.import__chosen').text()).toContain('Wait until')
   })
 })
@@ -715,8 +770,14 @@ describe('ImportView: drop and button together', () => {
     const { wrapper } = await mountWithApp(ImportView, '/import')
     const el = wrapper.get('#csv').element as HTMLInputElement
     const setValue = vi.fn<(value: string) => void>()
-    Object.defineProperty(el, 'value', { get: () => 'C:\\fakepath\\watchlist.csv', set: setValue, configurable: true })
-    await wrapper.get('.filepick').trigger('drop', { dataTransfer: { files: [new File(['x'], 'b.csv')] } })
+    Object.defineProperty(el, 'value', {
+      get: () => 'C:\\fakepath\\watchlist.csv',
+      set: setValue,
+      configurable: true,
+    })
+    await wrapper
+      .get('.filepick')
+      .trigger('drop', { dataTransfer: { files: [new File(['x'], 'b.csv')] } })
     expect(setValue).toHaveBeenCalledWith('')
     expect(wrapper.get('#csv-name').text()).toBe('b.csv')
   })
@@ -728,7 +789,11 @@ describe('ImportView: drop and button together', () => {
     await flushPromises()
     const region = wrapper.get('.import__chosen')
     const seen: string[] = []
-    new MutationObserver(() => seen.push(region.text())).observe(region.element, { childList: true, characterData: true, subtree: true })
+    new MutationObserver(() => seen.push(region.text())).observe(region.element, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    })
     await wrapper.get('.filepick').trigger('drop', bad)
     await flushPromises()
     expect(seen).toContain('')
@@ -748,7 +813,8 @@ describe('ImportView: drop and button together', () => {
 describe('ImportView: delete watched films', () => {
   const watched = { id: 8, title: 'Stalker', releaseYear: 1979, watched: true }
   const box = (wrapper: VueWrapper) => wrapper.get<HTMLInputElement>('#delete-watched')
-  const confirmBoxes = (wrapper: VueWrapper) => confirmForm(wrapper).findAll('input[type="checkbox"]:not(#delete-watched)')
+  const confirmBoxes = (wrapper: VueWrapper) =>
+    confirmForm(wrapper).findAll('input[type="checkbox"]:not(#delete-watched)')
 
   it('shows the checkbox below the summary, unchecked, with a hint about what it does', async () => {
     mocked.previewImport.mockResolvedValue(report())
@@ -773,12 +839,17 @@ describe('ImportView: delete watched films', () => {
     expect(mocked.previewImport).toHaveBeenCalledWith(file)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, expect.objectContaining({ deleteWatched: false }))
+    expect(mocked.applyImport).toHaveBeenCalledWith(
+      file,
+      expect.objectContaining({ deleteWatched: false }),
+    )
   })
 
   it('checks the same file again when ticked, shows the watched films to delete and says so', async () => {
     mocked.previewImport.mockResolvedValueOnce(report({ keptWatched: [watched] }))
-    mocked.previewImport.mockResolvedValueOnce(report({ removed: [watched], keptWatched: [], removalToken: 'w' }))
+    mocked.previewImport.mockResolvedValueOnce(
+      report({ removed: [watched], keptWatched: [], removalToken: 'w' }),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     expect(wrapper.text()).toContain('Kept because you watched them')
@@ -787,7 +858,9 @@ describe('ImportView: delete watched films', () => {
     await flushPromises()
     expect(mocked.previewImport).toHaveBeenLastCalledWith(file, { deleteWatched: true })
     expect(wrapper.text()).not.toContain('Kept because you watched them')
-    expect(wrapper.get('#removed-heading').element.parentElement?.textContent).toContain('Stalker (1979) (watched)')
+    expect(wrapper.get('#removed-heading').element.parentElement?.textContent).toContain(
+      'Stalker (1979) (watched)',
+    )
     expect(wrapper.get('.import__chosen').text()).toBe('Check updated. 1 film will be removed.')
     expect(box(wrapper).element.checked).toBe(true)
   })
@@ -804,12 +877,18 @@ describe('ImportView: delete watched films', () => {
     await confirmBoxes(wrapper)[0]!.setValue(true)
     await confirmForm(wrapper).trigger('submit')
     await flushPromises()
-    expect(mocked.applyImport).toHaveBeenCalledWith(file, { removalToken: 'w', confirmLargeRemoval: false, deleteWatched: true })
+    expect(mocked.applyImport).toHaveBeenCalledWith(file, {
+      removalToken: 'w',
+      confirmLargeRemoval: false,
+      deleteWatched: true,
+    })
   })
 
   it('clears the confirmations when the list of films to remove changes', async () => {
     mocked.previewImport.mockResolvedValueOnce(report(removal))
-    mocked.previewImport.mockResolvedValueOnce(report({ removed: [...removal.removed, watched], removalToken: 'w' }))
+    mocked.previewImport.mockResolvedValueOnce(
+      report({ removed: [...removal.removed, watched], removalToken: 'w' }),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     await confirmBoxes(wrapper)[0]!.setValue(true)
@@ -821,12 +900,16 @@ describe('ImportView: delete watched films', () => {
 
   it('names the watched films in the large-removal confirmation when the option is on', async () => {
     mocked.previewImport.mockResolvedValueOnce(report())
-    mocked.previewImport.mockResolvedValueOnce(report({ ...removal, requiresLargeRemovalConfirmation: true }))
+    mocked.previewImport.mockResolvedValueOnce(
+      report({ ...removal, requiresLargeRemovalConfirmation: true }),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     await box(wrapper).setValue(true)
     await flushPromises()
-    expect(confirmForm(wrapper).text()).toContain('more than half of my films, watched ones included')
+    expect(confirmForm(wrapper).text()).toContain(
+      'more than half of my films, watched ones included',
+    )
   })
 
   it('goes back to unchecked for another file and for a new check', async () => {
@@ -851,7 +934,9 @@ describe('ImportView: delete watched films', () => {
   it('only the newest answer counts when the box is ticked twice quickly', async () => {
     let first!: (r: ImportReport) => void
     mocked.previewImport.mockResolvedValueOnce(report())
-    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((resolve) => (first = resolve)))
+    mocked.previewImport.mockImplementationOnce(
+      () => new Promise<ImportReport>((resolve) => (first = resolve)),
+    )
     mocked.previewImport.mockResolvedValueOnce(report({ removalToken: 'newest' }))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
@@ -879,7 +964,9 @@ describe('ImportView: delete watched films', () => {
   it('turns the checkbox off while the import is running', async () => {
     mocked.previewImport.mockResolvedValue(report())
     let done!: (r: ImportReport) => void
-    mocked.applyImport.mockImplementation(() => new Promise<ImportReport>((resolve) => (done = resolve)))
+    mocked.applyImport.mockImplementation(
+      () => new Promise<ImportReport>((resolve) => (done = resolve)),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     await confirmForm(wrapper).trigger('submit')
@@ -904,7 +991,9 @@ describe('ImportView: delete watched films', () => {
   it('does not show the error of an answer that was replaced by a newer tick', async () => {
     let first!: (e: unknown) => void
     mocked.previewImport.mockResolvedValueOnce(report())
-    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((_, reject) => (first = reject)))
+    mocked.previewImport.mockImplementationOnce(
+      () => new Promise<ImportReport>((_, reject) => (first = reject)),
+    )
     mocked.previewImport.mockResolvedValueOnce(report({ removalToken: 'newest' }))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
@@ -920,7 +1009,9 @@ describe('ImportView: delete watched films', () => {
   it('keeps the Import button off while the new check runs, then lets the new list through', async () => {
     let second!: (r: ImportReport) => void
     mocked.previewImport.mockResolvedValueOnce(report())
-    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((resolve) => (second = resolve)))
+    mocked.previewImport.mockImplementationOnce(
+      () => new Promise<ImportReport>((resolve) => (second = resolve)),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     await box(wrapper).setValue(true)
@@ -958,7 +1049,9 @@ describe('ImportView: delete watched films', () => {
 
   it('has no accessibility violations after the check with the option and its confirmations', async () => {
     mocked.previewImport.mockResolvedValueOnce(report())
-    mocked.previewImport.mockResolvedValueOnce(report({ ...removal, requiresLargeRemovalConfirmation: true }))
+    mocked.previewImport.mockResolvedValueOnce(
+      report({ ...removal, requiresLargeRemovalConfirmation: true }),
+    )
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)
     await box(wrapper).setValue(true)
@@ -970,7 +1063,9 @@ describe('ImportView: delete watched films', () => {
   it('goes back to the setting of the result on screen when the newest check fails after a quick untick', async () => {
     let first!: (r: ImportReport) => void
     mocked.previewImport.mockResolvedValueOnce(report())
-    mocked.previewImport.mockImplementationOnce(() => new Promise<ImportReport>((resolve) => (first = resolve)))
+    mocked.previewImport.mockImplementationOnce(
+      () => new Promise<ImportReport>((resolve) => (first = resolve)),
+    )
     mocked.previewImport.mockRejectedValueOnce(new api.ApiError(500, 'boom'))
     const { wrapper } = await mountWithApp(ImportView, '/import')
     await check(wrapper)

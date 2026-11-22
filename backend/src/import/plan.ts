@@ -42,7 +42,8 @@ export const normalizeTitle = (title: string): string =>
     .replace(/^the /, '')
 
 // a title of only punctuation ("!!!") has nothing left after normalizing, so it is compared as it is
-const filmKey = (title: string, year: number) => `${year}|${normalizeTitle(title) || title.trim().toLowerCase()}`
+const filmKey = (title: string, year: number) =>
+  `${year}|${normalizeTitle(title) || title.trim().toLowerCase()}`
 
 /**
  * Compares the CSV with the films in the database. Films with a link that are missing from the CSV are removed,
@@ -60,7 +61,10 @@ export function buildPlan(
   deleteWatched = false,
 ): ImportPlan {
   const existingByUrl = new Map(existing.map((film) => [film.letterboxdUrl, film]))
-  const inFile = new Set([...rows.map((row) => row.letterboxdUrl), ...rejected.flatMap((r) => r.letterboxdUrl ?? [])])
+  const inFile = new Set([
+    ...rows.map((row) => row.letterboxdUrl),
+    ...rejected.flatMap((r) => r.letterboxdUrl ?? []),
+  ])
 
   const sameSource = existing.filter((film) => sourceOfLink(film.letterboxdUrl) === source)
   const otherSource = new Map<string, ExistingFilm>()
@@ -80,7 +84,8 @@ export function buildPlan(
   }
   for (const row of rows) {
     const film = existingByUrl.get(row.letterboxdUrl)
-    const sameFilm = row.releaseYear === null ? undefined : otherSource.get(filmKey(row.title, row.releaseYear))
+    const sameFilm =
+      row.releaseYear === null ? undefined : otherSource.get(filmKey(row.title, row.releaseYear))
     if (!film && sameFilm) plan.toSkip.push({ row, existing: sameFilm })
     else if (!film) plan.toInsert.push(row)
     else if (isChanged(film, row)) plan.toUpdate.push({ id: film.id, row })

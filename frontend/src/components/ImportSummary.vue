@@ -5,14 +5,17 @@ defineProps<{ report: ImportReport }>()
 
 const formats = { letterboxd: 'Letterboxd export', imdb: 'IMDb export' } as const
 
-const label = (film: Pick<ImportedFilmRef, 'title' | 'releaseYear'>) => (film.releaseYear ? `${film.title} (${film.releaseYear})` : film.title)
+const label = (film: Pick<ImportedFilmRef, 'title' | 'releaseYear'>) =>
+  film.releaseYear ? `${film.title} (${film.releaseYear})` : film.title
 </script>
 
 <template>
   <div class="summary">
     <p class="summary__note">
       Detected: {{ formats[report.source] }}.
-      <template v-if="report.source === 'imdb'">Only films that came from IMDb can be removed by this file.</template>
+      <template v-if="report.source === 'imdb'"
+        >Only films that came from IMDb can be removed by this file.</template
+      >
     </p>
 
     <dl class="summary__counts card">
@@ -32,7 +35,7 @@ const label = (film: Pick<ImportedFilmRef, 'title' | 'releaseYear'>) => (film.re
         <dt>{{ report.applied ? 'Removed' : 'Will be removed' }}</dt>
         <dd>{{ report.removed.length }}</dd>
       </div>
-      <div :class="{ 'summary__warn': report.rejected.length > 0 }">
+      <div :class="{ summary__warn: report.rejected.length > 0 }">
         <dt>Rejected rows</dt>
         <dd>{{ report.rejected.length }}</dd>
       </div>
@@ -40,23 +43,32 @@ const label = (film: Pick<ImportedFilmRef, 'title' | 'releaseYear'>) => (film.re
 
     <section v-if="report.removed.length" aria-labelledby="removed-heading">
       <h3 id="removed-heading">
-        {{ report.applied ? 'Removed from your list' : 'These films are not in the file and will be removed' }}
+        {{
+          report.applied
+            ? 'Removed from your list'
+            : 'These films are not in the file and will be removed'
+        }}
       </h3>
       <ul>
-        <li v-for="film in report.removed" :key="film.id">{{ label(film) }}<template v-if="film.watched"> (watched)</template></li>
+        <li v-for="film in report.removed" :key="film.id">
+          {{ label(film) }}<template v-if="film.watched"> (watched)</template>
+        </li>
       </ul>
     </section>
 
     <section v-if="report.skipped.length" aria-labelledby="skipped-heading">
       <h3 id="skipped-heading">
-        {{ report.skipped.length }} {{ report.skipped.length === 1 ? 'film is' : 'films are' }} already on your list
+        {{ report.skipped.length }}
+        {{ report.skipped.length === 1 ? 'film is' : 'films are' }} already on your list
       </h3>
       <p class="summary__note">
-        These rows are not added, because a film with the same title and year came from the other export.
+        These rows are not added, because a film with the same title and year came from the other
+        export.
       </p>
       <ul>
         <li v-for="item in report.skipped" :key="item.line">
-          {{ label(item) }} (line {{ item.line }}) is already on your list as {{ label(item.existing) }}
+          {{ label(item) }} (line {{ item.line }}) is already on your list as
+          {{ label(item.existing) }}
         </li>
       </ul>
     </section>
@@ -71,7 +83,8 @@ const label = (film: Pick<ImportedFilmRef, 'title' | 'releaseYear'>) => (film.re
 
     <section v-if="report.rejected.length" class="alert" aria-labelledby="rejected-heading">
       <h3 id="rejected-heading">
-        {{ report.rejected.length }} {{ report.rejected.length === 1 ? 'row was' : 'rows were' }} rejected
+        {{ report.rejected.length }}
+        {{ report.rejected.length === 1 ? 'row was' : 'rows were' }} rejected
       </h3>
       <div class="table-wrap">
         <table>

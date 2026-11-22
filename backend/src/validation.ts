@@ -6,7 +6,11 @@ const isoDate = z
   .refine((value) => {
     // year 0000 is valid for JS Date but not for PostgreSQL
     const date = new Date(value)
-    return !value.startsWith('0000') && !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value)
+    return (
+      !value.startsWith('0000') &&
+      !Number.isNaN(date.getTime()) &&
+      date.toISOString().startsWith(value)
+    )
   }, 'Not a real calendar date')
 
 export const releaseYear = z.number().int().min(1888).max(2100)

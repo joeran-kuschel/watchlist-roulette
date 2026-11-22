@@ -46,7 +46,10 @@ const APPLE = { size: 180, m: FULL, scale: 0.78, radius: 0 } // iOS rounds the c
 async function render(browser, spec) {
   const page = await browser.newPage({ viewport: { width: spec.size, height: spec.size } })
   await page.setContent(`<body style="margin:0;background:transparent">${tile(spec)}</body>`)
-  const png = await page.screenshot({ omitBackground: true, clip: { x: 0, y: 0, width: spec.size, height: spec.size } })
+  const png = await page.screenshot({
+    omitBackground: true,
+    clip: { x: 0, y: 0, width: spec.size, height: spec.size },
+  })
   await page.close()
   return png
 }

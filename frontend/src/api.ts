@@ -78,8 +78,7 @@ const json = (method: string, payload: unknown): RequestInit => ({
   body: JSON.stringify(payload),
 })
 
-export const listFilms = (params: ListParams = {}) =>
-  request<FilmPage>(`/films${toQuery(params)}`)
+export const listFilms = (params: ListParams = {}) => request<FilmPage>(`/films${toQuery(params)}`)
 
 export const getFilm = (id: number) => request<Film>(`/films/${id}`)
 
@@ -91,7 +90,8 @@ export const createFilm = (input: FilmInput) => request<Film>('/films', json('PO
 export const updateFilm = (id: number, patch: FilmPatch) =>
   request<Film>(`/films/${id}`, json('PATCH', patch))
 
-export const lookupFilmOnTmdb = (id: number) => request<Film>(`/films/${id}/tmdb-lookup`, { method: 'POST' })
+export const lookupFilmOnTmdb = (id: number) =>
+  request<Film>(`/films/${id}/tmdb-lookup`, { method: 'POST' })
 
 export const startTmdbCheck = (includeUnmatched: boolean) =>
   request<{ started: boolean }>('/tmdb/sync', json('POST', { includeUnmatched }))
@@ -111,7 +111,10 @@ function importForm(file: File, options: ApplyImportOptions = {}): FormData {
 
 /** Reports what an import would do and writes nothing. */
 export const previewImport = (file: File, options: ImportCheckOptions = {}) =>
-  request<ImportReport>('/films/import?dryRun=true', { method: 'POST', body: importForm(file, options) })
+  request<ImportReport>('/films/import?dryRun=true', {
+    method: 'POST',
+    body: importForm(file, options),
+  })
 
 export const applyImport = (file: File, options: ApplyImportOptions = {}) =>
   request<ImportReport>('/films/import', { method: 'POST', body: importForm(file, options) })

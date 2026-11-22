@@ -169,8 +169,8 @@ const isWatched = computed(() => store.film?.watchedAt != null)
       </p>
       <template v-else-if="store.status === 'ready' && store.film">
         <p v-if="store.automatic" class="roulette__first">
-          This first pick comes from your whole list, before any filter. Set filters and press Spin again to
-          narrow it.
+          This first pick comes from your whole list, before any filter. Set filters and press Spin
+          again to narrow it.
         </p>
         <FilmCard :film="store.film" />
       </template>

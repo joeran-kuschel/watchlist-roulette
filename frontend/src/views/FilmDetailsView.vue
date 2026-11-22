@@ -9,7 +9,16 @@ import ErrorAlert from '../components/ErrorAlert.vue'
 import FilmFacts from '../components/FilmFacts.vue'
 import PosterImage from '../components/PosterImage.vue'
 import TmdbOffNotice from '../components/TmdbOffNotice.vue'
-import { canLookUp, directorLabel, filmFacts, formatDate, isHttpUrl, joinNames, linkSite, needsMatch } from '../format'
+import {
+  canLookUp,
+  directorLabel,
+  filmFacts,
+  formatDate,
+  isHttpUrl,
+  joinNames,
+  linkSite,
+  needsMatch,
+} from '../format'
 import { tmdbTitleUrl } from '../tmdbId'
 import type { Film } from '../types'
 
@@ -105,7 +114,8 @@ async function lookUp(current: Film) {
   } catch (e) {
     // The API words TMDB problems (not set up, not reachable, rejected our token) for the user; a bare 502 from a proxy is not
     const tmdbProblem = e instanceof ApiError && e.code === 'tmdb_unavailable'
-    if (film.value?.id === current.id) actionError.value = tmdbProblem ? e.message : describeError(e)
+    if (film.value?.id === current.id)
+      actionError.value = tmdbProblem ? e.message : describeError(e)
   } finally {
     if (lookingUpId.value === current.id) lookingUpId.value = null
   }
@@ -120,13 +130,19 @@ const facts = computed(() => {
     { label: directorLabel(f), value: joinNames(f.directors) },
   ].filter((fact) => fact.value !== '')
 })
-const showOriginalTitle = computed(() => film.value?.originalTitle && film.value.originalTitle !== film.value.title)
+const showOriginalTitle = computed(
+  () => film.value?.originalTitle && film.value.originalTitle !== film.value.title,
+)
 const links = computed(() => {
   const f = film.value
   if (!f) return []
   return [
-    f.letterboxdUrl && isHttpUrl(f.letterboxdUrl) ? { name: linkSite(f.letterboxdUrl), href: f.letterboxdUrl } : null,
-    f.tmdb.id !== null ? { name: 'The Movie Database (TMDB)', href: tmdbTitleUrl(f.tmdb.id, f.tmdb.mediaType) } : null,
+    f.letterboxdUrl && isHttpUrl(f.letterboxdUrl)
+      ? { name: linkSite(f.letterboxdUrl), href: f.letterboxdUrl }
+      : null,
+    f.tmdb.id !== null
+      ? { name: 'The Movie Database (TMDB)', href: tmdbTitleUrl(f.tmdb.id, f.tmdb.mediaType) }
+      : null,
   ].filter((link) => link !== null)
 })
 </script>
@@ -155,7 +171,9 @@ const links = computed(() => {
         <div class="details__head">
           <div>
             <h1 ref="heading" tabindex="-1">{{ film.title }}</h1>
-            <p v-if="showOriginalTitle" class="details__original">Original title: {{ film.originalTitle }}</p>
+            <p v-if="showOriginalTitle" class="details__original">
+              Original title: {{ film.originalTitle }}
+            </p>
             <p v-if="film.tagline" class="details__tagline">{{ film.tagline }}</p>
           </div>
           <div class="details__actions">
@@ -177,8 +195,18 @@ const links = computed(() => {
             >
               {{ lookingUpId === film.id ? 'Looking up…' : 'Look up on TMDB' }}
             </button>
-            <RouterLink v-if="needsMatch(film) && !tmdb.off" class="btn" :to="`/watchlist/${film.id}/match`">Choose TMDB match</RouterLink>
-            <RouterLink class="btn" :to="`/watchlist/${film.id}/edit`" :aria-label="`Edit ${film.title}`">Edit</RouterLink>
+            <RouterLink
+              v-if="needsMatch(film) && !tmdb.off"
+              class="btn"
+              :to="`/watchlist/${film.id}/match`"
+              >Choose TMDB match</RouterLink
+            >
+            <RouterLink
+              class="btn"
+              :to="`/watchlist/${film.id}/edit`"
+              :aria-label="`Edit ${film.title}`"
+              >Edit</RouterLink
+            >
           </div>
         </div>
         <TmdbOffNotice v-if="tmdb.off" />

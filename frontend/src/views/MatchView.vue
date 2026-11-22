@@ -23,7 +23,8 @@ const saving = ref(false)
 const reason = computed(
   () =>
     ({
-      ambiguous: 'TMDB found several films with this title, or the best match belongs to another film on your list.',
+      ambiguous:
+        'TMDB found several films with this title, or the best match belongs to another film on your list.',
       not_found: 'TMDB found no film with this title.',
       error: 'TMDB could not be reached when this film was looked up.',
       pending: 'This film has not been looked up yet.',
@@ -45,13 +46,17 @@ async function submit() {
   submitError.value = ''
   const title = parseTmdbTitle(input.value)
   if (title === null) {
-    fieldError.value = 'Enter the TMDB number or paste the movie or TV show page address from themoviedb.org.'
+    fieldError.value =
+      'Enter the TMDB number or paste the movie or TV show page address from themoviedb.org.'
     return
   }
   fieldError.value = ''
   saving.value = true
   try {
-    const updated = await updateFilm(Number(route.params.id), { tmdbId: title.id, tmdbMediaType: title.mediaType })
+    const updated = await updateFilm(Number(route.params.id), {
+      tmdbId: title.id,
+      tmdbMediaType: title.mediaType,
+    })
     watchlist.notice = `TMDB id saved for ${updated.title}. Its details load in the background.`
     await router.push(watchlist.listLocation)
   } catch (e) {

@@ -46,7 +46,9 @@ describe('api requests', () => {
   it('passes the random filters', async () => {
     fetchMock.mockReturnValue(respond({}))
     await randomFilm({ yearFrom: 1990, country: 'JP', maxRuntime: 90 })
-    expect(fetchMock.mock.calls[0]![0]).toBe('/api/films/random?yearFrom=1990&country=JP&maxRuntime=90')
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      '/api/films/random?yearFrom=1990&country=JP&maxRuntime=90',
+    )
   })
 
   it('gets one film', async () => {
@@ -72,29 +74,46 @@ describe('api requests', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/films/4/tmdb-lookup', { method: 'POST' })
   })
 
-  it.each([502, 503])('keeps the message the server sent with a %s look-up answer', async (status) => {
-    fetchMock.mockReturnValue(respond({ error: 'TMDB could not be reached. Try again later.' }, status))
-    await expect(lookupFilmOnTmdb(4)).rejects.toMatchObject({ status, message: 'TMDB could not be reached. Try again later.' })
-  })
+  it.each([502, 503])(
+    'keeps the message the server sent with a %s look-up answer',
+    async (status) => {
+      fetchMock.mockReturnValue(
+        respond({ error: 'TMDB could not be reached. Try again later.' }, status),
+      )
+      await expect(lookupFilmOnTmdb(4)).rejects.toMatchObject({
+        status,
+        message: 'TMDB could not be reached. Try again later.',
+      })
+    },
+  )
 
   it('reports an unreachable server on a look-up as status 0', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
     await expect(lookupFilmOnTmdb(4)).rejects.toMatchObject({ status: 0 })
   })
 
-  it.each([true, false])('starts a TMDB check with includeUnmatched %s as JSON', async (includeUnmatched) => {
-    fetchMock.mockReturnValue(respond({ started: true }, 202))
-    await expect(startTmdbCheck(includeUnmatched)).resolves.toEqual({ started: true })
-    const [url, init] = fetchMock.mock.calls[0]!
-    expect(url).toBe('/api/tmdb/sync')
-    expect(init).toMatchObject({ method: 'POST' })
-    expect(JSON.parse(String(init!.body))).toEqual({ includeUnmatched })
-    expect(new Headers(init!.headers).get('Content-Type')).toBe('application/json')
-  })
+  it.each([true, false])(
+    'starts a TMDB check with includeUnmatched %s as JSON',
+    async (includeUnmatched) => {
+      fetchMock.mockReturnValue(respond({ started: true }, 202))
+      await expect(startTmdbCheck(includeUnmatched)).resolves.toEqual({ started: true })
+      const [url, init] = fetchMock.mock.calls[0]!
+      expect(url).toBe('/api/tmdb/sync')
+      expect(init).toMatchObject({ method: 'POST' })
+      expect(JSON.parse(String(init!.body))).toEqual({ includeUnmatched })
+      expect(new Headers(init!.headers).get('Content-Type')).toBe('application/json')
+    },
+  )
 
   it('keeps the code and message when starting a TMDB check is refused', async () => {
-    fetchMock.mockReturnValue(respond({ error: 'TMDB is not configured.', code: 'tmdb_unavailable' }, 503))
-    await expect(startTmdbCheck(true)).rejects.toMatchObject({ status: 503, code: 'tmdb_unavailable', message: 'TMDB is not configured.' })
+    fetchMock.mockReturnValue(
+      respond({ error: 'TMDB is not configured.', code: 'tmdb_unavailable' }, 503),
+    )
+    await expect(startTmdbCheck(true)).rejects.toMatchObject({
+      status: 503,
+      code: 'tmdb_unavailable',
+      message: 'TMDB is not configured.',
+    })
   })
 
   it('reads the state of the TMDB check with a GET', async () => {
@@ -119,7 +138,10 @@ describe('api requests', () => {
 describe('api errors', () => {
   it('throws an ApiError with status, message, code and issues', async () => {
     fetchMock.mockReturnValue(
-      respond({ error: 'Invalid request', code: 'x', issues: [{ path: ['title'], message: 'Required' }] }, 400),
+      respond(
+        { error: 'Invalid request', code: 'x', issues: [{ path: ['title'], message: 'Required' }] },
+        400,
+      ),
     )
     const error = await createFilm({ title: '' }).catch((e) => e)
     expect(error).toBeInstanceOf(ApiError)
@@ -146,7 +168,9 @@ describe('api errors', () => {
 
   it('describes errors for the user', () => {
     expect(describeError(new ApiError(0, 'x'))).toMatch(/Can't reach the server/)
-    expect(describeError(new ApiError(500, 'Internal server error'))).toMatch(/server had a problem/)
+    expect(describeError(new ApiError(500, 'Internal server error'))).toMatch(
+      /server had a problem/,
+    )
     expect(describeError(new ApiError(404, 'Film not found'))).toBe('Film not found')
     expect(describeError(new Error('boom'))).toBe('Something went wrong.')
   })
@@ -218,12 +242,19 @@ describe('api: edge cases', () => {
 
   it('throws a 404 from the random endpoint, which the roulette treats as empty', async () => {
     fetchMock.mockReturnValue(respond({ error: 'No unwatched film matches' }, 404))
-    await expect(randomFilm()).rejects.toMatchObject({ status: 404, message: 'No unwatched film matches' })
+    await expect(randomFilm()).rejects.toMatchObject({
+      status: 404,
+      message: 'No unwatched film matches',
+    })
   })
 
   it('throws a 404 with the backend message for a missing film', async () => {
     fetchMock.mockReturnValue(respond({ error: 'Film not found' }, 404))
-    await expect(getFilm(99)).rejects.toMatchObject({ status: 404, message: 'Film not found', issues: [] })
+    await expect(getFilm(99)).rejects.toMatchObject({
+      status: 404,
+      message: 'Film not found',
+      issues: [],
+    })
   })
 
   it('throws on a failed delete instead of treating it as success', async () => {
@@ -239,7 +270,9 @@ describe('api: edge cases', () => {
 
   it('reports a 409 on import (the list changed since the check)', async () => {
     fetchMock.mockReturnValue(respond({ error: 'Stale token' }, 409))
-    await expect(applyImport(new File(['x'], 'a.csv'), { removalToken: 't' })).rejects.toMatchObject({ status: 409 })
+    await expect(
+      applyImport(new File(['x'], 'a.csv'), { removalToken: 't' }),
+    ).rejects.toMatchObject({ status: 409 })
   })
 
   it('reports a failed upload as unreachable', async () => {

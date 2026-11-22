@@ -31,7 +31,10 @@ export const nextSort = (column: SortColumn, current: SortKey): SortKey =>
   current === SORT_COLUMNS[column][0] ? SORT_COLUMNS[column][1] : SORT_COLUMNS[column][0]
 
 /** The `aria-sort` value of a column header; only the sorted column has one. */
-export function ariaSort(column: SortColumn, current: SortKey): 'ascending' | 'descending' | undefined {
+export function ariaSort(
+  column: SortColumn,
+  current: SortKey,
+): 'ascending' | 'descending' | undefined {
   if (columnOf(current) !== column) return undefined
   return SORTS[current].order === 'asc' ? 'ascending' : 'descending'
 }
@@ -57,7 +60,8 @@ export interface WatchlistView {
 
 export const PAGE_SIZE = 50
 
-const first = (value: LocationQuery[string] | undefined) => (Array.isArray(value) ? value[0] : value) ?? ''
+const first = (value: LocationQuery[string] | undefined) =>
+  (Array.isArray(value) ? value[0] : value) ?? ''
 
 /** Reads the screen's state from the URL; anything unknown falls back to the default. */
 export function fromQuery(query: LocationQuery): WatchlistView {

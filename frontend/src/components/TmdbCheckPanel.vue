@@ -33,14 +33,17 @@ function summarize(run: TmdbCheckSummary | null, total: number): string {
   if (run.error > 0) parts.push(`${run.error} failed`)
   if (run.unreachable > 0) parts.push(`${run.unreachable} could not be reached`)
   const result = `TMDB check finished: ${parts.join(', ')}.`
-  if (run.stopped === 'token') return `${result} It stopped early because TMDB rejected the access token.`
-  if (run.stopped === 'tmdb') return `${result} It stopped early because TMDB is having trouble. Try again later.`
+  if (run.stopped === 'token')
+    return `${result} It stopped early because TMDB rejected the access token.`
+  if (run.stopped === 'tmdb')
+    return `${result} It stopped early because TMDB is having trouble. Try again later.`
   return result
 }
 
 function fail(e: unknown) {
   // The API words TMDB problems for the user (for example "TMDB is not configured"); other errors get fixed text
-  error.value = e instanceof ApiError && e.code === 'tmdb_unavailable' ? e.message : describeError(e)
+  error.value =
+    e instanceof ApiError && e.code === 'tmdb_unavailable' ? e.message : describeError(e)
   running.value = false
   progress.value = ''
   notice.value = ''
@@ -64,7 +67,10 @@ async function poll(previous: string | null) {
   running.value = false
   progress.value = ''
   // A summary that is the same as before means no new run has finished (the run did not start)
-  notice.value = summarize(state.lastRun?.finishedAt === previous ? null : state.lastRun, state.total)
+  notice.value = summarize(
+    state.lastRun?.finishedAt === previous ? null : state.lastRun,
+    state.total,
+  )
   emit('finished')
 }
 
@@ -94,7 +100,14 @@ const label = computed(() => (running.value ? progress.value : 'Check TMDB again
     <h2 id="tmdb-check-heading">TMDB data</h2>
     <div class="tmdb-check__controls">
       <!-- aria-disabled, not disabled: a disabled button that has the focus loses it in Firefox and Safari -->
-      <button class="btn" type="button" :aria-disabled="running ? 'true' : undefined" @click="start">{{ label }}</button>
+      <button
+        class="btn"
+        type="button"
+        :aria-disabled="running ? 'true' : undefined"
+        @click="start"
+      >
+        {{ label }}
+      </button>
       <label class="tmdb-check__option">
         <input v-model="includeUnmatched" type="checkbox" :disabled="running" />
         <span>Also retry films that were not found or need review</span>

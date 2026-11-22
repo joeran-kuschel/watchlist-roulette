@@ -25,7 +25,9 @@ describe('screenshot sample films', () => {
   it('has exactly one watched film, Elephants Dream, watched after it was added', () => {
     expect(films.filter((f) => f.watchedAt).map((f) => f.title)).toEqual([elephantsDream.title])
     expect(elephantsDream.watchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/)
-    expect(Date.parse(elephantsDream.watchedAt!)).toBeGreaterThanOrEqual(Date.parse(elephantsDream.addedAt))
+    expect(Date.parse(elephantsDream.watchedAt!)).toBeGreaterThanOrEqual(
+      Date.parse(elephantsDream.addedAt),
+    )
   })
 
   it('gives the film on the roulette and details pages an overview, genres and a director, and leaves it unwatched', () => {

@@ -13,7 +13,9 @@ const props = defineProps<{
 const hintId = computed(() => `${props.id}-hint`)
 const errorId = computed(() => `${props.id}-error`)
 const describedBy = computed(
-  () => [props.hint && hintId.value, props.error && errorId.value].filter(Boolean).join(' ') || undefined,
+  () =>
+    [props.hint && hintId.value, props.error && errorId.value].filter(Boolean).join(' ') ||
+    undefined,
 )
 // Spread onto the control in the slot
 const attrs = computed(() => ({

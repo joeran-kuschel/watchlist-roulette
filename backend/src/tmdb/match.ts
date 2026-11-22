@@ -1,10 +1,13 @@
 import type { TmdbSearchResult } from './client.js'
 
 export type MatchResult =
-  | { status: 'matched'; tmdbId: number }
-  | { status: 'ambiguous' | 'not_found' }
+  { status: 'matched'; tmdbId: number } | { status: 'ambiguous' | 'not_found' }
 
-const normalize = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+const normalize = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
 const yearOf = (result: TmdbSearchResult) => Number(result.release_date?.slice(0, 4)) || null
 
 /**
@@ -12,10 +15,15 @@ const yearOf = (result: TmdbSearchResult) => Number(result.release_date?.slice(0
  * and its year is within one year (festival premieres differ). An exact year beats a near one; if that still leaves
  * more than one candidate, the match is ambiguous and a person decides.
  */
-export function chooseMatch(film: { title: string; releaseYear: number | null }, results: TmdbSearchResult[]): MatchResult {
+export function chooseMatch(
+  film: { title: string; releaseYear: number | null },
+  results: TmdbSearchResult[],
+): MatchResult {
   const wanted = normalize(film.title)
   const candidates = results.filter((result) => {
-    const sameTitle = [result.title, result.original_title].some((name) => normalize(name) === wanted)
+    const sameTitle = [result.title, result.original_title].some(
+      (name) => normalize(name) === wanted,
+    )
     if (!sameTitle) return false
     const year = yearOf(result)
     return film.releaseYear === null || year === null || Math.abs(year - film.releaseYear) <= 1

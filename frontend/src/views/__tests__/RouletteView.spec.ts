@@ -66,7 +66,9 @@ describe('RouletteView', () => {
     await wrapper.get('#year-from').setValue('1500')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('#country').attributes('aria-describedby')).toBe('country-hint country-error')
+    expect(wrapper.get('#country').attributes('aria-describedby')).toBe(
+      'country-hint country-error',
+    )
     expect(wrapper.get('#max-runtime').attributes('aria-describedby')).toBe(
       'max-runtime-hint max-runtime-error',
     )
@@ -108,7 +110,12 @@ describe('RouletteView', () => {
     mocked.randomFilm.mockClear()
     await wrapper.get('button[aria-label="Spin again"]').trigger('click')
     await flushPromises()
-    expect(mocked.randomFilm).toHaveBeenCalledWith({ yearFrom: 1990, genre: 18, country: 'JP', maxRuntime: 120 })
+    expect(mocked.randomFilm).toHaveBeenCalledWith({
+      yearFrom: 1990,
+      genre: 18,
+      country: 'JP',
+      maxRuntime: 120,
+    })
   })
 
   it('shows field errors and does not call the server for invalid filters', async () => {
@@ -302,7 +309,9 @@ describe('RouletteView: edge cases', () => {
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Film not found')
     expect(wrapper.get('article h2').text()).toBe('Perfect Days')
-    expect(wrapper.get('button[aria-label="Mark as watched"]').attributes('disabled')).toBeUndefined()
+    expect(
+      wrapper.get('button[aria-label="Mark as watched"]').attributes('disabled'),
+    ).toBeUndefined()
     // the retry button is for a failed pick only
     expect(wrapper.find('[role="alert"] button').exists()).toBe(false)
     await expectNoA11yViolations(wrapper.element)
@@ -516,7 +525,9 @@ describe('RouletteView: hints about spinning', () => {
   it('tells that filters only apply on Spin again', async () => {
     mocked.randomFilm.mockResolvedValue(makeFilm())
     const { wrapper } = await mountWithApp(RouletteView)
-    expect(wrapper.get('.lead').text()).toBe('Set your filters, then press Spin again. Nothing changes until you do.')
+    expect(wrapper.get('.lead').text()).toBe(
+      'Set your filters, then press Spin again. Nothing changes until you do.',
+    )
     await wrapper.get('#year-from').setValue('1990')
     await flushPromises()
     expect(mocked.randomFilm).toHaveBeenCalledTimes(1) // changing a filter does not spin
@@ -525,7 +536,9 @@ describe('RouletteView: hints about spinning', () => {
   it('says that the first pick comes from the whole list, and drops the note on the next spin', async () => {
     mocked.randomFilm.mockResolvedValue(makeFilm())
     const { wrapper } = await mountWithApp(RouletteView)
-    expect(wrapper.get('.roulette__first').text()).toContain('comes from your whole list, before any filter')
+    expect(wrapper.get('.roulette__first').text()).toContain(
+      'comes from your whole list, before any filter',
+    )
     await expectNoA11yViolations(wrapper.element)
     await wrapper.get('button[aria-label="Spin again"]').trigger('click')
     await flushPromises()

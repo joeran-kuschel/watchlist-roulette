@@ -36,7 +36,11 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../views/MatchView.vue'),
     meta: { title: 'Choose TMDB match' },
   },
-  { path: '/import', component: () => import('../views/ImportView.vue'), meta: { title: 'Import' } },
+  {
+    path: '/import',
+    component: () => import('../views/ImportView.vue'),
+    meta: { title: 'Import' },
+  },
   {
     path: '/:pathMatch(.*)*',
     component: () => import('../views/NotFoundView.vue'),
@@ -44,7 +48,9 @@ export const routes: RouteRecordRaw[] = [
   },
 ]
 
-export function createAppRouter(history: RouterHistory = createWebHistory(import.meta.env.BASE_URL)) {
+export function createAppRouter(
+  history: RouterHistory = createWebHistory(import.meta.env.BASE_URL),
+) {
   const router = createRouter({ history, routes })
 
   router.afterEach(async (to, from) => {

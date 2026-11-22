@@ -38,12 +38,15 @@ describe('createTmdbClient', () => {
 
   it('throws a TmdbError when TMDB is not reachable', async () => {
     const fetchFn = vi.fn<typeof fetch>().mockRejectedValue(new Error('ECONNREFUSED'))
-    await expect(createTmdbClient('t', 'en-US', fetchFn).getMovie(5)).rejects.toBeInstanceOf(TmdbError)
+    await expect(createTmdbClient('t', 'en-US', fetchFn).getMovie(5)).rejects.toBeInstanceOf(
+      TmdbError,
+    )
   })
 })
 
 describe('createTmdbClient with unexpected answers', () => {
-  const raw = (body: string, status = 200) => vi.fn<typeof fetch>().mockResolvedValue(new Response(body, { status }))
+  const raw = (body: string, status = 200) =>
+    vi.fn<typeof fetch>().mockResolvedValue(new Response(body, { status }))
 
   it('throws a TmdbError, not a SyntaxError, for an answer that is not JSON', async () => {
     const client = createTmdbClient('t', 'en-US', raw('<html>Bad gateway</html>'))
@@ -65,8 +68,12 @@ describe('createTmdbClient with unexpected answers', () => {
   })
 
   it('throws a TmdbError with the status when the search fails', async () => {
-    await expect(createTmdbClient('t', 'en-US', respond(429)).searchMovie('Joy')).rejects.toMatchObject({ status: 429 })
-    await expect(createTmdbClient('t', 'en-US', respond(500)).searchMovie('Joy')).rejects.toMatchObject({ status: 500 })
+    await expect(
+      createTmdbClient('t', 'en-US', respond(429)).searchMovie('Joy'),
+    ).rejects.toMatchObject({ status: 429 })
+    await expect(
+      createTmdbClient('t', 'en-US', respond(500)).searchMovie('Joy'),
+    ).rejects.toMatchObject({ status: 500 })
   })
 
   it('sends a timeout signal and encodes non-ASCII and special characters in the query', async () => {
@@ -79,7 +86,13 @@ describe('createTmdbClient with unexpected answers', () => {
   })
 
   it('throws a TmdbError when the request times out', async () => {
-    const fetchFn = vi.fn<typeof fetch>().mockRejectedValue(new DOMException('The operation was aborted due to timeout', 'TimeoutError'))
-    await expect(createTmdbClient('t', 'en-US', fetchFn).searchMovie('Joy')).rejects.toBeInstanceOf(TmdbError)
+    const fetchFn = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(
+        new DOMException('The operation was aborted due to timeout', 'TimeoutError'),
+      )
+    await expect(createTmdbClient('t', 'en-US', fetchFn).searchMovie('Joy')).rejects.toBeInstanceOf(
+      TmdbError,
+    )
   })
 })

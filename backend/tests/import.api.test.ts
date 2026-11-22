@@ -9,10 +9,16 @@ beforeEach(async () => {
   pool = await createTestPool()
 })
 
-const line = (n: number, extra = '') => `2020-01-0${n},Film ${n}${extra},200${n},https://boxd.it/${n}\n`
-const titles = async () => (await pool.query('SELECT title FROM films ORDER BY id')).rows.map((r) => r.title)
+const line = (n: number, extra = '') =>
+  `2020-01-0${n},Film ${n}${extra},200${n},https://boxd.it/${n}\n`
+const titles = async () =>
+  (await pool.query('SELECT title FROM films ORDER BY id')).rows.map((r) => r.title)
 
-const upload = (csv: string, { dryRun = false, fields = {} }: { dryRun?: boolean; fields?: Record<string, string> } = {}, enricher = fakeEnricher()) => {
+const upload = (
+  csv: string,
+  { dryRun = false, fields = {} }: { dryRun?: boolean; fields?: Record<string, string> } = {},
+  enricher = fakeEnricher(),
+) => {
   const req = testApp(enricher).post(`/api/films/import${dryRun ? '?dryRun=true' : ''}`)
   for (const [key, value] of Object.entries(fields)) req.field(key, value)
   return req.attach('file', Buffer.from(csv), 'watchlist.csv')
@@ -39,7 +45,9 @@ describe('POST /api/films/import?dryRun=true', () => {
     await upload(HEADER + line(1) + line(2) + line(3))
     await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Film 3'`)
     const res = await upload(HEADER + line(1), { dryRun: true, fields: { deleteWatched: 'true' } })
-    expect(res.body.removed.map((f: { title: string; watched: boolean }) => [f.title, f.watched])).toEqual([
+    expect(
+      res.body.removed.map((f: { title: string; watched: boolean }) => [f.title, f.watched]),
+    ).toEqual([
       ['Film 2', false],
       ['Film 3', true],
     ])
@@ -56,7 +64,9 @@ describe('POST /api/films/import?dryRun=true', () => {
   })
 
   it('reports rejected rows', async () => {
-    const res = await upload(HEADER + line(1) + '2020-01-01,,2000,https://boxd.it/9\n', { dryRun: true })
+    const res = await upload(HEADER + line(1) + '2020-01-01,,2000,https://boxd.it/9\n', {
+      dryRun: true,
+    })
     expect(res.body.rejected).toEqual([{ line: 3, reason: 'Name is empty' }])
   })
 })
@@ -79,11 +89,18 @@ describe('POST /api/films/import', () => {
 
   it('updates changed rows but keeps the watched date and the TMDB data', async () => {
     await upload(HEADER + line(1))
-    await pool.query(`UPDATE films SET watched_at = now(), tmdb_id = 7, tmdb_status = 'matched', overview = 'plot'`)
+    await pool.query(
+      `UPDATE films SET watched_at = now(), tmdb_id = 7, tmdb_status = 'matched', overview = 'plot'`,
+    )
     const res = await upload(HEADER + '2021-05-05,Film One,2001,https://boxd.it/1\n')
     expect(res.body.updated).toBe(1)
     const { rows } = await pool.query('SELECT * FROM films')
-    expect(rows[0]).toMatchObject({ title: 'Film One', tmdb_id: 7, overview: 'plot', tmdb_status: 'matched' })
+    expect(rows[0]).toMatchObject({
+      title: 'Film One',
+      tmdb_id: 7,
+      overview: 'plot',
+      tmdb_status: 'matched',
+    })
     expect(rows[0].watched_at).not.toBeNull()
   })
 
@@ -93,7 +110,10 @@ describe('POST /api/films/import', () => {
 
     const noToken = await upload(csv)
     expect(noToken.status).toBe(409)
-    expect(noToken.body).toMatchObject({ code: 'removal_not_confirmed', removed: [{ title: 'Film 4' }] })
+    expect(noToken.body).toMatchObject({
+      code: 'removal_not_confirmed',
+      removed: [{ title: 'Film 4' }],
+    })
     expect(await titles()).toHaveLength(4)
 
     const preview = await upload(csv, { dryRun: true })
@@ -109,7 +129,9 @@ describe('POST /api/films/import', () => {
     const preview = await upload(csv, { dryRun: true })
     await pool.query(`DELETE FROM films WHERE title = 'Film 4'`)
     await upload(HEADER + line(1) + line(2) + line(3))
-    await pool.query(`INSERT INTO films (title, letterboxd_url) VALUES ('New', 'https://boxd.it/77')`)
+    await pool.query(
+      `INSERT INTO films (title, letterboxd_url) VALUES ('New', 'https://boxd.it/77')`,
+    )
     const res = await upload(csv, { fields: { removalToken: preview.body.removalToken } })
     expect(res.status).toBe(409)
     expect(await titles()).toContain('New')
@@ -147,9 +169,13 @@ describe('POST /api/films/import', () => {
     expect(mismatch.body.code).toBe('removal_not_confirmed')
     expect(await titles()).toHaveLength(4)
 
-    const applied = await upload(csv, { fields: { deleteWatched: 'true', removalToken: preview.body.removalToken } })
+    const applied = await upload(csv, {
+      fields: { deleteWatched: 'true', removalToken: preview.body.removalToken },
+    })
     expect(applied.status).toBe(200)
-    expect(applied.body.removed).toEqual([expect.objectContaining({ title: 'Film 2', watched: true })])
+    expect(applied.body.removed).toEqual([
+      expect.objectContaining({ title: 'Film 2', watched: true }),
+    ])
     expect(await titles()).toEqual(['Film 1', 'Film 3', 'Film 4'])
   })
 
@@ -157,14 +183,18 @@ describe('POST /api/films/import', () => {
     await upload(HEADER + line(1) + line(2))
     await pool.query(`UPDATE films SET watched_at = now() WHERE title = 'Film 2'`)
     const preview = await upload(HEADER + line(1), { dryRun: true })
-    const res = await upload(HEADER + line(1), { fields: { deleteWatched: 'true', removalToken: preview.body.removalToken } })
+    const res = await upload(HEADER + line(1), {
+      fields: { deleteWatched: 'true', removalToken: preview.body.removalToken },
+    })
     expect(res.status).toBe(409)
     expect(await titles()).toEqual(['Film 1', 'Film 2'])
   })
 
   it('counts the watched films for the large-removal guard when deleteWatched is set', async () => {
     await upload(HEADER + line(1) + line(2) + line(3) + line(4))
-    await pool.query(`UPDATE films SET watched_at = now() WHERE title IN ('Film 2', 'Film 3', 'Film 4')`)
+    await pool.query(
+      `UPDATE films SET watched_at = now() WHERE title IN ('Film 2', 'Film 3', 'Film 4')`,
+    )
     const csv = HEADER + line(1)
     const preview = await upload(csv, { dryRun: true, fields: { deleteWatched: 'true' } })
     expect(preview.body.requiresLargeRemovalConfirmation).toBe(true)
@@ -173,14 +203,19 @@ describe('POST /api/films/import', () => {
     expect(refused.status).toBe(409)
     expect(refused.body.code).toBe('large_removal')
     expect(await titles()).toHaveLength(4)
-    expect((await upload(csv, { fields: { ...fields, confirmLargeRemoval: 'true' } })).status).toBe(200)
+    expect((await upload(csv, { fields: { ...fields, confirmLargeRemoval: 'true' } })).status).toBe(
+      200,
+    )
     expect(await titles()).toEqual(['Film 1'])
   })
 
   it('refuses a deleteWatched value that is not true or false, for the preview and the import', async () => {
     await upload(HEADER + line(1))
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const preview = await upload(HEADER + line(1), { dryRun: true, fields: { deleteWatched: 'yes' } })
+    const preview = await upload(HEADER + line(1), {
+      dryRun: true,
+      fields: { deleteWatched: 'yes' },
+    })
     const apply = await upload(HEADER + line(1), { fields: { deleteWatched: 'yes' } })
     spy.mockRestore()
     expect([preview.status, apply.status]).toEqual([400, 400])
@@ -192,7 +227,11 @@ describe('POST /api/films/import', () => {
     await pool.query(`UPDATE films SET watched_at = now()`)
     const preview = await upload(HEADER, { dryRun: true, fields: { deleteWatched: 'true' } })
     expect(preview.body.requiresLargeRemovalConfirmation).toBe(true)
-    const fields = { deleteWatched: 'true', removalToken: preview.body.removalToken, confirmLargeRemoval: 'true' }
+    const fields = {
+      deleteWatched: 'true',
+      removalToken: preview.body.removalToken,
+      confirmLargeRemoval: 'true',
+    }
     expect((await upload(HEADER, { fields })).status).toBe(200)
     expect(await titles()).toEqual([])
   })
@@ -259,18 +298,25 @@ describe('import edge cases', () => {
     await seed(1)
     expect((await upload(HEADER + '2020-01-01,Film 1,,https://boxd.it/1\n')).body.updated).toBe(1)
     expect((await pool.query('SELECT release_year FROM films')).rows[0].release_year).toBeNull()
-    expect((await upload(HEADER + '2020-01-01,Film 1,,https://boxd.it/1\n')).body).toMatchObject({ updated: 0, unchanged: 1 })
+    expect((await upload(HEADER + '2020-01-01,Film 1,,https://boxd.it/1\n')).body).toMatchObject({
+      updated: 0,
+      unchanged: 1,
+    })
   })
 
   it('reads columns in another order and ignores extra columns', async () => {
-    const res = await upload('Extra,Letterboxd URI,Name,Year,Date\nx,https://boxd.it/1,Joy,2015,2020-01-12\n')
+    const res = await upload(
+      'Extra,Letterboxd URI,Name,Year,Date\nx,https://boxd.it/1,Joy,2015,2020-01-12\n',
+    )
     expect(res.body).toMatchObject({ inserted: 1, rejected: [] })
     expect(await titles()).toEqual(['Joy'])
   })
 
   it('removes nothing and keeps everything when the file has only rejected rows with usable links', async () => {
     await seed(2)
-    const res = await upload(HEADER + '2020-01-01,,2001,https://boxd.it/1\n2020-01-02,Film 2,abc,https://boxd.it/2\n')
+    const res = await upload(
+      HEADER + '2020-01-01,,2001,https://boxd.it/1\n2020-01-02,Film 2,abc,https://boxd.it/2\n',
+    )
     expect(res.status).toBe(200)
     expect(res.body).toMatchObject({ inserted: 0, updated: 0, unchanged: 0, removed: [] })
     expect(res.body.rejected).toHaveLength(2)
@@ -281,7 +327,10 @@ describe('import edge cases', () => {
     await seed(2)
     const preview = await upload(HEADER + '2020-01-01,Film 1,2001,not a link\n', { dryRun: true })
     expect(preview.body.rejected).toHaveLength(1)
-    expect(preview.body.removed.map((f: { title: string }) => f.title)).toEqual(['Film 1', 'Film 2'])
+    expect(preview.body.removed.map((f: { title: string }) => f.title)).toEqual([
+      'Film 1',
+      'Film 2',
+    ])
   })
 
   it('reports the rejected rows of a file that has nothing else', async () => {
@@ -336,7 +385,9 @@ describe('import edge cases', () => {
       const preview = await upload(HEADER, { dryRun: true })
       expect(preview.body.requiresLargeRemovalConfirmation).toBe(true)
       expect(preview.body.keptWatched.map((f: { title: string }) => f.title)).toEqual(['Film 2'])
-      const res = await upload(HEADER, { fields: { removalToken: preview.body.removalToken, confirmLargeRemoval: 'true' } })
+      const res = await upload(HEADER, {
+        fields: { removalToken: preview.body.removalToken, confirmLargeRemoval: 'true' },
+      })
       expect(res.status).toBe(200)
       expect(await titles()).toEqual(['Film 2'])
     })
@@ -379,7 +430,9 @@ describe('import edge cases', () => {
       await seed(4)
       const csv = rowsOf(1, 2, 3)
       const preview = await upload(csv, { dryRun: true })
-      await pool.query(`INSERT INTO films (title, letterboxd_url) VALUES ('Late', 'https://boxd.it/99')`)
+      await pool.query(
+        `INSERT INTO films (title, letterboxd_url) VALUES ('Late', 'https://boxd.it/99')`,
+      )
       const res = await upload(csv, { fields: { removalToken: preview.body.removalToken } })
       expect(res.status).toBe(409)
       expect(res.body.removed.map((f: { title: string }) => f.title)).toEqual(['Film 4', 'Late'])
@@ -404,7 +457,9 @@ describe('import edge cases', () => {
 
   describe('upload shape', () => {
     it('answers 400 when the file is sent under another field name', async () => {
-      const res = await testApp().post('/api/films/import').attach('csv', Buffer.from(rowsOf(1)), 'watchlist.csv')
+      const res = await testApp()
+        .post('/api/films/import')
+        .attach('csv', Buffer.from(rowsOf(1)), 'watchlist.csv')
       expect(res.status).toBe(400)
       expect(res.body.error).toBeTypeOf('string')
       expect(await titles()).toEqual([])
@@ -420,12 +475,16 @@ describe('import edge cases', () => {
     })
 
     it('answers 400 when the CSV is sent as a JSON body instead of a file', async () => {
-      const res = await testApp().post('/api/films/import').send({ file: rowsOf(1) })
+      const res = await testApp()
+        .post('/api/films/import')
+        .send({ file: rowsOf(1) })
       expect(res.status).toBe(400)
     })
 
     it('answers 400 for an invalid dryRun value', async () => {
-      const res = await testApp().post('/api/films/import?dryRun=yes').attach('file', Buffer.from(rowsOf(1)), 'a.csv')
+      const res = await testApp()
+        .post('/api/films/import?dryRun=yes')
+        .attach('file', Buffer.from(rowsOf(1)), 'a.csv')
       expect(res.status).toBe(400)
     })
 
@@ -448,8 +507,22 @@ describe('film marked watched while an import is applied', () => {
     const film = (await pool.query(`SELECT id FROM films WHERE title = 'Film 2'`)).rows[0]
     await pool.query('UPDATE films SET watched_at = now() WHERE id = $1', [film.id])
     const plan = {
-      toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], removableCount: 2,
-      toRemove: [{ id: Number(film.id), title: 'Film 2', releaseYear: 2002, letterboxdUrl: 'https://boxd.it/2', addedAt: '2020-01-02', watched: false }],
+      toInsert: [],
+      toUpdate: [],
+      toSkip: [],
+      unchanged: 0,
+      keptWatched: [],
+      removableCount: 2,
+      toRemove: [
+        {
+          id: Number(film.id),
+          title: 'Film 2',
+          releaseYear: 2002,
+          letterboxdUrl: 'https://boxd.it/2',
+          addedAt: '2020-01-02',
+          watched: false,
+        },
+      ],
     }
     await applyPlan(plan, getPool())
     expect(await titles()).toEqual(['Film 1', 'Film 2'])
@@ -458,10 +531,25 @@ describe('film marked watched while an import is applied', () => {
 
 describe('applyPlan with watched films', () => {
   const planFor = (id: number, watched: boolean) => ({
-    toInsert: [], toUpdate: [], toSkip: [], unchanged: 0, keptWatched: [], removableCount: 1,
-    toRemove: [{ id, title: 'Film 2', releaseYear: 2002, letterboxdUrl: 'https://boxd.it/2', addedAt: '2020-01-02', watched }],
+    toInsert: [],
+    toUpdate: [],
+    toSkip: [],
+    unchanged: 0,
+    keptWatched: [],
+    removableCount: 1,
+    toRemove: [
+      {
+        id,
+        title: 'Film 2',
+        releaseYear: 2002,
+        letterboxdUrl: 'https://boxd.it/2',
+        addedAt: '2020-01-02',
+        watched,
+      },
+    ],
   })
-  const filmId = async () => Number((await pool.query(`SELECT id FROM films WHERE title = 'Film 2'`)).rows[0].id)
+  const filmId = async () =>
+    Number((await pool.query(`SELECT id FROM films WHERE title = 'Film 2'`)).rows[0].id)
 
   it('deletes a film that was already watched when it was planned', async () => {
     const { applyPlan } = await import('../src/models/filmImport.js')
@@ -486,7 +574,10 @@ describe('POST /api/films/import with an IMDb export', () => {
   const imdbLine = (n: number, created = '2022-03-1' + n) =>
     `${n},tt000000${n},${created},${created},,IMDb ${n},https://www.imdb.com/title/tt000000${n}/,movie,199${n}\n`
   const dates = async () =>
-    (await pool.query('SELECT title, added_at FROM films ORDER BY id')).rows.map((r) => ({ title: r.title, d: dateOnly(r.added_at) }))
+    (await pool.query('SELECT title, added_at FROM films ORDER BY id')).rows.map((r) => ({
+      title: r.title,
+      d: dateOnly(r.added_at),
+    }))
 
   it('previews and imports it, and reports the detected format', async () => {
     const preview = await upload(IMDB_HEADER + imdbLine(1) + imdbLine(2), { dryRun: true })
@@ -512,7 +603,11 @@ describe('POST /api/films/import with an IMDb export', () => {
 
   it('importing it twice changes nothing, and a Letterboxd import keeps the IMDb films', async () => {
     await upload(IMDB_HEADER + imdbLine(1))
-    expect((await upload(IMDB_HEADER + imdbLine(1))).body).toMatchObject({ inserted: 0, unchanged: 1, removed: [] })
+    expect((await upload(IMDB_HEADER + imdbLine(1))).body).toMatchObject({
+      inserted: 0,
+      unchanged: 1,
+      removed: [],
+    })
     const res = await upload(HEADER + line(1), { dryRun: true })
     expect(res.body).toMatchObject({ source: 'letterboxd', inserted: 1, removed: [] })
   })
@@ -520,16 +615,18 @@ describe('POST /api/films/import with an IMDb export', () => {
   it('an IMDb import does not remove Letterboxd films', async () => {
     await upload(HEADER + line(1) + line(2))
     const res = await upload(IMDB_HEADER + imdbLine(3), { dryRun: true })
-    expect(res.body).toMatchObject({ inserted: 1, removed: [], requiresLargeRemovalConfirmation: false })
+    expect(res.body).toMatchObject({
+      inserted: 1,
+      removed: [],
+      requiresLargeRemovalConfirmation: false,
+    })
   })
 
   it('reports tvEpisode rows and keeps the film of a rejected row', async () => {
     await upload(IMDB_HEADER + imdbLine(1) + imdbLine(2))
     const episode = imdbLine(1).replace(',movie,', ',tvEpisode,')
     const res = await upload(IMDB_HEADER + episode + imdbLine(2), { dryRun: true })
-    expect(res.body.rejected).toEqual([
-      { line: 2, reason: 'TV episodes are not imported' },
-    ])
+    expect(res.body.rejected).toEqual([{ line: 2, reason: 'TV episodes are not imported' }])
     expect(res.body.removed).toEqual([])
   })
 
@@ -539,7 +636,9 @@ describe('POST /api/films/import with an IMDb export', () => {
     const csv = IMDB_HEADER + imdbLine(1, '').replace('IMDb 1', 'Renamed')
     const preview = await upload(csv, { dryRun: true })
     expect(preview.body).toMatchObject({ updated: 1, removed: [{ title: 'IMDb 2' }] })
-    const res = await upload(csv, { fields: { removalToken: preview.body.removalToken, confirmLargeRemoval: 'true' } })
+    const res = await upload(csv, {
+      fields: { removalToken: preview.body.removalToken, confirmLargeRemoval: 'true' },
+    })
     expect(res.status).toBe(200)
     expect(await dates()).toEqual([
       { title: 'Film 1', d: '2020-01-01' },
@@ -558,7 +657,9 @@ describe('POST /api/films/import with an IMDb export', () => {
   })
 
   it('does not remove a manually added film with an IMDb link when a Letterboxd file is imported', async () => {
-    await pool.query(`INSERT INTO films (title, letterboxd_url) VALUES ('Manual', 'https://www.imdb.com/title/tt0113277/')`)
+    await pool.query(
+      `INSERT INTO films (title, letterboxd_url) VALUES ('Manual', 'https://www.imdb.com/title/tt0113277/')`,
+    )
     const res = await upload(HEADER + line(1), { dryRun: true })
     expect(res.body.removed).toEqual([])
   })
@@ -581,9 +682,17 @@ describe('POST /api/films/import skips a film that is in both exports', () => {
     const check = await upload(IMDB_HEADER + heat + other, { dryRun: true })
     expect(check.body).toMatchObject({ source: 'imdb', inserted: 1, removed: [] })
     expect(check.body.skipped).toEqual([
-      { line: 2, title: 'HEAT', releaseYear: 2000, existing: { id: expect.any(Number), title: 'Heat', releaseYear: 2000 } },
+      {
+        line: 2,
+        title: 'HEAT',
+        releaseYear: 2000,
+        existing: { id: expect.any(Number), title: 'Heat', releaseYear: 2000 },
+      },
     ])
-    expect((await upload(IMDB_HEADER + heat + other)).body).toMatchObject({ applied: true, inserted: 1 })
+    expect((await upload(IMDB_HEADER + heat + other)).body).toMatchObject({
+      applied: true,
+      inserted: 1,
+    })
     expect(await titles()).toEqual(['Heat', 'Other'])
     const again = await upload(IMDB_HEADER + heat + other)
     expect(again.body).toMatchObject({ inserted: 0, updated: 0, unchanged: 1 })
@@ -611,9 +720,16 @@ describe('skipping a film that is in both exports: more cases', () => {
 
   it('skips both rows of a file that match the same film and lists the film for each', async () => {
     await upload(HEADER + '2020-01-01,Heat,2000,https://boxd.it/heat\n')
-    const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000) + imdb(2, 'HEAT', 2000), { dryRun: true })
+    const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000) + imdb(2, 'HEAT', 2000), {
+      dryRun: true,
+    })
     expect(res.body).toMatchObject({ inserted: 0 })
-    expect(res.body.skipped.map((s: { line: number; existing: { title: string } }) => [s.line, s.existing.title])).toEqual([
+    expect(
+      res.body.skipped.map((s: { line: number; existing: { title: string } }) => [
+        s.line,
+        s.existing.title,
+      ]),
+    ).toEqual([
       [2, 'Heat'],
       [3, 'Heat'],
     ])
@@ -656,7 +772,12 @@ describe('skipping a film that is in both exports: more cases', () => {
     await upload(HEADER + '2020-01-01,Heat,2000,https://boxd.it/heat\n')
     for (const dryRun of [true, false]) {
       const res = await upload(IMDB_HEADER + imdb(1, 'Heat', 2000), { dryRun })
-      expect(res.body.skipped[0]).toEqual({ line: 2, title: 'Heat', releaseYear: 2000, existing: expect.objectContaining({ title: 'Heat', releaseYear: 2000 }) })
+      expect(res.body.skipped[0]).toEqual({
+        line: 2,
+        title: 'Heat',
+        releaseYear: 2000,
+        existing: expect.objectContaining({ title: 'Heat', releaseYear: 2000 }),
+      })
       expect(typeof res.body.skipped[0].releaseYear).toBe('number')
     }
   })

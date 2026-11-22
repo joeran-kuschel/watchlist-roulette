@@ -15,10 +15,13 @@ export type PosterFetcher = (posterPath: string) => Promise<Poster | null>
 export function createPosterFetcher(fetchFn: typeof fetch = fetch): PosterFetcher {
   return async (posterPath) => {
     if (!POSTER_PATH.test(posterPath)) throw new Error('The stored poster path is not valid')
-    const response = await fetchFn(`${IMAGE_BASE_URL}${posterPath}`, { signal: AbortSignal.timeout(10_000) })
+    const response = await fetchFn(`${IMAGE_BASE_URL}${posterPath}`, {
+      signal: AbortSignal.timeout(10_000),
+    })
     if (response.status === 404) return null
     if (!response.ok) throw new Error(`TMDB answered ${response.status}`)
-    const contentType = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? ''
+    const contentType =
+      response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? ''
     if (!IMAGE_TYPES.has(contentType)) throw new Error('TMDB sent something that is not an image')
     const body = Buffer.from(await response.arrayBuffer())
     if (body.length > MAX_BYTES) throw new Error('The poster is larger than 2 MB')

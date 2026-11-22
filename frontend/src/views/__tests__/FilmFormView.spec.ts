@@ -76,7 +76,11 @@ describe('FilmFormView: add', () => {
     await wrapper.get('#film-title').setValue('Joy')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(mocked.createFilm).toHaveBeenCalledWith({ title: 'Joy', releaseYear: null, letterboxdUrl: null })
+    expect(mocked.createFilm).toHaveBeenCalledWith({
+      title: 'Joy',
+      releaseYear: null,
+      letterboxdUrl: null,
+    })
   })
 
   it('shows a duplicate Letterboxd link as a field error', async () => {
@@ -91,7 +95,9 @@ describe('FilmFormView: add', () => {
 
   it('maps the backend validation issues to fields', async () => {
     mocked.createFilm.mockRejectedValue(
-      new api.ApiError(400, 'Invalid request', undefined, [{ path: ['title'], message: 'Too long' }]),
+      new api.ApiError(400, 'Invalid request', undefined, [
+        { path: ['title'], message: 'Too long' },
+      ]),
     )
     const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
     await wrapper.get('#film-title').setValue('Joy')
@@ -113,7 +119,11 @@ describe('FilmFormView: add', () => {
 })
 
 describe('FilmFormView: edit', () => {
-  beforeEach(() => mocked.getFilm.mockResolvedValue(makeFilm({ id: 9, title: 'Stalker', releaseYear: 1979, letterboxdUrl: null })))
+  beforeEach(() =>
+    mocked.getFilm.mockResolvedValue(
+      makeFilm({ id: 9, title: 'Stalker', releaseYear: 1979, letterboxdUrl: null }),
+    ),
+  )
 
   it('loads the film into the form', async () => {
     const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
@@ -156,7 +166,9 @@ describe('FilmFormView: edit', () => {
     const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
     expect(wrapper.get('.danger').text()).toContain('Removes Stalker from your watchlist for good.')
     await wrapper.get('.danger button').trigger('click')
-    expect(wrapper.get('.danger [role="alert"]').text()).toBe('Delete Stalker? This cannot be undone.')
+    expect(wrapper.get('.danger [role="alert"]').text()).toBe(
+      'Delete Stalker? This cannot be undone.',
+    )
     expect(mocked.deleteFilm).not.toHaveBeenCalled()
     const keep = wrapper.findAll('.danger button').find((b) => b.text() === 'Keep film')!
     await keep.trigger('click')
@@ -168,7 +180,10 @@ describe('FilmFormView: edit', () => {
     mocked.deleteFilm.mockResolvedValue(undefined)
     const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
     await wrapper.get('.danger button').trigger('click')
-    await wrapper.findAll('.danger button').find((b) => b.text() === 'Yes, delete it')!.trigger('click')
+    await wrapper
+      .findAll('.danger button')
+      .find((b) => b.text() === 'Yes, delete it')!
+      .trigger('click')
     await flushPromises()
     expect(mocked.deleteFilm).toHaveBeenCalledWith(9)
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/watchlist'))
@@ -179,7 +194,10 @@ describe('FilmFormView: edit', () => {
     mocked.deleteFilm.mockRejectedValue(new api.ApiError(404, 'Film not found'))
     const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
     await wrapper.get('.danger button').trigger('click')
-    await wrapper.findAll('.danger button').find((b) => b.text() === 'Yes, delete it')!.trigger('click')
+    await wrapper
+      .findAll('.danger button')
+      .find((b) => b.text() === 'Yes, delete it')!
+      .trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/watchlist/9/edit')
     expect(wrapper.get('[role="alert"]').text()).toContain('Film not found')
@@ -188,7 +206,8 @@ describe('FilmFormView: edit', () => {
 })
 
 describe('FilmFormView: more cases', () => {
-  const stalker = () => makeFilm({ id: 9, title: 'Stalker', releaseYear: 1979, letterboxdUrl: null })
+  const stalker = () =>
+    makeFilm({ id: 9, title: 'Stalker', releaseYear: 1979, letterboxdUrl: null })
   const submit = async (wrapper: Awaited<ReturnType<typeof mountWithApp>>['wrapper']) => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -222,7 +241,9 @@ describe('FilmFormView: more cases', () => {
     const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
     await wrapper.get('#film-title').setValue('千と千尋の神隠し – Cléo 🎬')
     await submit(wrapper)
-    expect(mocked.createFilm).toHaveBeenCalledWith(expect.objectContaining({ title: '千と千尋の神隠し – Cléo 🎬' }))
+    expect(mocked.createFilm).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '千と千尋の神隠し – Cléo 🎬' }),
+    )
   })
 
   it('removes the summary and sends the form once the problems are fixed', async () => {
@@ -294,7 +315,12 @@ describe('FilmFormView: more cases', () => {
   it('has a way back to the watchlist from the back link and from Cancel', async () => {
     const { wrapper } = await mountWithApp(FilmFormView, '/watchlist/new')
     expect(wrapper.get('.back a').attributes('href')).toBe('/watchlist')
-    expect(wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.attributes('href')).toBe('/watchlist')
+    expect(
+      wrapper
+        .findAll('a')
+        .find((a) => a.text() === 'Cancel')!
+        .attributes('href'),
+    ).toBe('/watchlist')
   })
 
   describe('with a remembered watchlist query', () => {
@@ -306,7 +332,12 @@ describe('FilmFormView: more cases', () => {
       useWatchlistStore().rememberList(remembered)
       await flushPromises()
       expect(wrapper.get('.back a').attributes('href')).toBe(listUrl)
-      expect(wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.attributes('href')).toBe(listUrl)
+      expect(
+        wrapper
+          .findAll('a')
+          .find((a) => a.text() === 'Cancel')!
+          .attributes('href'),
+      ).toBe(listUrl)
       await expectNoA11yViolations(wrapper.element)
     })
 
@@ -347,8 +378,14 @@ describe('FilmFormView: more cases', () => {
       mocked.deleteFilm.mockRejectedValue(new api.ApiError(500, 'boom'))
       const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
       useWatchlistStore().rememberList(remembered)
-      await wrapper.findAll('.danger button').find((b) => b.text().startsWith('Delete'))!.trigger('click')
-      await wrapper.findAll('.danger button').find((b) => b.text() === 'Yes, delete it')!.trigger('click')
+      await wrapper
+        .findAll('.danger button')
+        .find((b) => b.text().startsWith('Delete'))!
+        .trigger('click')
+      await wrapper
+        .findAll('.danger button')
+        .find((b) => b.text() === 'Yes, delete it')!
+        .trigger('click')
       await flushPromises()
       expect(router.currentRoute.value.path).toBe('/watchlist/9/edit')
     })
@@ -357,7 +394,10 @@ describe('FilmFormView: more cases', () => {
       const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/new')
       useWatchlistStore().rememberList(remembered)
       await flushPromises()
-      await wrapper.findAll('a').find((a) => a.text() === 'Cancel')!.trigger('click')
+      await wrapper
+        .findAll('a')
+        .find((a) => a.text() === 'Cancel')!
+        .trigger('click')
       await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe(listUrl))
     })
 
@@ -366,8 +406,14 @@ describe('FilmFormView: more cases', () => {
       mocked.deleteFilm.mockResolvedValue(undefined)
       const { wrapper, router } = await mountWithApp(FilmFormView, '/watchlist/9/edit')
       useWatchlistStore().rememberList(remembered)
-      await wrapper.findAll('.danger button').find((b) => b.text().startsWith('Delete'))!.trigger('click')
-      await wrapper.findAll('.danger button').find((b) => b.text() === 'Yes, delete it')!.trigger('click')
+      await wrapper
+        .findAll('.danger button')
+        .find((b) => b.text().startsWith('Delete'))!
+        .trigger('click')
+      await wrapper
+        .findAll('.danger button')
+        .find((b) => b.text() === 'Yes, delete it')!
+        .trigger('click')
       await flushPromises()
       await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe(listUrl))
     })

@@ -14,9 +14,12 @@ describe('Node version', () => {
     expect(nvmrc).toMatch(/^\d+$/)
   })
 
-  it.each(['backend/package.json', 'frontend/package.json'])('%s engines accept only the .nvmrc major', (file) => {
-    expect(json(file).engines.node).toBe(`^${nvmrc}.0.0`)
-  })
+  it.each(['backend/package.json', 'frontend/package.json'])(
+    '%s engines accept only the .nvmrc major',
+    (file) => {
+      expect(json(file).engines.node).toBe(`^${nvmrc}.0.0`)
+    },
+  )
 
   it.each(dockerfiles)('%s uses the .nvmrc major in every stage', (file) => {
     const images = [...read(file).matchAll(/^FROM (\S+)/gm)].map((m) => m[1])
@@ -27,28 +30,41 @@ describe('Node version', () => {
   })
 
   it('is the version CI runs backend and frontend on', () => {
-    const versions = [...read('.github/workflows/ci.yml').matchAll(/node-version: *(\S+)/g)].map((m) => m[1])
+    const versions = [...read('.github/workflows/ci.yml').matchAll(/node-version: *(\S+)/g)].map(
+      (m) => m[1],
+    )
     expect(versions.length).toBeGreaterThan(0)
     for (const version of versions) expect(version).toBe(nvmrc)
   })
 
-  it.each(['frontend/tsconfig.node.json', 'frontend/e2e/tsconfig.json'])('%s extends the TypeScript preset of the .nvmrc major', (file) => {
-    // The files hold comments, so they are read as text; commented-out lines must not count
-    const text = read(file).replace(/^\s*\/\/.*$/gm, '')
-    expect(/"extends":\s*"([^"]+)"/.exec(text)?.[1]).toBe(`@tsconfig/node${nvmrc}/tsconfig.json`)
-  })
+  it.each(['frontend/tsconfig.node.json', 'frontend/e2e/tsconfig.json'])(
+    '%s extends the TypeScript preset of the .nvmrc major',
+    (file) => {
+      // The files hold comments, so they are read as text; commented-out lines must not count
+      const text = read(file).replace(/^\s*\/\/.*$/gm, '')
+      expect(/"extends":\s*"([^"]+)"/.exec(text)?.[1]).toBe(`@tsconfig/node${nvmrc}/tsconfig.json`)
+    },
+  )
 
   it('has the TypeScript preset of the .nvmrc major in the frontend, and no other one', () => {
     const dev = json('frontend/package.json').devDependencies as Record<string, string>
-    expect(Object.keys(dev).filter((name) => name.startsWith('@tsconfig/node'))).toEqual([`@tsconfig/node${nvmrc}`])
+    expect(Object.keys(dev).filter((name) => name.startsWith('@tsconfig/node'))).toEqual([
+      `@tsconfig/node${nvmrc}`,
+    ])
   })
 
-  it.each(['backend/package.json', 'frontend/package.json'])('%s has @types/node of the .nvmrc major', (file) => {
-    expect(json(file).devDependencies['@types/node']).toMatch(new RegExp(`^\\^${nvmrc}\\.`))
-  })
+  it.each(['backend/package.json', 'frontend/package.json'])(
+    '%s has @types/node of the .nvmrc major',
+    (file) => {
+      expect(json(file).devDependencies['@types/node']).toMatch(new RegExp(`^\\^${nvmrc}\\.`))
+    },
+  )
 
-  it.each(['backend/package-lock.json', 'frontend/package-lock.json'])('%s records the same engines as package.json', (file) => {
-    const pkg = file.replace('package-lock', 'package')
-    expect(json(file).packages[''].engines.node).toBe(json(pkg).engines.node)
-  })
+  it.each(['backend/package-lock.json', 'frontend/package-lock.json'])(
+    '%s records the same engines as package.json',
+    (file) => {
+      const pkg = file.replace('package-lock', 'package')
+      expect(json(file).packages[''].engines.node).toBe(json(pkg).engines.node)
+    },
+  )
 })

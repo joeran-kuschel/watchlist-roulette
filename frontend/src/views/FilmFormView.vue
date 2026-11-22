@@ -83,7 +83,11 @@ async function submit() {
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
       await showProblems({ letterboxdUrl: 'Another film already uses this link.' })
-    } else if (e instanceof ApiError && e.status === 400 && Object.keys(issuesToErrors(e.issues)).length) {
+    } else if (
+      e instanceof ApiError &&
+      e.status === 400 &&
+      Object.keys(issuesToErrors(e.issues)).length
+    ) {
       await showProblems(issuesToErrors(e.issues))
     } else {
       submitError.value = describeError(e)
@@ -137,7 +141,9 @@ async function remove() {
 
     <form v-else novalidate @submit.prevent="submit">
       <div v-if="problems.length" ref="summary" class="alert" role="alert" tabindex="-1">
-        <h2>Please fix {{ problems.length }} {{ problems.length === 1 ? 'problem' : 'problems' }}</h2>
+        <h2>
+          Please fix {{ problems.length }} {{ problems.length === 1 ? 'problem' : 'problems' }}
+        </h2>
         <ul>
           <li v-for="problem in problems" :key="problem.id">
             <a :href="`#${problem.id}`">{{ problem.message }}</a>
@@ -204,7 +210,9 @@ async function remove() {
             <button class="btn btn--primary" type="button" :disabled="saving" @click="remove">
               Yes, delete it
             </button>
-            <button ref="keepButton" class="btn" type="button" @click="stopDeleting">Keep film</button>
+            <button ref="keepButton" class="btn" type="button" @click="stopDeleting">
+              Keep film
+            </button>
           </div>
         </template>
       </section>

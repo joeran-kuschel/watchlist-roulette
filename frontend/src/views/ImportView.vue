@@ -85,7 +85,11 @@ function onDrop(event: DragEvent) {
   const files = [...(event.dataTransfer?.files ?? [])]
   if (files.length === 0) return // dragged text or a link, not a file
   const refusal =
-    files.length > 1 ? 'Drop one CSV file at a time.' : !isCsv(files[0]!) ? 'That is not a CSV file.' : ''
+    files.length > 1
+      ? 'Drop one CSV file at a time.'
+      : !isCsv(files[0]!)
+        ? 'That is not a CSV file.'
+        : ''
   if (refusal) {
     fileError.value = refusal
     void say(refusal)
@@ -108,7 +112,8 @@ function onDragOver(event: DragEvent) {
 
 // dragleave also fires when the pointer moves onto a child of the box
 function onDragLeave(event: DragEvent) {
-  if (!(event.currentTarget as Node).contains(event.relatedTarget as Node | null)) dragging.value = false
+  if (!(event.currentTarget as Node).contains(event.relatedTarget as Node | null))
+    dragging.value = false
 }
 
 async function showReport(next: ImportReport) {
@@ -179,7 +184,8 @@ async function apply() {
     if (e instanceof ApiError && e.status === 409) {
       // The films to remove are no longer the ones that were shown, so nothing was changed
       reset()
-      error.value = 'Your list or the file changed since the check, so nothing was imported. Check the file again.'
+      error.value =
+        'Your list or the file changed since the check, so nothing was imported. Check the file again.'
     } else {
       error.value = describeError(e)
     }
@@ -194,8 +200,8 @@ async function apply() {
   <div class="page page--narrow">
     <h1>Import from CSV</h1>
     <p class="lead">
-      Upload a Letterboxd or IMDb export. Check the file first: nothing changes until you confirm. Rows that cannot be
-      imported are listed, never skipped silently.
+      Upload a Letterboxd or IMDb export. Check the file first: nothing changes until you confirm.
+      Rows that cannot be imported are listed, never skipped silently.
     </p>
 
     <form class="card import__form" novalidate @submit.prevent="check">
@@ -253,12 +259,19 @@ async function apply() {
       <form v-if="!report.applied" class="import__confirm" @submit.prevent="apply">
         <div class="import__option">
           <label class="import__check">
-            <input id="delete-watched" v-model="deleteWatched" type="checkbox" :disabled="applying" aria-describedby="delete-watched-hint" @change="recheck" />
+            <input
+              id="delete-watched"
+              v-model="deleteWatched"
+              type="checkbox"
+              :disabled="applying"
+              aria-describedby="delete-watched-hint"
+              @change="recheck"
+            />
             <span>Also delete watched films that are not in the file</span>
           </label>
           <p id="delete-watched-hint" class="import__hint">
-            Watched films stay on your list unless you tick this. A deleted film and its watched date cannot be
-            restored.
+            Watched films stay on your list unless you tick this. A deleted film and its watched
+            date cannot be restored.
           </p>
         </div>
         <label v-if="hasRemovals" class="import__check">
@@ -271,8 +284,9 @@ async function apply() {
         <label v-if="needsLarge" class="import__check">
           <input v-model="confirmLarge" type="checkbox" />
           <span
-            >This removes more than half of my {{ deleteWatched ? 'films, watched ones included' : 'unwatched films' }}.
-            The file is correct.</span
+            >This removes more than half of my
+            {{ deleteWatched ? 'films, watched ones included' : 'unwatched films' }}. The file is
+            correct.</span
           >
         </label>
         <div>

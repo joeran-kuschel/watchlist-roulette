@@ -72,14 +72,21 @@ describe('frontend nginx', () => {
 describe('where the frontend finds the backend', () => {
   it('uses the Compose service name by default, and the full service name in Kubernetes', () => {
     expect(read('frontend/Dockerfile')).toContain('BACKEND_URL=http://backend:3000')
-    const deployment = loadAll(read('k8s/frontend.yaml')).find((d: any) => d.kind === 'Deployment') as any
+    const deployment = loadAll(read('k8s/frontend.yaml')).find(
+      (d: any) => d.kind === 'Deployment',
+    ) as any
     const env = deployment.spec.template.spec.containers[0].env
-    expect(env).toContainEqual({ name: 'BACKEND_URL', value: 'http://backend.watchlist-roulette.svc.cluster.local:3000' })
+    expect(env).toContainEqual({
+      name: 'BACKEND_URL',
+      value: 'http://backend.watchlist-roulette.svc.cluster.local:3000',
+    })
   })
 
   it('is what deploy.sh probes: the ingress host over HTTPS and /health, which nginx forwards', () => {
     const script = read('k8s/deploy.sh')
-    expect(script).toContain('--resolve "${HOST}:${HTTPS_PORT}:127.0.0.1" "https://${HOST}:${HTTPS_PORT}/health"')
+    expect(script).toContain(
+      '--resolve "${HOST}:${HTTPS_PORT}:127.0.0.1" "https://${HOST}:${HTTPS_PORT}/health"',
+    )
     expect(read('frontend/nginx.conf.template')).toContain('location = /health')
   })
 })

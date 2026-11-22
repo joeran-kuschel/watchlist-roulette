@@ -26,16 +26,35 @@ const films = [
     releaseYear: null,
     tmdb: { id: null, mediaType: 'movie', status: 'ambiguous', syncedAt: null },
   }),
-  makeFilm({ id: 4, title: 'Rare Home Video', tmdb: { id: null, mediaType: 'movie', status: 'not_found', syncedAt: null } }),
-  makeFilm({ id: 5, title: 'Broken Lookup', tmdb: { id: null, mediaType: 'movie', status: 'error', syncedAt: null } }),
+  makeFilm({
+    id: 4,
+    title: 'Rare Home Video',
+    tmdb: { id: null, mediaType: 'movie', status: 'not_found', syncedAt: null },
+  }),
+  makeFilm({
+    id: 5,
+    title: 'Broken Lookup',
+    tmdb: { id: null, mediaType: 'movie', status: 'error', syncedAt: null },
+  }),
 ]
 // A copy, because the store replaces entries in the array it is given
-const listing = (items = films, total = items.length, page = 1) => ({ items: [...items], total, page, pageSize: 50 })
+const listing = (items = films, total = items.length, page = 1) => ({
+  items: [...items],
+  total,
+  page,
+  pageSize: 50,
+})
 
 beforeEach(() => {
   vi.resetAllMocks()
   mocked.listFilms.mockResolvedValue(listing())
-  mocked.getTmdbCheck.mockResolvedValue({ enabled: true, running: false, total: 0, done: 0, lastRun: null })
+  mocked.getTmdbCheck.mockResolvedValue({
+    enabled: true,
+    running: false,
+    total: 0,
+    done: 0,
+    lastRun: null,
+  })
 })
 afterEach(() => {
   document.body.innerHTML = ''
@@ -44,7 +63,11 @@ afterEach(() => {
 
 /** jsdom has no matchMedia; this one reports a wide screen, where the table has visible column headers. */
 const stubWideScreen = () =>
-  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
 
 describe('WatchlistView', () => {
   it('loads with the default view and lists the films in an accessible table', async () => {
@@ -60,7 +83,13 @@ describe('WatchlistView', () => {
     expect(wrapper.get('h1').text()).toBe('Watchlist')
     expect(wrapper.text()).toContain('5 films')
     expect(wrapper.get('caption').text()).toBe('Films on your watchlist')
-    expect(wrapper.findAll('thead th').map((th) => th.text())).toEqual(['Title', 'Year', 'Added', 'Status', 'Actions'])
+    expect(wrapper.findAll('thead th').map((th) => th.text())).toEqual([
+      'Title',
+      'Year',
+      'Added',
+      'Status',
+      'Actions',
+    ])
     expect(wrapper.findAll('tbody tr')).toHaveLength(5)
     await expectNoA11yViolations(wrapper.element)
   })
@@ -114,9 +143,17 @@ describe('WatchlistView', () => {
   })
 
   it('remembers its query for the way back from a film page, also unknown values', async () => {
-    const { router } = await mountWithApp(WatchlistView, '/watchlist?q=days&tmdb=ambiguous&sort=nonsense&page=2')
+    const { router } = await mountWithApp(
+      WatchlistView,
+      '/watchlist?q=days&tmdb=ambiguous&sort=nonsense&page=2',
+    )
     const store = useWatchlistStore()
-    expect(store.listLocation.query).toEqual({ q: 'days', tmdb: 'ambiguous', sort: 'nonsense', page: '2' })
+    expect(store.listLocation.query).toEqual({
+      q: 'days',
+      tmdb: 'ambiguous',
+      sort: 'nonsense',
+      page: '2',
+    })
     await router.push('/watchlist?watched=true')
     await flushPromises()
     expect(store.listLocation.query).toEqual({ watched: 'true' })
@@ -154,7 +191,9 @@ describe('WatchlistView', () => {
     await wrapper.get('form[role="search"]').trigger('submit')
     await flushPromises()
     expect(router.currentRoute.value.query).toEqual({ q: 'days' })
-    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'days', page: 1 }))
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(
+      expect.objectContaining({ q: 'days', page: 1 }),
+    )
   })
 
   it('reloads when the filter or sort changes', async () => {
@@ -174,9 +213,15 @@ describe('WatchlistView', () => {
   it('pages with links and disables the unavailable direction', async () => {
     mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=2&sort=title')
-    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 51–100 of 120')
-    expect(wrapper.get('a[aria-label="Previous page"]').attributes('href')).toBe('/watchlist?sort=title')
-    expect(wrapper.get('a[aria-label="Next page"]').attributes('href')).toBe('/watchlist?sort=title&page=3')
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe(
+      'Showing 51–100 of 120',
+    )
+    expect(wrapper.get('a[aria-label="Previous page"]').attributes('href')).toBe(
+      '/watchlist?sort=title',
+    )
+    expect(wrapper.get('a[aria-label="Next page"]').attributes('href')).toBe(
+      '/watchlist?sort=title&page=3',
+    )
   })
 
   it('disables Previous on the first page and Next on the last', async () => {
@@ -248,7 +293,10 @@ describe('WatchlistView: edge cases', () => {
 
   it('keeps search, filter and sort in the pagination links', async () => {
     mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
-    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?q=days&watched=false&sort=year-asc&page=2')
+    const { wrapper } = await mountWithApp(
+      WatchlistView,
+      '/watchlist?q=days&watched=false&sort=year-asc&page=2',
+    )
     const next = wrapper.get('a[aria-label="Next page"]').attributes('href')!
     expect(new URLSearchParams(next.split('?')[1])).toEqual(
       new URLSearchParams({ q: 'days', watched: 'false', sort: 'year-asc', page: '3' }),
@@ -256,7 +304,10 @@ describe('WatchlistView: edge cases', () => {
   })
 
   it('fills the form from the URL', async () => {
-    const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?q=days&watched=true&sort=title')
+    const { wrapper } = await mountWithApp(
+      WatchlistView,
+      '/watchlist?q=days&watched=true&sort=title',
+    )
     expect((wrapper.get('#search').element as HTMLInputElement).value).toBe('days')
     expect((wrapper.get('#watched').element as HTMLSelectElement).value).toBe('true')
     expect((wrapper.get('#sort').element as HTMLSelectElement).value).toBe('title')
@@ -315,7 +366,11 @@ describe('WatchlistView: edge cases', () => {
       'Title, A to Z',
       'Title, Z to A',
     ])
-    expect(wrapper.findAll('#watched option').map((o) => o.text())).toEqual(['All films', 'Unwatched', 'Watched'])
+    expect(wrapper.findAll('#watched option').map((o) => o.text())).toEqual([
+      'All films',
+      'Unwatched',
+      'Watched',
+    ])
   })
 
   it('resets a search through the link to the plain watchlist', async () => {
@@ -355,7 +410,9 @@ describe('WatchlistView: edge cases', () => {
 
   it('shows a long title and a film without year and link', async () => {
     const title = 'Eine sehr lange Überschrift '.repeat(10).trim()
-    mocked.listFilms.mockResolvedValue(listing([makeFilm({ title, releaseYear: null, letterboxdUrl: null })]))
+    mocked.listFilms.mockResolvedValue(
+      listing([makeFilm({ title, releaseYear: null, letterboxdUrl: null })]),
+    )
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     expect(wrapper.get('tbody th').text()).toBe(title)
     expect(wrapper.findAll('tbody td')[0]!.text()).toBe('—')
@@ -391,7 +448,9 @@ describe('WatchlistView: edge cases', () => {
   it('has no axe violations in the paged table with disabled buttons', async () => {
     mocked.listFilms.mockResolvedValue(listing(films, 120, 3))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=3')
-    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 101–120 of 120')
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe(
+      'Showing 101–120 of 120',
+    )
     await expectNoA11yViolations(wrapper.element)
   })
 
@@ -467,26 +526,34 @@ describe('WatchlistView TMDB status filter', () => {
     await wrapper.get('#tmdb').setValue('all')
     await flushPromises()
     expect(router.currentRoute.value.query).toEqual({})
-    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ tmdbStatus: undefined }))
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tmdbStatus: undefined }),
+    )
   })
 
   it('fills the select from the URL and sends the status', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=not_found')
     expect((wrapper.get('#tmdb').element as HTMLSelectElement).value).toBe('not_found')
-    expect(mocked.listFilms).toHaveBeenCalledWith(expect.objectContaining({ tmdbStatus: 'not_found' }))
+    expect(mocked.listFilms).toHaveBeenCalledWith(
+      expect.objectContaining({ tmdbStatus: 'not_found' }),
+    )
   })
 
   it('ignores an unknown status in the URL', async () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=nope')
     expect((wrapper.get('#tmdb').element as HTMLSelectElement).value).toBe('all')
-    expect(mocked.listFilms).toHaveBeenCalledWith(expect.objectContaining({ tmdbStatus: undefined }))
+    expect(mocked.listFilms).toHaveBeenCalledWith(
+      expect.objectContaining({ tmdbStatus: undefined }),
+    )
   })
 
   it('keeps the status in the pagination links', async () => {
     mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=pending&page=2')
     const next = wrapper.get('a[aria-label="Next page"]').attributes('href')!
-    expect(new URLSearchParams(next.split('?')[1])).toEqual(new URLSearchParams({ tmdb: 'pending', page: '3' }))
+    expect(new URLSearchParams(next.split('?')[1])).toEqual(
+      new URLSearchParams({ tmdb: 'pending', page: '3' }),
+    )
   })
 
   it('shows the no-results state and the reset link when no film has the status', async () => {
@@ -504,8 +571,16 @@ describe('WatchlistView TMDB status filter', () => {
 })
 
 describe('WatchlistView pending badge', () => {
-  const pending = makeFilm({ id: 6, title: 'Fresh Import', tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null } })
-  const matched = makeFilm({ id: 7, title: 'Done Film', tmdb: { id: 9, mediaType: 'movie', status: 'matched', syncedAt: '2026-10-11T12:00:00.000Z' } })
+  const pending = makeFilm({
+    id: 6,
+    title: 'Fresh Import',
+    tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null },
+  })
+  const matched = makeFilm({
+    id: 7,
+    title: 'Done Film',
+    tmdb: { id: 9, mediaType: 'movie', status: 'matched', syncedAt: '2026-10-11T12:00:00.000Z' },
+  })
 
   it('shows a neutral badge for a film that is waiting for its TMDB lookup', async () => {
     mocked.listFilms.mockResolvedValue(listing([pending, matched]))
@@ -541,7 +616,11 @@ describe('WatchlistView pending badge', () => {
   })
 
   it('shows the badge once per pending film, as plain text without a live region or alert', async () => {
-    const second = makeFilm({ id: 9, title: 'Also Fresh', tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null } })
+    const second = makeFilm({
+      id: 9,
+      title: 'Also Fresh',
+      tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null },
+    })
     mocked.listFilms.mockResolvedValue(listing([pending, second]))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     for (const row of wrapper.findAll('tbody tr')) {
@@ -554,7 +633,9 @@ describe('WatchlistView pending badge', () => {
   it('shows the badge when the list is filtered to pending films', async () => {
     mocked.listFilms.mockResolvedValue(listing([pending], 1))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?tmdb=pending')
-    expect(mocked.listFilms).toHaveBeenCalledWith(expect.objectContaining({ tmdbStatus: 'pending' }))
+    expect(mocked.listFilms).toHaveBeenCalledWith(
+      expect.objectContaining({ tmdbStatus: 'pending' }),
+    )
     expect(wrapper.get('tbody tr').text()).toContain('Waiting for TMDB data')
   })
 
@@ -593,8 +674,15 @@ describe('WatchlistView table semantics (the rows become cards on small screens)
     expect(row.element.children[0]!.getAttribute('role')).toBe('rowheader')
     const cells = Array.from(row.element.children).slice(1)
     expect(cells).toHaveLength(4)
-    const kinds = ['watchlist__year', 'watchlist__added', 'watchlist__status-cell', 'watchlist__actions']
-    cells.forEach((cell, i) => expect(cell.classList.contains(kinds[i]!), `${kinds[i]} is cell ${i + 1}`).toBe(true))
+    const kinds = [
+      'watchlist__year',
+      'watchlist__added',
+      'watchlist__status-cell',
+      'watchlist__actions',
+    ]
+    cells.forEach((cell, i) =>
+      expect(cell.classList.contains(kinds[i]!), `${kinds[i]} is cell ${i + 1}`).toBe(true),
+    )
   })
 
   it('shows a dash for a missing year, and the date cell holds only the date, because its label is drawn by CSS', async () => {
@@ -637,33 +725,53 @@ describe('WatchlistView table states', () => {
 
   describe('TMDB check', () => {
     const idle = { enabled: true, running: false, total: 0, done: 0, lastRun: null }
-    const summary = { matched: 1, notFound: 0, ambiguous: 0, error: 0, unreachable: 0, stopped: null, finishedAt: '2026-10-16T10:00:00.000Z' }
+    const summary = {
+      matched: 1,
+      notFound: 0,
+      ambiguous: 0,
+      error: 0,
+      unreachable: 0,
+      stopped: null,
+      finishedAt: '2026-10-16T10:00:00.000Z',
+    }
 
     it('shows the panel with its button above the filters', async () => {
       const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
       const button = wrapper.get('button.btn:not([aria-label])')
       expect(button.text()).toBe('Check TMDB again')
-      expect(wrapper.get('section[aria-labelledby="tmdb-check-heading"] h2').text()).toBe('TMDB data')
+      expect(wrapper.get('section[aria-labelledby="tmdb-check-heading"] h2').text()).toBe(
+        'TMDB data',
+      )
       // Only the store asks, once, whether TMDB is on; the panel waits for the click
       expect(mocked.getTmdbCheck).toHaveBeenCalledTimes(1)
     })
 
     it('reloads the list with the current view when the check has finished', async () => {
       // The first answer is for the store's question whether TMDB is on
-      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
+      mocked.getTmdbCheck
+        .mockResolvedValueOnce(idle)
+        .mockResolvedValueOnce(idle)
+        .mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
       mocked.startTmdbCheck.mockResolvedValue({ started: true })
       const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?q=days&page=2')
       expect(mocked.listFilms).toHaveBeenCalledTimes(1)
       await wrapper.get('section[aria-labelledby="tmdb-check-heading"] button').trigger('click')
       await flushPromises()
       expect(mocked.listFilms).toHaveBeenCalledTimes(2)
-      expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'days', page: 2 }))
-      expect(wrapper.get('section[aria-labelledby="tmdb-check-heading"] [role="status"]').text()).toContain('TMDB check finished')
+      expect(mocked.listFilms).toHaveBeenLastCalledWith(
+        expect.objectContaining({ q: 'days', page: 2 }),
+      )
+      expect(
+        wrapper.get('section[aria-labelledby="tmdb-check-heading"] [role="status"]').text(),
+      ).toContain('TMDB check finished')
     })
 
     it('shows the new statuses after the reload', async () => {
       // The first answer is for the store's question whether TMDB is on
-      mocked.getTmdbCheck.mockResolvedValueOnce(idle).mockResolvedValueOnce(idle).mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
+      mocked.getTmdbCheck
+        .mockResolvedValueOnce(idle)
+        .mockResolvedValueOnce(idle)
+        .mockResolvedValue({ ...idle, total: 1, done: 1, lastRun: summary })
       mocked.startTmdbCheck.mockResolvedValue({ started: true })
       const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
       expect(wrapper.text()).toContain('Not found on TMDB')
@@ -675,7 +783,9 @@ describe('WatchlistView table states', () => {
 
     it('does not reload the list when the check could not start', async () => {
       mocked.getTmdbCheck.mockResolvedValue(idle)
-      mocked.startTmdbCheck.mockRejectedValue(new api.ApiError(503, 'TMDB is not configured.', 'tmdb_unavailable'))
+      mocked.startTmdbCheck.mockRejectedValue(
+        new api.ApiError(503, 'TMDB is not configured.', 'tmdb_unavailable'),
+      )
       const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
       await wrapper.get('section[aria-labelledby="tmdb-check-heading"] button').trigger('click')
       await flushPromises()
@@ -686,9 +796,14 @@ describe('WatchlistView table states', () => {
 })
 
 describe('WatchlistView when TMDB is not configured', () => {
-  const pending = makeFilm({ id: 6, title: 'Fresh Import', tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null } })
+  const pending = makeFilm({
+    id: 6,
+    title: 'Fresh Import',
+    tmdb: { id: null, mediaType: 'movie', status: 'pending', syncedAt: null },
+  })
   const off = { enabled: false, running: false, total: 0, done: 0, lastRun: null }
-  const OFF_TEXT = 'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
+  const OFF_TEXT =
+    'TMDB data is turned off, so films get no poster or details. Set TMDB_ACCESS_TOKEN and restart the app.'
   const mountList = (items = [pending, ...films]) => {
     mocked.listFilms.mockResolvedValue(listing(items))
     return mountWithApp(WatchlistView, '/watchlist')
@@ -766,7 +881,13 @@ describe('WatchlistView: sorting by the column headers', () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     expect(wrapper.find('#sort').exists()).toBe(false)
     expect(headerButtons(wrapper)).toEqual(['Title', 'Year', 'Added'])
-    expect(wrapper.findAll('thead th').map((th) => th.text())).toEqual(['Title', 'Year', 'Added', 'Status', 'Actions'])
+    expect(wrapper.findAll('thead th').map((th) => th.text())).toEqual([
+      'Title',
+      'Year',
+      'Added',
+      'Status',
+      'Actions',
+    ])
     expect(wrapper.findAll('thead th')[3]!.find('button').exists()).toBe(false)
     await expectNoA11yViolations(wrapper.element)
   })
@@ -808,7 +929,9 @@ describe('WatchlistView: sorting by the column headers', () => {
     await wrapper.get('#sort-title').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.query).toEqual({ sort: 'title-desc' })
-    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'title', order: 'desc' }))
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: 'title', order: 'desc' }),
+    )
     expect(sortOf(wrapper, 'title')).toBe('descending')
   })
 
@@ -823,11 +946,18 @@ describe('WatchlistView: sorting by the column headers', () => {
   it('keeps the search and filters, goes back to page 1, and ignores unsent text in the search field', async () => {
     stubWideScreen()
     mocked.listFilms.mockResolvedValue(listing(films, 120, 2))
-    const { wrapper, router } = await mountWithApp(WatchlistView, '/watchlist?q=days&watched=false&page=2')
+    const { wrapper, router } = await mountWithApp(
+      WatchlistView,
+      '/watchlist?q=days&watched=false&page=2',
+    )
     await wrapper.get('#search').setValue('something else, not submitted')
     await wrapper.get('#sort-year').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.query).toEqual({ q: 'days', watched: 'false', sort: 'year-desc' })
+    expect(router.currentRoute.value.query).toEqual({
+      q: 'days',
+      watched: 'false',
+      sort: 'year-desc',
+    })
   })
 
   it('announces the new order', async () => {
@@ -862,7 +992,13 @@ describe('WatchlistView: sorting by the column headers', () => {
     await wrapper.get('#sort-year').trigger('click')
     await flushPromises()
     ;(document.activeElement as HTMLElement).blur()
-    await useWatchlistStore().load({ watched: 'all', sort: 'added_at', order: 'desc', page: 1, pageSize: 50 })
+    await useWatchlistStore().load({
+      watched: 'all',
+      sort: 'added_at',
+      order: 'desc',
+      page: 1,
+      pageSize: 50,
+    })
     await flushPromises()
     expect(document.activeElement).toBe(document.body)
   })
@@ -873,7 +1009,9 @@ describe('WatchlistView: sorting by the column headers', () => {
     expect((wrapper.get('#sort').element as HTMLSelectElement).value).toBe('title-desc')
     await wrapper.get('#sort').setValue('year-asc')
     await flushPromises()
-    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'release_year', order: 'asc' }))
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: 'release_year', order: 'asc' }),
+    )
   })
 })
 
@@ -884,7 +1022,8 @@ describe('WatchlistView: sorting by the column headers, edge cases', () => {
     vi.stubGlobal('matchMedia', () => ({
       matches: narrow,
       addEventListener: (_: string, fn: (e: { matches: boolean }) => void) => listeners.add(fn),
-      removeEventListener: (_: string, fn: (e: { matches: boolean }) => void) => listeners.delete(fn),
+      removeEventListener: (_: string, fn: (e: { matches: boolean }) => void) =>
+        listeners.delete(fn),
     }))
     return (matches: boolean) => listeners.forEach((fn) => fn({ matches }))
   }
@@ -901,17 +1040,23 @@ describe('WatchlistView: sorting by the column headers, edge cases', () => {
     resize(false)
     await flushPromises()
     expect(wrapper.find('#sort').exists()).toBe(false)
-    expect(wrapper.get('#sort-year').element.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
+    expect(wrapper.get('#sort-year').element.closest('th')!.getAttribute('aria-sort')).toBe(
+      'ascending',
+    )
   })
 
   it('shows the default sort (Added, newest first) when the URL has an unknown sort', async () => {
     stubWideScreen()
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?sort=bogus')
-    expect(wrapper.get('#sort-added').element.closest('th')!.getAttribute('aria-sort')).toBe('descending')
+    expect(wrapper.get('#sort-added').element.closest('th')!.getAttribute('aria-sort')).toBe(
+      'descending',
+    )
     expect(wrapper.findAll('thead th[aria-sort]')).toHaveLength(1)
     await wrapper.get('#sort-added').trigger('click')
     await flushPromises()
-    expect(mocked.listFilms).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'added_at', order: 'asc' }))
+    expect(mocked.listFilms).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: 'added_at', order: 'asc' }),
+    )
   })
 
   it('uses a focusable native button in the header, so Enter and Space work (jsdom cannot press keys)', async () => {
@@ -956,14 +1101,24 @@ describe('WatchlistView: sorting by the column headers, edge cases', () => {
     await wrapper.get('#sort-year').trigger('click')
     await flushPromises()
     ;(document.activeElement as HTMLElement).blur()
-    await useWatchlistStore().load({ watched: 'all', sort: 'added_at', order: 'desc', page: 1, pageSize: 50 })
+    await useWatchlistStore().load({
+      watched: 'all',
+      sort: 'added_at',
+      order: 'desc',
+      page: 1,
+      pageSize: 50,
+    })
     await flushPromises()
     expect(document.activeElement).toBe(document.body)
   })
 
   it('removes its media query listener when the view is unmounted', async () => {
     const remove = vi.fn<(type: string, listener: unknown) => void>()
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: remove }))
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: remove,
+    }))
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist')
     wrapper.unmount()
     expect(remove).toHaveBeenCalledWith('change', expect.any(Function))
@@ -976,10 +1131,18 @@ describe('WatchlistView: pagination at the top', () => {
     const { wrapper } = await mountWithApp(WatchlistView, '/watchlist?page=2&sort=title')
     const top = wrapper.get('nav[aria-label="Pagination, top"]')
     expect(top.get('p').text()).toBe('Page 2 of 3')
-    expect(top.get('a[aria-label="Previous page"]').attributes('href')).toBe('/watchlist?sort=title')
-    expect(top.get('a[aria-label="Next page"]').attributes('href')).toBe('/watchlist?sort=title&page=3')
-    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe('Showing 51–100 of 120')
-    expect(wrapper.findAll('nav').map((n) => n.attributes('aria-label'))).toContain('Pagination, top')
+    expect(top.get('a[aria-label="Previous page"]').attributes('href')).toBe(
+      '/watchlist?sort=title',
+    )
+    expect(top.get('a[aria-label="Next page"]').attributes('href')).toBe(
+      '/watchlist?sort=title&page=3',
+    )
+    expect(wrapper.get('nav[aria-label="Pagination, bottom"] p').text()).toBe(
+      'Showing 51–100 of 120',
+    )
+    expect(wrapper.findAll('nav').map((n) => n.attributes('aria-label'))).toContain(
+      'Pagination, top',
+    )
     const html = wrapper.html()
     expect(html.indexOf('Pagination, top')).toBeLessThan(html.indexOf('<table'))
     expect(html.indexOf('<table')).toBeLessThan(html.indexOf('Pagination, bottom'))

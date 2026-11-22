@@ -14,7 +14,14 @@ beforeEach(async () => {
 })
 
 const addFilm = async (title: string, year: number | null = 2015) =>
-  Number((await pool.query(`INSERT INTO films (title, release_year) VALUES ($1, $2) RETURNING id`, [title, year])).rows[0].id)
+  Number(
+    (
+      await pool.query(`INSERT INTO films (title, release_year) VALUES ($1, $2) RETURNING id`, [
+        title,
+        year,
+      ])
+    ).rows[0].id,
+  )
 
 const movie = (id: number, extra: Partial<TmdbMovie> = {}): TmdbMovie => ({
   id,
@@ -43,7 +50,11 @@ const movie = (id: number, extra: Partial<TmdbMovie> = {}): TmdbMovie => ({
 })
 
 const client = (overrides: Partial<TmdbClient> = {}): TmdbClient => ({
-  searchMovie: vi.fn<TmdbClient['searchMovie']>().mockResolvedValue([{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }]),
+  searchMovie: vi
+    .fn<TmdbClient['searchMovie']>()
+    .mockResolvedValue([
+      { id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' },
+    ]),
   getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(100)),
   getTv: vi.fn<TmdbClient['getTv']>().mockResolvedValue(null),
   ...overrides,
@@ -65,21 +76,42 @@ describe('enricher', () => {
       posterPath: '/p.jpg',
       genres: [{ id: 18, name: 'Drama' }],
       directors: [{ id: 9, name: 'The Director' }],
-      cast: [{ id: 1, name: 'First' }, { id: 2, name: 'Second' }],
+      cast: [
+        { id: 1, name: 'First' },
+        { id: 2, name: 'Second' },
+      ],
     })
     expect(film.tmdb.syncedAt).not.toBeNull()
   })
 
   it('keeps only the top ten cast members', async () => {
     const id = await addFilm('Joy')
-    const cast = Array.from({ length: 15 }, (_, i) => ({ id: 100 + i, name: `Actor ${i}`, order: i }))
-    await enricher(client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(100, { credits: { cast, crew: [] } })) })).trigger()
+    const cast = Array.from({ length: 15 }, (_, i) => ({
+      id: 100 + i,
+      name: `Actor ${i}`,
+      order: i,
+    }))
+    await enricher(
+      client({
+        getMovie: vi
+          .fn<TmdbClient['getMovie']>()
+          .mockResolvedValue(movie(100, { credits: { cast, crew: [] } })),
+      }),
+    ).trigger()
     expect((await getFilm(id)).cast).toHaveLength(10)
   })
 
   it('stores the countries as codes', async () => {
     await addFilm('Joy')
-    await enricher(client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(100, { production_countries: [{ iso_3166_1: 'US' }, { iso_3166_1: 'GB' }] })) })).trigger()
+    await enricher(
+      client({
+        getMovie: vi
+          .fn<TmdbClient['getMovie']>()
+          .mockResolvedValue(
+            movie(100, { production_countries: [{ iso_3166_1: 'US' }, { iso_3166_1: 'GB' }] }),
+          ),
+      }),
+    ).trigger()
     const { rows } = await pool.query('SELECT countries FROM films')
     expect(rows[0].countries).toEqual(expect.arrayContaining(['US', 'GB']))
   })
@@ -115,7 +147,9 @@ describe('enricher', () => {
   it('marks a film not_found when TMDB does not know the id', async () => {
     const id = await addFilm('Joy')
     await pool.query('UPDATE films SET tmdb_id = 555 WHERE id = $1', [id])
-    await enricher(client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(null) })).trigger()
+    await enricher(
+      client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(null) }),
+    ).trigger()
     expect((await getFilm(id)).tmdb.status).toBe('not_found')
   })
 
@@ -144,7 +178,9 @@ describe('enricher', () => {
   it('stops and leaves films pending when TMDB rejects the token', async () => {
     const id = await addFilm('Joy')
     const log = vi.fn<LogFn>()
-    const search = vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new TmdbError('TMDB answered 401', 401))
+    const search = vi
+      .fn<TmdbClient['searchMovie']>()
+      .mockRejectedValue(new TmdbError('TMDB answered 401', 401))
     await createEnricher(client({ searchMovie: search }), { delayMs: 0, log }).trigger()
     expect((await getFilm(id)).tmdb.status).toBe('pending')
     expect(log).toHaveBeenCalledWith('TMDB enrichment stopped', expect.any(TmdbError))
@@ -171,7 +207,9 @@ describe('enricher', () => {
   it('runs only once at a time', async () => {
     await addFilm('Joy')
     let release!: () => void
-    const search = vi.fn<TmdbClient['searchMovie']>(() => new Promise<never[]>((resolve) => (release = () => resolve([]))))
+    const search = vi.fn<TmdbClient['searchMovie']>(
+      () => new Promise<never[]>((resolve) => (release = () => resolve([]))),
+    )
     const e = enricher(client({ searchMovie: search }))
     const first = e.trigger()
     const second = e.trigger()
@@ -194,12 +232,18 @@ describe('enricher', () => {
     const getMovie = vi
       .fn<TmdbClient['getMovie']>()
       .mockResolvedValueOnce(movie(100))
-      .mockResolvedValueOnce(movie(100, { genres: [{ id: 35, name: 'Comedy' }], credits: { cast: [], crew: [] } }))
+      .mockResolvedValueOnce(
+        movie(100, { genres: [{ id: 35, name: 'Comedy' }], credits: { cast: [], crew: [] } }),
+      )
     const c = client({ getMovie })
     await enricher(c).trigger()
     await pool.query(`UPDATE films SET tmdb_status = 'pending' WHERE id = $1`, [id])
     await enricher(c).trigger()
-    expect(await getFilm(id)).toMatchObject({ genres: [{ id: 35, name: 'Comedy' }], directors: [], cast: [] })
+    expect(await getFilm(id)).toMatchObject({
+      genres: [{ id: 35, name: 'Comedy' }],
+      directors: [],
+      cast: [],
+    })
   })
   it('survives a film that is deleted while the run is going and enriches the others', async () => {
     const gone = await addFilm('Gone')
@@ -211,7 +255,9 @@ describe('enricher', () => {
     const log = vi.fn<LogFn>()
     await createEnricher(client({ searchMovie: search }), { delayMs: 0, log }).trigger()
     expect((await pool.query('SELECT id FROM films WHERE id = $1', [gone])).rows).toEqual([])
-    expect((await pool.query('SELECT 1 FROM film_genres WHERE film_id = $1', [gone])).rows).toEqual([])
+    expect((await pool.query('SELECT 1 FROM film_genres WHERE film_id = $1', [gone])).rows).toEqual(
+      [],
+    )
     expect((await getFilm(stays)).tmdb.status).toBe('matched')
   })
 
@@ -228,8 +274,12 @@ describe('enricher', () => {
 
   it('can run again after a run stopped on a rejected token', async () => {
     const id = await addFilm('Joy')
-    const search = vi.fn<TmdbClient['searchMovie']>().mockRejectedValueOnce(new TmdbError('TMDB answered 401', 401))
-    search.mockResolvedValue([{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }])
+    const search = vi
+      .fn<TmdbClient['searchMovie']>()
+      .mockRejectedValueOnce(new TmdbError('TMDB answered 401', 401))
+    search.mockResolvedValue([
+      { id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' },
+    ])
     const e = createEnricher(client({ searchMovie: search }), { delayMs: 0, log: vi.fn<LogFn>() })
     await e.trigger()
     expect((await getFilm(id)).tmdb.status).toBe('pending')
@@ -261,8 +311,17 @@ describe('enricher', () => {
 
   it('stores a movie without credits, runtime, tagline or overview', async () => {
     const id = await addFilm('Joy')
-    const bare = movie(100, { credits: undefined, runtime: 0, tagline: '', overview: '', vote_average: undefined, poster_path: null })
-    await enricher(client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(bare) })).trigger()
+    const bare = movie(100, {
+      credits: undefined,
+      runtime: 0,
+      tagline: '',
+      overview: '',
+      vote_average: undefined,
+      poster_path: null,
+    })
+    await enricher(
+      client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(bare) }),
+    ).trigger()
     expect(await getFilm(id)).toMatchObject({
       tmdb: { status: 'matched' },
       runtimeMinutes: null,
@@ -287,7 +346,9 @@ describe('enricher', () => {
         ],
       },
     })
-    await enricher(client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(both) })).trigger()
+    await enricher(
+      client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(both) }),
+    ).trigger()
     expect(await getFilm(id)).toMatchObject({
       tmdb: { status: 'matched' },
       directors: [{ id: 9, name: 'Dir Actor' }],
@@ -300,7 +361,9 @@ describe('enricher', () => {
     await enricher(client()).trigger()
     await pool.query(`UPDATE films SET tmdb_status = 'pending' WHERE id = $1`, [first])
     const renamed = movie(100, { genres: [{ id: 18, name: 'Drama (new)' }] })
-    await enricher(client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(renamed) })).trigger()
+    await enricher(
+      client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(renamed) }),
+    ).trigger()
     const film = await getFilm(first)
     expect(film.genres).toEqual([{ id: 18, name: 'Drama (new)' }])
     expect(film.cast.map((p) => p.name)).toEqual(['First', 'Second'])
@@ -323,7 +386,12 @@ describe('enricher follow-up runs and TMDB trouble', () => {
   it('picks up a film that was added while a run was going', async () => {
     await addFilm('First')
     const { search, release } = slowSearch()
-    const e = enricher(client({ searchMovie: search, getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(200)) }))
+    const e = enricher(
+      client({
+        searchMovie: search,
+        getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(200)),
+      }),
+    )
     const run = e.trigger()
     await vi.waitFor(() => expect(search).toHaveBeenCalledTimes(1))
     const late = await addFilm('Late')
@@ -347,19 +415,34 @@ describe('enricher follow-up runs and TMDB trouble', () => {
 
   it('keeps films pending and stops after three TMDB failures in a row', async () => {
     const ids = [await addFilm('A'), await addFilm('B'), await addFilm('C'), await addFilm('D')]
-    const search = vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new TmdbError('TMDB answered 503', 503))
-    await createEnricher(client({ searchMovie: search }), { delayMs: 0, log: vi.fn<LogFn>() }).trigger()
+    const search = vi
+      .fn<TmdbClient['searchMovie']>()
+      .mockRejectedValue(new TmdbError('TMDB answered 503', 503))
+    await createEnricher(client({ searchMovie: search }), {
+      delayMs: 0,
+      log: vi.fn<LogFn>(),
+    }).trigger()
     expect(search).toHaveBeenCalledTimes(3)
     for (const id of ids) expect((await getFilm(id)).tmdb.status).toBe('pending')
   })
 
   it('treats a rate limit and an unreachable TMDB as trouble, not as an error on the film', async () => {
     const a = await addFilm('A')
-    const search = vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new TmdbError('TMDB answered 429', 429))
-    await createEnricher(client({ searchMovie: search }), { delayMs: 0, log: vi.fn<LogFn>() }).trigger()
+    const search = vi
+      .fn<TmdbClient['searchMovie']>()
+      .mockRejectedValue(new TmdbError('TMDB answered 429', 429))
+    await createEnricher(client({ searchMovie: search }), {
+      delayMs: 0,
+      log: vi.fn<LogFn>(),
+    }).trigger()
     expect((await getFilm(a)).tmdb.status).toBe('pending')
-    const down = vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new TmdbError('TMDB is not reachable: ECONNREFUSED'))
-    await createEnricher(client({ searchMovie: down }), { delayMs: 0, log: vi.fn<LogFn>() }).trigger()
+    const down = vi
+      .fn<TmdbClient['searchMovie']>()
+      .mockRejectedValue(new TmdbError('TMDB is not reachable: ECONNREFUSED'))
+    await createEnricher(client({ searchMovie: down }), {
+      delayMs: 0,
+      log: vi.fn<LogFn>(),
+    }).trigger()
     expect((await getFilm(a)).tmdb.status).toBe('pending')
   })
 
@@ -369,7 +452,10 @@ describe('enricher follow-up runs and TMDB trouble', () => {
       if (title === 'Ok') return []
       throw new TmdbError('TMDB answered 503', 503)
     })
-    await createEnricher(client({ searchMovie: search }), { delayMs: 0, log: vi.fn<LogFn>() }).trigger()
+    await createEnricher(client({ searchMovie: search }), {
+      delayMs: 0,
+      log: vi.fn<LogFn>(),
+    }).trigger()
     expect(search).toHaveBeenCalledTimes(5)
   })
 })
@@ -378,7 +464,10 @@ describe('enricher lookup', () => {
   it('looks up a pending film and stores the match', async () => {
     const id = await addFilm('Joy')
     expect(await enricher(client()).lookup(id)).toBe('done')
-    expect(await getFilm(id)).toMatchObject({ tmdb: { id: 100, status: 'matched' }, tagline: 'Based on the true story' })
+    expect(await getFilm(id)).toMatchObject({
+      tmdb: { id: 100, status: 'matched' },
+      tagline: 'Based on the true story',
+    })
   })
 
   it('looks up a film whatever its status, such as not_found, error or matched', async () => {
@@ -386,7 +475,14 @@ describe('enricher lookup', () => {
       const title = `Joy ${status}`
       const id = await addFilm(title)
       await pool.query(`UPDATE films SET tmdb_status = $2 WHERE id = $1`, [id, status])
-      const c = client({ searchMovie: vi.fn<TmdbClient['searchMovie']>().mockResolvedValue([{ id: 100 + id, title, original_title: title, release_date: '2015-01-01' }]), getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(100 + id)) })
+      const c = client({
+        searchMovie: vi
+          .fn<TmdbClient['searchMovie']>()
+          .mockResolvedValue([
+            { id: 100 + id, title, original_title: title, release_date: '2015-01-01' },
+          ]),
+        getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(100 + id)),
+      })
       expect(await enricher(c).lookup(id)).toBe('done')
       expect(c.searchMovie).toHaveBeenCalledTimes(1)
       expect((await getFilm(id)).tmdb).toMatchObject({ id: 100 + id, status: 'matched' })
@@ -395,7 +491,9 @@ describe('enricher lookup', () => {
 
   it('keeps the stored TMDB id and skips the search', async () => {
     const id = await addFilm('Whatever')
-    await pool.query(`UPDATE films SET tmdb_id = 555, tmdb_status = 'not_found' WHERE id = $1`, [id])
+    await pool.query(`UPDATE films SET tmdb_id = 555, tmdb_status = 'not_found' WHERE id = $1`, [
+      id,
+    ])
     const c = client({ getMovie: vi.fn<TmdbClient['getMovie']>().mockResolvedValue(movie(555)) })
     expect(await enricher(c).lookup(id)).toBe('done')
     expect(c.searchMovie).not.toHaveBeenCalled()
@@ -404,7 +502,11 @@ describe('enricher lookup', () => {
 
   it('answers done and stores not_found when TMDB knows no such film', async () => {
     const id = await addFilm('Nothing')
-    expect(await enricher(client({ searchMovie: vi.fn<TmdbClient['searchMovie']>().mockResolvedValue([]) })).lookup(id)).toBe('done')
+    expect(
+      await enricher(
+        client({ searchMovie: vi.fn<TmdbClient['searchMovie']>().mockResolvedValue([]) }),
+      ).lookup(id),
+    ).toBe('done')
     expect((await getFilm(id)).tmdb.status).toBe('not_found')
   })
 
@@ -428,7 +530,13 @@ describe('enricher lookup', () => {
 
   it('answers token_rejected and leaves the film unchanged when TMDB refuses the token', async () => {
     const id = await addFilm('Joy')
-    const e = enricher(client({ searchMovie: vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new TmdbError('TMDB answered 401', 401)) }))
+    const e = enricher(
+      client({
+        searchMovie: vi
+          .fn<TmdbClient['searchMovie']>()
+          .mockRejectedValue(new TmdbError('TMDB answered 401', 401)),
+      }),
+    )
     expect(await e.lookup(id)).toBe('token_rejected')
     expect((await getFilm(id)).tmdb.status).toBe('pending')
   })
@@ -441,7 +549,10 @@ describe('enricher lookup', () => {
     const id = await addFilm('Joy')
     await pool.query(`UPDATE films SET tmdb_status = 'error' WHERE id = $1`, [id])
     const log = vi.fn<LogFn>()
-    const e = createEnricher(client({ searchMovie: vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(error) }), { delayMs: 0, log })
+    const e = createEnricher(
+      client({ searchMovie: vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(error) }),
+      { delayMs: 0, log },
+    )
     expect(await e.lookup(id)).toBe('unreachable')
     expect((await getFilm(id)).tmdb.status).toBe('error')
     expect(log).toHaveBeenCalled()
@@ -453,7 +564,12 @@ describe('enricher lookup', () => {
   it('sets status error for a failure that is not transient, and still answers done', async () => {
     const id = await addFilm('Joy')
     const log = vi.fn<LogFn>()
-    const e = createEnricher(client({ searchMovie: vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new Error('unexpected')) }), { delayMs: 0, log })
+    const e = createEnricher(
+      client({
+        searchMovie: vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new Error('unexpected')),
+      }),
+      { delayMs: 0, log },
+    )
     expect(await e.lookup(id)).toBe('done')
     expect((await getFilm(id)).tmdb.status).toBe('error')
     expect(log).toHaveBeenCalled()
@@ -498,7 +614,9 @@ describe('enricher lookup', () => {
     await addFilm('B')
     await addFilm('C')
     const wanted = await addFilm('Wanted')
-    await pool.query(`UPDATE films SET tmdb_id = 7, tmdb_status = 'matched' WHERE id = $1`, [wanted])
+    await pool.query(`UPDATE films SET tmdb_id = 7, tmdb_status = 'matched' WHERE id = $1`, [
+      wanted,
+    ])
     const order: string[] = []
     let release!: () => void
     const gate = new Promise<void>((resolve) => (release = resolve))
@@ -507,7 +625,9 @@ describe('enricher lookup', () => {
       if (title === 'A') await gate
       return []
     })
-    const getMovie = vi.fn<TmdbClient['getMovie']>(async (id: number) => (order.push(`lookup ${id}`), movie(id)))
+    const getMovie = vi.fn<TmdbClient['getMovie']>(
+      async (id: number) => (order.push(`lookup ${id}`), movie(id)),
+    )
     const e = enricher(client({ searchMovie: search, getMovie }))
     const pass = e.trigger()
     await vi.waitFor(() => expect(order).toEqual(['A']))
@@ -538,7 +658,9 @@ describe('enricher lookup', () => {
   it('still runs a lookup after an earlier one failed', async () => {
     const id = await addFilm('Joy')
     const search = vi.fn<TmdbClient['searchMovie']>().mockRejectedValueOnce(new Error('boom'))
-    search.mockResolvedValue([{ id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' }])
+    search.mockResolvedValue([
+      { id: 100, title: 'Joy', original_title: 'Joy', release_date: '2015-12-25' },
+    ])
     const e = enricher(client({ searchMovie: search }))
     await e.lookup(id)
     await pool.query(`UPDATE films SET tmdb_status = 'pending' WHERE id = $1`, [id])
@@ -550,7 +672,11 @@ describe('enricher lookup', () => {
 describe('films a run looks up', () => {
   const addWithStatus = async (title: string, status: string, tmdbId: number | null = null) => {
     const id = await addFilm(title)
-    await pool.query('UPDATE films SET tmdb_status = $2, tmdb_id = $3 WHERE id = $1', [id, status, tmdbId])
+    await pool.query('UPDATE films SET tmdb_status = $2, tmdb_id = $3 WHERE id = $1', [
+      id,
+      status,
+      tmdbId,
+    ])
     return id
   }
   const setup = async () => ({
@@ -562,7 +688,8 @@ describe('films a run looks up', () => {
     byHandAmbiguous: await addWithStatus('ByHandAmbiguous', 'ambiguous', 12),
     matched: await addWithStatus('Matched', 'matched', 13),
   })
-  const ids = async (options?: Parameters<typeof loadPendingFilms>[0]) => (await loadPendingFilms(options)).map((f) => f.id)
+  const ids = async (options?: Parameters<typeof loadPendingFilms>[0]) =>
+    (await loadPendingFilms(options)).map((f) => f.id)
 
   it('selects only pending films by default', async () => {
     const f = await setup()
@@ -614,11 +741,23 @@ describe('enricher status', () => {
   }
 
   it('reports a disabled enricher without a run', () => {
-    expect(enricher(null).status()).toEqual({ enabled: false, running: false, total: 0, done: 0, lastRun: null })
+    expect(enricher(null).status()).toEqual({
+      enabled: false,
+      running: false,
+      total: 0,
+      done: 0,
+      lastRun: null,
+    })
   })
 
   it('reports an idle enabled enricher before any run', () => {
-    expect(enricher(client()).status()).toEqual({ enabled: true, running: false, total: 0, done: 0, lastRun: null })
+    expect(enricher(client()).status()).toEqual({
+      enabled: true,
+      running: false,
+      total: 0,
+      done: 0,
+      lastRun: null,
+    })
   })
 
   it('shows progress during a run and the summary after it', async () => {
@@ -648,7 +787,13 @@ describe('enricher status', () => {
     await run
     const status = e.status()
     expect(status).toMatchObject({ running: false, total: 4, done: 4 })
-    expect(status.lastRun).toMatchObject({ matched: 1, notFound: 1, ambiguous: 1, error: 1, stopped: null })
+    expect(status.lastRun).toMatchObject({
+      matched: 1,
+      notFound: 1,
+      ambiguous: 1,
+      error: 1,
+      stopped: null,
+    })
     expect(new Date(status.lastRun!.finishedAt).toString()).not.toBe('Invalid Date')
   })
 
@@ -664,7 +809,13 @@ describe('enricher status', () => {
     const e = enricher(client())
     await e.trigger()
     expect(e.status()).toMatchObject({ running: false, total: 0, done: 0 })
-    expect(e.status().lastRun).toMatchObject({ matched: 0, notFound: 0, ambiguous: 0, error: 0, stopped: null })
+    expect(e.status().lastRun).toMatchObject({
+      matched: 0,
+      notFound: 0,
+      ambiguous: 0,
+      error: 0,
+      stopped: null,
+    })
   })
 
   it('resets the counts at the start of the next run', async () => {
@@ -681,7 +832,9 @@ describe('enricher status', () => {
   it('stops with "token" when TMDB rejects the token', async () => {
     await addFilm('A')
     await addFilm('B')
-    const search = vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new TmdbError('TMDB answered 401', 401))
+    const search = vi
+      .fn<TmdbClient['searchMovie']>()
+      .mockRejectedValue(new TmdbError('TMDB answered 401', 401))
     const e = enricher(client({ searchMovie: search }))
     await e.trigger()
     expect(search).toHaveBeenCalledTimes(1)
@@ -691,12 +844,21 @@ describe('enricher status', () => {
 
   it('stops with "tmdb" after three transient failures, which count as done but in no bucket', async () => {
     for (const title of ['A', 'B', 'C', 'D']) await addFilm(title)
-    const search = vi.fn<TmdbClient['searchMovie']>().mockRejectedValue(new TmdbError('TMDB answered 503', 503))
+    const search = vi
+      .fn<TmdbClient['searchMovie']>()
+      .mockRejectedValue(new TmdbError('TMDB answered 503', 503))
     const e = enricher(client({ searchMovie: search }))
     await e.trigger()
     expect(e.status()).toMatchObject({ total: 4, done: 3 })
     expect(e.status().lastRun).toEqual(
-      expect.objectContaining({ stopped: 'tmdb', matched: 0, notFound: 0, ambiguous: 0, error: 0, unreachable: 3 }),
+      expect.objectContaining({
+        stopped: 'tmdb',
+        matched: 0,
+        notFound: 0,
+        ambiguous: 0,
+        error: 0,
+        unreachable: 3,
+      }),
     )
   })
 
@@ -710,7 +872,13 @@ describe('enricher status', () => {
     const e = enricher(client({ searchMovie: search }))
     await e.trigger()
     expect(e.status()).toMatchObject({ total: 2, done: 2 })
-    expect(e.status().lastRun).toMatchObject({ matched: 1, notFound: 0, ambiguous: 0, error: 0, stopped: null })
+    expect(e.status().lastRun).toMatchObject({
+      matched: 1,
+      notFound: 0,
+      ambiguous: 0,
+      error: 0,
+      stopped: null,
+    })
   })
 
   it('merges the flags of requests that arrive during a run into one follow-up run', async () => {
@@ -731,7 +899,12 @@ describe('enricher status', () => {
     expect(e.status().running).toBe(true)
     release()
     await Promise.all([run, ...more])
-    expect(search.mock.calls.map(([title]) => title).sort()).toEqual(['Broken', 'First', 'First', 'Lost']) // First is not found in the first run, so the follow-up retries it
+    expect(search.mock.calls.map(([title]) => title).sort()).toEqual([
+      'Broken',
+      'First',
+      'First',
+      'Lost',
+    ]) // First is not found in the first run, so the follow-up retries it
     expect(e.status().running).toBe(false)
   })
 
