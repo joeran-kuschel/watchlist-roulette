@@ -83,8 +83,9 @@ async function submit() {
 
     <template v-else>
       <p class="lead">
-        Your film: <strong>{{ film.title }}</strong
-        ><template v-if="film.releaseYear"> ({{ film.releaseYear }})</template>. {{ reason }}
+        Your film: <strong>{{ film.title }}</strong><template v-if="film.releaseYear">
+          ({{ film.releaseYear }})</template
+        >. {{ reason }}
       </p>
 
       <ol class="steps">
