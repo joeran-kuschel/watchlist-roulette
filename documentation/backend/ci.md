@@ -34,4 +34,14 @@ Weekly update pull requests for the npm packages (backend and frontend), the Doc
 
 ## Requiring the checks
 
-After the first run, add the CI jobs as required status checks in the branch protection rule of `main` (Settings → Branches), so a pull request can only be merged when they pass.
+After the first run, add the CI jobs as required status checks in the branch protection rule of `main` (Settings → Branches), so a pull request can only be merged when they pass. The required checks are `Docker images`, `Backend (Node 26)` and `Frontend (Node 26)`: the `name:` of the jobs in `ci.yml`, spelled exactly. CodeQL is not required.
+
+The list lives in `backend/tests/ci-required-checks.test.ts` (`REQUIRED_CHECKS`). The test reads `ci.yml` and fails when a required name is not the name of a job, or when a job is neither in the list nor marked as not required (`NOT_REQUIRED`). Its message says what to do: change the list **and** the required checks in the repository settings. If you only rename a job, the old check never reports again and GitHub waits for it forever, so the pull request cannot be merged.
+
+The test reads files only. It cannot see the live rules, so compare them by hand after a change:
+
+```sh
+gh api repos/joeran-kuschel/watchlist-roulette/branches/main/protection --jq '.required_status_checks.contexts'
+```
+
+A Node move (see the version check above) renames the two jobs, because the version is in their names. Change the Node version in the job names, in `REQUIRED_CHECKS` and in the repository settings together. Merging the pull request needs the new names to be required first, or the old ones removed.
